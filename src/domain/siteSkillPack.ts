@@ -31,7 +31,9 @@ export const workersGuideSteps: GuideStep[] = [
     action: "Open the Workers & Pages area from the Cloudflare account sidebar.",
     purpose:
       "This places you inside Cloudflare's service runtime area, where logic can be created and deployed.",
-    completionCheck: "The page shows Workers & Pages with a create action available."
+    completionCheck: "The page shows Workers & Pages with a create action available.",
+    targetId: "workers-pages-nav",
+    expectedRouteId: "cloudflare.dashboard.home"
   },
   {
     id: "create-worker",
@@ -40,6 +42,8 @@ export const workersGuideSteps: GuideStep[] = [
     purpose:
       "This creates the runtime container that will host the small public service.",
     completionCheck: "A Worker draft exists and the editor or setup view is visible.",
+    targetId: "create-worker-button",
+    expectedRouteId: "cloudflare.workers.overview",
     criticalAction: {
       label: "Create Worker",
       impact:
@@ -52,7 +56,9 @@ export const workersGuideSteps: GuideStep[] = [
     action: "Read the starter handler and keep the default response for the demo.",
     purpose:
       "A tiny response is enough to prove the service can run before binding a domain or adding business logic.",
-    completionCheck: "The Worker editor shows a valid request handler and no blocking validation errors."
+    completionCheck: "The Worker editor shows a valid request handler and no blocking validation errors.",
+    targetId: "starter-handler",
+    expectedRouteId: "cloudflare.workers.starter-editor"
   },
   {
     id: "deploy-worker",
@@ -61,6 +67,8 @@ export const workersGuideSteps: GuideStep[] = [
     purpose:
       "Deployment turns the draft into a reachable service endpoint that other people can access.",
     completionCheck: "The deployment result includes a Worker URL.",
+    targetId: "deploy-worker-button",
+    expectedRouteId: "cloudflare.workers.deploy-review",
     criticalAction: {
       label: "Deploy Worker",
       impact:
@@ -73,7 +81,9 @@ export const workersGuideSteps: GuideStep[] = [
     action: "Check the generated Worker URL and confirm it returns a working response.",
     purpose:
       "This proves the guide path reached the user's goal: a small service that other people can access.",
-    completionCheck: "The Worker URL returns HTTP 200 with the starter response."
+    completionCheck: "The Worker URL returns HTTP 200 with the starter response.",
+    targetId: "worker-url",
+    expectedRouteId: "cloudflare.workers.deploy-result"
   }
 ];
 

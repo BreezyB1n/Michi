@@ -13,6 +13,8 @@ export type GuideStep = {
   action: string;
   purpose: string;
   completionCheck: string;
+  targetId?: string;
+  expectedRouteId?: string;
   criticalAction?: {
     label: string;
     impact: string;
@@ -32,6 +34,44 @@ export type PageState = {
   evidence: string;
   completionSatisfied: boolean;
   blockingState?: BlockingState;
+};
+
+export type PageTarget = {
+  id: string;
+  label: string;
+  role: "navigation" | "button" | "form" | "status" | "content";
+  text: string;
+  confidence: "high" | "medium" | "low";
+  boundingBox?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+};
+
+export type PageSignal = {
+  id: string;
+  label: string;
+  value: string;
+  severity: "info" | "success" | "warning" | "error";
+};
+
+export type HostPageContext = {
+  url: string;
+  title: string;
+  product: "cloudflare";
+  locationLabel: string;
+  routeId: string;
+  detectedAt: string;
+  targets: PageTarget[];
+  signals: PageSignal[];
+  blockingState?: BlockingState;
+};
+
+export type PageContextProvider = {
+  getCurrentContext(): Promise<HostPageContext>;
+  subscribe(listener: (context: HostPageContext) => void): () => void;
 };
 
 export type GuidePhase =

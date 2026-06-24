@@ -4,7 +4,14 @@ import {
   pageStatesByStep,
   workersGuideSteps
 } from "./siteSkillPack";
-import type { BlockingState, GuideSession, PageState, ServiceKind } from "./types";
+import type {
+  BlockingState,
+  GuideSession,
+  GuideStep,
+  HostPageContext,
+  PageState,
+  ServiceKind
+} from "./types";
 
 const emptyPageState: PageState = {
   location: "Michi start",
@@ -24,6 +31,102 @@ const createSession = (overrides: Partial<GuideSession> = {}): GuideSession => (
 
 const pageStateForStep = (index: number): PageState =>
   pageStatesByStep[Math.min(index, pageStatesByStep.length - 1)];
+
+const targetForStep = (context: HostPageContext, step?: GuideStep) => {
+  if (!step?.targetId) {
+    return context.targets[0];
+  }
+
+  return context.targets.find((target) => target.id === step.targetId);
+};
+
+const hasUsableTarget = (context: HostPageContext, step?: GuideStep) => {
+  const target = targetForStep(context, step);
+  return target ? target.confidence === "high" || target.confidence === "medium" : false;
+};
+
+const hasExpectedRoute = (context: HostPageContext, step?: GuideStep) =>
+  !step?.expectedRouteId || context.routeId === step.expectedRouteId;
+
+const contextWithPageDrift = (context: HostPageContext): HostPageContext => ({
+  ...context,
+  blockingState: blockingStates["page-drift"],
+  signals: [
+    {
+      id: "page-drift",
+      label: "Page drift",
+      value:
+        context.signals[0]?.value ??
+        "Page drift detected: the expected target is not present in the current page context.",
+      severity: "warning"
+    }
+  ]
+});
+
+export const hostPageContextToPageState = (
+  context: HostPageContext,
+  step?: GuideStep
+): PageState => {
+  const target = targetForStep(context, step);
+  const primarySignal = context.signals[0];
+
+  if (context.blockingState) {
+    return {
+      location: context.locationLabel,
+      targetElement: target?.label ?? "Expected page target missing",
+      evidence: `Page drift detected: ${primarySignal?.value ?? context.blockingState.reason}`,
+      completionSatisfied: false,
+      blockingState: context.blockingState
+    };
+  }
+
+  return {
+    location: context.locationLabel,
+    targetElement: target?.label ?? "No target detected",
+    evidence: `Provider synced: ${primarySignal?.value ?? "No page evidence reported."}`,
+    completionSatisfied: context.signals.some((signal) => signal.severity === "success")
+  };
+};
+
+export const applyHostPageContext = (
+  session: GuideSession,
+  context: HostPageContext
+): GuideSession => {
+  const currentStep = session.steps[session.activeStepIndex];
+
+  if (session.phase === "confirm" && !context.blockingState) {
+    return {
+      ...session,
+      pageState: hostPageContextToPageState(context, currentStep)
+    };
+  }
+
+  const effectiveContext =
+    context.blockingState || hasExpectedRoute(context, currentStep) || !currentStep
+      ? context
+      : contextWithPageDrift(context);
+
+  const anchored =
+    !currentStep || effectiveContext.blockingState || hasUsableTarget(effectiveContext, currentStep);
+  const pageState = hostPageContextToPageState(
+    anchored ? effectiveContext : contextWithPageDrift(effectiveContext),
+    currentStep
+  );
+
+  if (pageState.blockingState) {
+    return {
+      ...session,
+      phase: "recovery",
+      pageState
+    };
+  }
+
+  return {
+    ...session,
+    phase: session.phase === "recovery" ? "guide" : session.phase,
+    pageState
+  };
+};
 
 export const startSession = (intent: string): GuideSession =>
   createSession({
@@ -150,6 +253,7 @@ export type {
   Capability,
   GuideSession,
   GuideStep,
+  HostPageContext,
   PageState,
   ServiceKind
 } from "./types";
