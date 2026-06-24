@@ -1,0 +1,102 @@
+import { describe, expect, it } from "vitest";
+import {
+  advanceStep,
+  chooseServiceKind,
+  confirmCriticalAction,
+  recoverFromBlockingState,
+  resetSession,
+  simulateBlockingState,
+  startSession
+} from "../src/domain/guideCore";
+
+const sampleIntent = "I want to build a small service that other people can access.";
+
+describe("Guide Agent Core", () => {
+  it("starts from a user intent and enters clarification", () => {
+    const session = startSession(sampleIntent);
+
+    expect(session.intent).toBe(sampleIntent);
+    expect(session.phase).toBe("clarify");
+    expect(session.steps).toHaveLength(0);
+  });
+
+  it("maps backend API intent to Cloudflare Workers", () => {
+    const session = chooseServiceKind(startSession(sampleIntent), "backend-api");
+
+    expect(session.phase).toBe("guide");
+    expect(session.serviceKind).toBe("backend-api");
+    expect(session.selectedCapability?.id).toBe("cloudflare-workers");
+    expect(session.selectedCapability?.concept).toContain("Compute");
+  });
+
+  it("generates Workers guide steps with action, purpose, and completion checks", () => {
+    const session = chooseServiceKind(startSession(sampleIntent), "backend-api");
+
+    expect(session.steps.length).toBeGreaterThanOrEqual(4);
+    for (const step of session.steps) {
+      expect(step.action).not.toHaveLength(0);
+      expect(step.purpose).not.toHaveLength(0);
+      expect(step.completionCheck).not.toHaveLength(0);
+    }
+  });
+
+  it("requires confirmation before advancing a critical write action", () => {
+    let session = chooseServiceKind(startSession(sampleIntent), "backend-api");
+    session = advanceStep(session);
+
+    expect(session.steps[session.activeStepIndex].criticalAction?.label).toBe("Create Worker");
+    const confirmation = advanceStep(session);
+
+    expect(confirmation.phase).toBe("confirm");
+    expect(confirmation.activeStepIndex).toBe(session.activeStepIndex);
+  });
+
+  it("advances a critical action only after explicit confirmation", () => {
+    let session = chooseServiceKind(startSession(sampleIntent), "backend-api");
+    session = advanceStep(session);
+    session = advanceStep(session);
+    session = confirmCriticalAction(session);
+
+    expect(session.phase).toBe("guide");
+    expect(session.activeStepIndex).toBe(2);
+    expect(session.pageState.evidence).toContain("Worker draft");
+  });
+
+  it("turns a blocking state into a recovery step and then returns to guide flow", () => {
+    let session = chooseServiceKind(startSession(sampleIntent), "backend-api");
+    session = simulateBlockingState(session, "not-signed-in");
+
+    expect(session.phase).toBe("recovery");
+    expect(session.pageState.blockingState?.title).toBe("Not signed in");
+
+    session = recoverFromBlockingState(session);
+
+    expect(session.phase).toBe("guide");
+    expect(session.pageState.blockingState).toBeUndefined();
+    expect(session.pageState.evidence).toContain("Signed in");
+  });
+
+  it("reaches completion and recommends DNS as the follow-up route", () => {
+    let session = chooseServiceKind(startSession(sampleIntent), "backend-api");
+
+    session = advanceStep(session);
+    session = advanceStep(session);
+    session = confirmCriticalAction(session);
+    session = advanceStep(session);
+    session = advanceStep(session);
+    session = confirmCriticalAction(session);
+    session = advanceStep(session);
+
+    expect(session.phase).toBe("complete");
+    expect(session.followUpCapability?.id).toBe("cloudflare-dns");
+    expect(session.pageState.evidence).toContain("Worker URL returned HTTP 200");
+  });
+
+  it("resets to an empty intent session", () => {
+    const session = resetSession();
+
+    expect(session.phase).toBe("intent");
+    expect(session.intent).toBe("");
+    expect(session.steps).toHaveLength(0);
+  });
+});
