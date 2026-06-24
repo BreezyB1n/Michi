@@ -35,15 +35,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
   advanceStep,
+  applyHostPageContext,
   chooseServiceKind,
   confirmCriticalAction,
-  recoverFromBlockingState,
   resetSession,
-  simulateBlockingState,
   startSession,
+  type HostPageContext,
   type GuideSession,
   type ServiceKind
 } from "./domain/guideCore";
+import { createCloudflareMockPageContextProvider } from "./domain/pageContextProvider";
 
 const sampleIntent = "I want to build a small service that other people can access.";
 
@@ -59,6 +60,11 @@ const phaseLabels: Record<GuideSession["phase"], string> = {
 const App = () => {
   const [intent, setIntent] = useState(sampleIntent);
   const [session, setSession] = useState<GuideSession>(() => resetSession());
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [pageContextProvider] = useState(() => createCloudflareMockPageContextProvider());
+  const [hostPageContext, setHostPageContext] = useState<HostPageContext>(() =>
+    pageContextProvider.getCurrentContextSync()
+  );
   const [pulseKey, setPulseKey] = useState(0);
 
   const currentStep = session.steps[session.activeStepIndex];
@@ -77,28 +83,67 @@ const App = () => {
     setSession(nextSession);
   };
 
+  const updateFromContext = (
+    baseSession: GuideSession,
+    context = pageContextProvider.getCurrentContextSync()
+  ) => {
+    setHostPageContext(context);
+    updateSession(applyHostPageContext(baseSession, context));
+  };
+
   const handleStart = () => {
     updateSession(startSession(intent));
   };
 
   const handleServiceKind = (kind: ServiceKind) => {
-    updateSession(chooseServiceKind(session, kind));
+    const nextSession = chooseServiceKind(session, kind);
+
+    if (kind === "backend-api") {
+      updateFromContext(nextSession, pageContextProvider.setStepIndex(nextSession.activeStepIndex));
+      return;
+    }
+
+    updateSession(nextSession);
   };
 
   const handleAdvance = () => {
-    updateSession(advanceStep(session));
+    const nextSession = advanceStep(session);
+
+    if (nextSession.phase === "confirm" || nextSession.steps.length === 0) {
+      updateSession(nextSession);
+      return;
+    }
+
+    updateFromContext(
+      nextSession,
+      pageContextProvider.setStepIndex(nextSession.activeStepIndex)
+    );
   };
 
   const handleConfirm = () => {
-    updateSession(confirmCriticalAction(session));
+    const nextSession = confirmCriticalAction(session);
+
+    updateFromContext(
+      nextSession,
+      pageContextProvider.setStepIndex(nextSession.activeStepIndex)
+    );
   };
 
   const handleRecovery = () => {
-    updateSession(recoverFromBlockingState(session));
+    updateFromContext(session, pageContextProvider.recoverToStep(session.activeStepIndex));
+  };
+
+  const handleCheck = () => {
+    updateFromContext(session);
+  };
+
+  const handlePageDrift = () => {
+    updateFromContext(session, pageContextProvider.simulatePageDrift(session.activeStepIndex));
   };
 
   const handleReset = () => {
     setIntent(sampleIntent);
+    setHostPageContext(pageContextProvider.recoverToStep(0));
     updateSession(resetSession());
   };
 
@@ -127,42 +172,64 @@ const App = () => {
             </div>
           </header>
 
-          <div className="grid min-h-[calc(100dvh-3rem)] grid-cols-[minmax(0,1fr)_410px_58px] max-[980px]:grid-cols-1 max-[980px]:grid-rows-[minmax(470px,1fr)_auto_52px]">
-            <HostWebsite session={session} />
-            <aside
-              className="grid min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] border-l border-border bg-shell text-foreground max-[980px]:max-h-[68dvh] max-[980px]:border-l-0 max-[980px]:border-t"
-              aria-label="Michi plugin panel"
-            >
-              <PluginHeader session={session} progress={progress} />
-              <div
-                className="min-h-0 overflow-auto overscroll-contain bg-shell [scrollbar-width:thin]"
-                key={`${session.phase}-${session.activeStepIndex}-${session.serviceKind ?? "none"}`}
+          <div
+            className={cn(
+              "grid min-h-[calc(100dvh-3rem)]",
+              panelOpen
+                ? "grid-cols-[minmax(0,1fr)_410px_58px] max-[980px]:grid-cols-1 max-[980px]:grid-rows-[minmax(470px,1fr)_auto_52px]"
+                : "grid-cols-[minmax(0,1fr)_58px] max-[980px]:grid-cols-1 max-[980px]:grid-rows-[minmax(470px,1fr)_52px]"
+            )}
+          >
+            <HostWebsite session={session} hostPageContext={hostPageContext} />
+            {panelOpen ? (
+              <aside
+                className="grid min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] border-l border-border bg-shell text-foreground max-[980px]:max-h-[68dvh] max-[980px]:border-l-0 max-[980px]:border-t"
+                aria-label="Michi plugin panel"
               >
-                {session.phase === "clarify" ? (
-                  <ClarificationPanel intent={session.intent} onChoose={handleServiceKind} />
-                ) : (
-                  <>
-                    <GuidePanel
-                      session={session}
-                      currentStep={currentStep}
-                      intent={intent}
-                      onIntentChange={setIntent}
-                      onStart={handleStart}
-                    />
-                    <PageStatePanel session={session} pulseKey={pulseKey} />
-                  </>
-                )}
-              </div>
-              <ActionBar
-                session={session}
-                onAdvance={handleAdvance}
-                onConfirm={handleConfirm}
-                onRecover={handleRecovery}
-                onReset={handleReset}
-                onBlock={() => updateSession(simulateBlockingState(session, "not-signed-in"))}
-              />
-            </aside>
-            <PluginRail />
+                <PluginHeader
+                  session={session}
+                  progress={progress}
+                  onClose={() => setPanelOpen(false)}
+                />
+                <div
+                  className="min-h-0 overflow-auto overscroll-contain bg-shell [scrollbar-width:thin]"
+                  key={`${session.phase}-${session.activeStepIndex}-${session.serviceKind ?? "none"}`}
+                >
+                  {session.phase === "clarify" ? (
+                    <ClarificationPanel intent={session.intent} onChoose={handleServiceKind} />
+                  ) : (
+                    <>
+                      <GuidePanel
+                        session={session}
+                        currentStep={currentStep}
+                        intent={intent}
+                        onIntentChange={setIntent}
+                        onStart={handleStart}
+                      />
+                      <PageStatePanel
+                        session={session}
+                        hostPageContext={hostPageContext}
+                        pulseKey={pulseKey}
+                      />
+                    </>
+                  )}
+                </div>
+                <ActionBar
+                  session={session}
+                  onAdvance={handleAdvance}
+                  onConfirm={handleConfirm}
+                  onRecover={handleRecovery}
+                  onReset={handleReset}
+                  onDrift={handlePageDrift}
+                />
+              </aside>
+            ) : null}
+            <PluginRail
+              panelOpen={panelOpen}
+              onOpen={() => setPanelOpen(true)}
+              onCheck={handleCheck}
+              onMinimize={() => setPanelOpen(false)}
+            />
           </div>
         </section>
       </main>
@@ -172,9 +239,10 @@ const App = () => {
 
 type HostWebsiteProps = {
   session: GuideSession;
+  hostPageContext: HostPageContext;
 };
 
-const HostWebsite = ({ session }: HostWebsiteProps) => (
+const HostWebsite = ({ session, hostPageContext }: HostWebsiteProps) => (
   <section
     className="grid min-w-0 grid-cols-[216px_minmax(0,1fr)] overflow-hidden bg-shell text-foreground max-[1120px]:grid-cols-[178px_minmax(0,1fr)] max-[980px]:grid-cols-1"
     aria-label="Simulated host website"
@@ -258,13 +326,17 @@ const HostWebsite = ({ session }: HostWebsiteProps) => (
             <dl className="grid">
               <StateRow
                 label="Host context"
-                value={session.phase === "intent" ? "No guide running" : "Dashboard path detected"}
+                value={
+                  session.phase === "intent"
+                    ? "No guide running"
+                    : hostPageContext.routeId
+                }
               />
               <StateRow
                 label="Status"
                 value={
-                  session.pageState.blockingState
-                    ? session.pageState.blockingState.title
+                  hostPageContext.blockingState
+                    ? hostPageContext.blockingState.title
                     : session.pageState.completionSatisfied
                       ? "Ready"
                       : "Needs check"
@@ -272,16 +344,21 @@ const HostWebsite = ({ session }: HostWebsiteProps) => (
               />
             </dl>
             <div className="mt-4 grid gap-2.5" aria-label="Recent console activity">
-              {["Navigation visible", "Create action available", "Guide overlay attached"].map(
-                (item) => (
+              {(session.phase === "intent"
+                ? [
+                    { id: "navigation-visible", label: "Navigation visible", severity: "info" },
+                    { id: "create-action-available", label: "Create action available", severity: "info" },
+                    { id: "guide-overlay-ready", label: "Guide overlay ready", severity: "info" }
+                  ]
+                : hostPageContext.signals
+              ).map((signal) => (
                   <div
-                    key={item}
+                    key={signal.id}
                     className="rounded-lg border border-accent/20 bg-accent/8 px-3 py-2.5 text-xs font-medium text-muted-foreground"
                   >
-                    {item}
+                    {signal.label}: {signal.severity}
                   </div>
-                )
-              )}
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -341,9 +418,10 @@ const StateRow = ({ label, value, className }: StateRowProps) => (
 type PluginHeaderProps = {
   session: GuideSession;
   progress: string;
+  onClose: () => void;
 };
 
-const PluginHeader = ({ session, progress }: PluginHeaderProps) => (
+const PluginHeader = ({ session, progress, onClose }: PluginHeaderProps) => (
   <header className="grid grid-cols-[minmax(0,1fr)_40px] gap-2.5 border-b border-border bg-shell px-5 py-5 max-[520px]:px-4 max-[520px]:py-4">
     <div>
       <p className="mb-1.5 font-mono text-[11px] font-semibold tracking-[0.14em] text-muted-foreground">
@@ -353,7 +431,7 @@ const PluginHeader = ({ session, progress }: PluginHeaderProps) => (
         Michi
       </h1>
     </div>
-    <Button type="button" aria-label="Close Michi panel" variant="quiet" size="icon">
+    <Button type="button" aria-label="Close Michi panel" variant="quiet" size="icon" onClick={onClose}>
       <X aria-hidden="true" />
     </Button>
     <div className="col-span-full mt-2 flex flex-wrap gap-2" aria-label="Current flow state">
@@ -595,10 +673,11 @@ const StepBlock = ({ title, body }: StepBlockProps) => (
 
 type PageStatePanelProps = {
   session: GuideSession;
+  hostPageContext: HostPageContext;
   pulseKey: number;
 };
 
-const PageStatePanel = ({ session, pulseKey }: PageStatePanelProps) => (
+const PageStatePanel = ({ session, hostPageContext, pulseKey }: PageStatePanelProps) => (
   <SectionCard className="border-accent/25 shadow-[0_16px_38px_rgb(24_110_180_/_0.08)]">
     <div className="mb-2 flex items-start justify-between gap-3">
       <div>
@@ -613,6 +692,10 @@ const PageStatePanel = ({ session, pulseKey }: PageStatePanelProps) => (
     <dl className="grid">
       <StateRow label="Location" value={session.pageState.location} />
       <StateRow label="Highlighted target" value={session.pageState.targetElement} />
+      <StateRow
+        label="Provider status"
+        value={hostPageContext.blockingState ? "Blocked by page context" : "Synced"}
+      />
       <StateRow
         label="Evidence"
         value={
@@ -637,7 +720,7 @@ type ActionBarProps = {
   onConfirm: () => void;
   onRecover: () => void;
   onReset: () => void;
-  onBlock: () => void;
+  onDrift: () => void;
 };
 
 const ActionBar = ({
@@ -646,7 +729,7 @@ const ActionBar = ({
   onConfirm,
   onRecover,
   onReset,
-  onBlock
+  onDrift
 }: ActionBarProps) => (
   <footer
     className="grid gap-2.5 border-t border-border bg-shell p-3 max-[520px]:grid-cols-2"
@@ -658,8 +741,8 @@ const ActionBar = ({
     </Button>
     {session.phase === "guide" ? (
       <>
-        <Button type="button" variant="secondary" onClick={onBlock}>
-          Simulate sign-in block
+        <Button type="button" variant="secondary" onClick={onDrift}>
+          Simulate page drift
         </Button>
         <Button
           type="button"
@@ -697,14 +780,21 @@ const ActionBar = ({
   </footer>
 );
 
-const PluginRail = () => (
+type PluginRailProps = {
+  panelOpen: boolean;
+  onOpen: () => void;
+  onCheck: () => void;
+  onMinimize: () => void;
+};
+
+const PluginRail = ({ panelOpen, onOpen, onCheck, onMinimize }: PluginRailProps) => (
   <nav
     className="grid content-start gap-2.5 border-l border-border bg-shell p-2 max-[980px]:grid-cols-3 max-[980px]:border-l-0 max-[980px]:border-t max-[980px]:p-1.5"
     aria-label="Michi tool rail"
   >
-    <RailButton label="Guide" ariaLabel="Text guide" active icon={<FileText />} />
-    <RailButton label="Check" ariaLabel="Run check" icon={<Play />} />
-    <RailButton label="Min" ariaLabel="Minimize panel" icon={<Minus />} />
+    <RailButton label="Guide" ariaLabel="Text guide" active={panelOpen} icon={<FileText />} onClick={onOpen} />
+    <RailButton label="Check" ariaLabel="Run check" icon={<Play />} onClick={onCheck} />
+    <RailButton label="Min" ariaLabel="Minimize panel" icon={<Minus />} onClick={onMinimize} />
   </nav>
 );
 
@@ -713,12 +803,14 @@ type RailButtonProps = {
   ariaLabel: string;
   icon: React.ReactNode;
   active?: boolean;
+  onClick: () => void;
 };
 
-const RailButton = ({ label, ariaLabel, icon, active = false }: RailButtonProps) => (
+const RailButton = ({ label, ariaLabel, icon, active = false, onClick }: RailButtonProps) => (
   <button
     type="button"
     aria-label={ariaLabel}
+    onClick={onClick}
     className={cn(
       "grid min-h-12 place-items-center gap-0.5 rounded-lg border border-transparent text-muted-foreground transition-[background-color,border-color,color,transform] duration-150 hover:bg-muted active:scale-[0.98]",
       active && "border-accent/25 bg-accent/10 text-accent-foreground"

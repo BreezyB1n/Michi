@@ -7,6 +7,8 @@ test("runs the Workers guide path with recovery and critical confirmations", asy
 }) => {
   await page.goto("/");
 
+  await expect(page.getByLabel("Michi plugin panel")).toHaveCount(0);
+  await page.getByRole("button", { name: "Text guide" }).click();
   await expect(page.getByRole("heading", { name: "Michi" })).toBeVisible();
   await page.getByLabel("User intent").fill(sampleIntent);
   await page.getByRole("button", { name: "Start guide" }).click();
@@ -27,10 +29,10 @@ test("runs the Workers guide path with recovery and critical confirmations", asy
     expect(panelBox?.height).toBeLessThanOrEqual((viewport?.height ?? 0) * 0.72);
   }
 
-  await page.getByRole("button", { name: "Simulate sign-in block" }).click();
-  await expect(page.getByRole("heading", { name: "Not signed in" })).toBeVisible();
+  await page.getByRole("button", { name: "Simulate page drift" }).click();
+  await expect(page.getByRole("heading", { name: "Page layout changed" })).toBeVisible();
   await page.getByRole("button", { name: "Recover and re-check" }).click();
-  await expect(page.getByText(/Signed in and ready/)).toBeVisible();
+  await expect(page.getByText(/Provider synced/)).toBeVisible();
 
   await page.getByRole("button", { name: "Advance guide" }).click();
   await page.getByRole("button", { name: "Advance guide" }).click();

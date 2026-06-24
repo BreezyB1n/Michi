@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
   advanceStep,
+  applyHostPageContext,
   chooseServiceKind,
   confirmCriticalAction,
+  hostPageContextToPageState,
   recoverFromBlockingState,
   resetSession,
   simulateBlockingState,
   startSession
 } from "../src/domain/guideCore";
+import {
+  createCloudflareMockPageContextProvider,
+  pageDriftContextForStep
+} from "../src/domain/pageContextProvider";
 
 const sampleIntent = "I want to build a small service that other people can access.";
 
@@ -74,6 +80,56 @@ describe("Guide Agent Core", () => {
     expect(session.phase).toBe("guide");
     expect(session.pageState.blockingState).toBeUndefined();
     expect(session.pageState.evidence).toContain("Signed in");
+  });
+
+  it("maps host page context into page state with route target and provider evidence", () => {
+    const session = chooseServiceKind(startSession(sampleIntent), "backend-api");
+    const provider = createCloudflareMockPageContextProvider();
+    const context = provider.setStepIndex(0);
+
+    const pageState = hostPageContextToPageState(context, session.steps[0]);
+
+    expect(pageState.location).toBe("Cloudflare dashboard / Home");
+    expect(pageState.targetElement).toBe("Workers & Pages sidebar item");
+    expect(pageState.evidence).toContain("Provider synced");
+    expect(pageState.completionSatisfied).toBe(true);
+  });
+
+  it("maps page drift host context into a recovery step", () => {
+    const session = chooseServiceKind(startSession(sampleIntent), "backend-api");
+    const drifted = applyHostPageContext(session, pageDriftContextForStep(0));
+
+    expect(drifted.phase).toBe("recovery");
+    expect(drifted.pageState.blockingState?.id).toBe("page-drift");
+    expect(drifted.pageState.evidence).toContain("Page drift detected");
+  });
+
+  it("recovers from page drift when provider returns the expected context", () => {
+    let session = chooseServiceKind(startSession(sampleIntent), "backend-api");
+    const provider = createCloudflareMockPageContextProvider();
+
+    session = applyHostPageContext(session, provider.simulatePageDrift());
+    expect(session.phase).toBe("recovery");
+
+    session = applyHostPageContext(session, provider.recoverToStep(session.activeStepIndex));
+
+    expect(session.phase).toBe("guide");
+    expect(session.pageState.blockingState).toBeUndefined();
+    expect(session.pageState.evidence).toContain("Provider synced");
+  });
+
+  it("does not let provider context bypass critical confirmation", () => {
+    let session = chooseServiceKind(startSession(sampleIntent), "backend-api");
+    const provider = createCloudflareMockPageContextProvider();
+
+    session = advanceStep(session);
+    session = advanceStep(session);
+    expect(session.phase).toBe("confirm");
+
+    const checked = applyHostPageContext(session, provider.setStepIndex(2));
+
+    expect(checked.phase).toBe("confirm");
+    expect(checked.activeStepIndex).toBe(1);
   });
 
   it("reaches completion and recommends DNS as the follow-up route", () => {
