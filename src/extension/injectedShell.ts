@@ -13,6 +13,12 @@ type ShellState = {
   context?: HostPageContext;
 };
 
+type RecoveryGuidance = {
+  title: string;
+  reason: string;
+  recoveryAction: string;
+};
+
 const shellStyles = `
   :host {
     all: initial;
@@ -118,6 +124,29 @@ const shellStyles = `
     overflow-wrap: anywhere;
   }
 
+  .recovery {
+    margin-bottom: 12px;
+    padding: 12px;
+    border: 1px solid rgba(245, 158, 11, 0.36);
+    border-radius: 14px;
+    background: rgba(255, 251, 235, 0.92);
+  }
+
+  .recovery-title {
+    margin-bottom: 6px;
+    font: 750 13px/1.2 inherit;
+    color: #92400e;
+  }
+
+  .recovery p {
+    font: 550 12px/1.45 inherit;
+    color: #713f12;
+  }
+
+  .recovery p + p {
+    margin-top: 6px;
+  }
+
   .target-highlight {
     position: fixed;
     z-index: 2147483646;
@@ -149,9 +178,45 @@ const preferredTargetByRoute: Record<string, string> = {
   "cloudflare.workers.deploy-result": "worker-url"
 };
 
+const targetLabelById: Record<string, string> = {
+  "workers-pages-nav": "Workers & Pages sidebar item",
+  "create-worker-button": "Create Worker button",
+  "starter-handler": "Starter request handler",
+  "deploy-worker-button": "Deploy button",
+  "worker-url": "Worker URL"
+};
+
 const primaryTargetForContext = (context: HostPageContext) =>
-  context.targets.find((target) => target.id === preferredTargetByRoute[context.routeId]) ??
-  context.targets[0];
+  preferredTargetByRoute[context.routeId]
+    ? context.targets.find((target) => target.id === preferredTargetByRoute[context.routeId])
+    : context.targets[0];
+
+export const recoveryGuidanceForContext = (
+  context: HostPageContext
+): RecoveryGuidance | undefined => {
+  if (context.routeId === "cloudflare.unsupported") {
+    return {
+      title: "Unsupported page",
+      reason: "Michi only reads Cloudflare dashboard pages in this milestone.",
+      recoveryAction: "Open the Cloudflare dashboard, navigate to Workers & Pages, then click Check page again."
+    };
+  }
+
+  const expectedTargetId = preferredTargetByRoute[context.routeId];
+
+  if (!expectedTargetId || context.targets.some((target) => target.id === expectedTargetId)) {
+    return undefined;
+  }
+
+  const expectedTargetLabel = targetLabelById[expectedTargetId] ?? expectedTargetId;
+
+  return {
+    title: "Target missing",
+    reason: `Michi expected ${expectedTargetLabel} on this route, but the page check did not find it.`,
+    recoveryAction:
+      "Wait for the Cloudflare page to finish loading, return to the expected guide step if needed, then click Check page again."
+  };
+};
 
 export const highlightStyleForTarget = (target: PageTarget | undefined) => {
   if (!target?.boundingBox) {
@@ -183,8 +248,18 @@ const highlightCopy = (context: HostPageContext) => {
 const contextCopy = (context: HostPageContext) => {
   const target = primaryTargetForContext(context);
   const signal = context.signals[0];
+  const guidance = recoveryGuidanceForContext(context);
 
   return `
+    ${
+      guidance
+        ? `<div class="recovery" role="status" aria-label="${escapeHtml(guidance.title)}">
+            <p class="recovery-title">${escapeHtml(guidance.title)}</p>
+            <p>${escapeHtml(guidance.reason)}</p>
+            <p>${escapeHtml(guidance.recoveryAction)}</p>
+          </div>`
+        : ""
+    }
     <dl>
       <div>
         <dt>Route</dt>

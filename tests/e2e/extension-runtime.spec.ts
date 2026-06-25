@@ -39,6 +39,8 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
 
     const page = await context.newPage();
     await page.route("https://dash.cloudflare.com/**", async (route) => {
+      const isMissingTargetFixture = route.request().url().includes("/missing-target");
+
       await route.fulfill({
         contentType: "text/html",
         body: `
@@ -46,10 +48,10 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
           <html>
             <head><title>Workers & Pages</title></head>
             <body>
-              <nav><a href="/workers-and-pages">Workers & Pages</a></nav>
+              ${isMissingTargetFixture ? "" : '<nav><a href="/workers-and-pages">Workers & Pages</a></nav>'}
               <main>
                 <h1>Workers & Pages</h1>
-                <button>Create Worker</button>
+                ${isMissingTargetFixture ? "<p>Loading actions...</p>" : "<button>Create Worker</button>"}
               </main>
             </body>
           </html>
@@ -98,6 +100,14 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
         })
       })
     );
+
+    await page.goto("https://dash.cloudflare.com/example-account/workers-and-pages/missing-target");
+    await expect(page.getByLabel("Michi rail")).toBeVisible();
+    await page.getByRole("button", { name: "Guide" }).click();
+    await page.getByRole("button", { name: "Check page" }).click();
+    await expect(page.getByText("Target missing")).toBeVisible();
+    await expect(page.getByText(/Create Worker button/)).toBeVisible();
+    await expect(page.getByLabel("Highlighted target: Create Worker button")).toHaveCount(0);
   } finally {
     await context.close();
   }

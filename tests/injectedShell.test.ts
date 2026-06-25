@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   highlightStyleForTarget,
-  mountMichiInjectedShell
+  mountMichiInjectedShell,
+  recoveryGuidanceForContext
 } from "../src/extension/injectedShell";
-import type { PageTarget } from "../src/domain/types";
+import type { HostPageContext, PageTarget } from "../src/domain/types";
 
 const renderCloudflareFixture = () => {
   document.body.innerHTML = `
@@ -22,6 +23,25 @@ const click = (element: Element | null) => {
 
   element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 };
+
+const hostContext = (overrides: Partial<HostPageContext> = {}): HostPageContext => ({
+  url: "https://dash.cloudflare.com/example-account/workers-and-pages",
+  title: "Workers & Pages",
+  product: "cloudflare",
+  locationLabel: "Workers & Pages / Overview",
+  routeId: "cloudflare.workers.overview",
+  detectedAt: "2026-06-25T00:00:00.000Z",
+  targets: [],
+  signals: [
+    {
+      id: "cloudflare.workers.overview-detected",
+      label: "Cloudflare route detected",
+      value: "cloudflare.workers.overview detected with 0 targets.",
+      severity: "warning"
+    }
+  ],
+  ...overrides
+});
 
 describe("Injected Michi extension shell", () => {
   beforeEach(() => {
@@ -78,5 +98,33 @@ describe("Injected Michi extension shell", () => {
     expect(highlightStyleForTarget(target)).toContain("left: 8px");
     expect(highlightStyleForTarget(target)).toContain("top: 18px");
     expect(highlightStyleForTarget({ ...target, boundingBox: undefined })).toBeUndefined();
+  });
+
+  it("describes how to recover when the expected route target is missing", () => {
+    const guidance = recoveryGuidanceForContext(hostContext());
+
+    expect(guidance?.title).toBe("Target missing");
+    expect(guidance?.reason).toContain("Create Worker button");
+    expect(guidance?.recoveryAction).toContain("Check page");
+  });
+
+  it("describes unsupported page contexts without rendering normal target copy", () => {
+    const guidance = recoveryGuidanceForContext(
+      hostContext({
+        routeId: "cloudflare.unsupported",
+        locationLabel: "Unsupported page context",
+        signals: [
+          {
+            id: "unsupported-page",
+            label: "Unsupported page",
+            value: "Unsupported page: Michi only reads Cloudflare dashboard pages in this milestone.",
+            severity: "info"
+          }
+        ]
+      })
+    );
+
+    expect(guidance?.title).toBe("Unsupported page");
+    expect(guidance?.recoveryAction).toContain("Cloudflare dashboard");
   });
 });

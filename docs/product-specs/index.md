@@ -9,3 +9,4 @@ Product specs are the source of truth for what Michi should build.
 - `browser-extension-runtime-spike.md`
 - `extension-injected-guide-shell.md`
 - `extension-target-highlight-overlay.md`
+- `extension-injected-recovery-guidance.md`
