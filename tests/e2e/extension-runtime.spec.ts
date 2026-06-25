@@ -59,6 +59,16 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
 
     await page.goto("https://dash.cloudflare.com/example-account/workers-and-pages");
     await expect(page.getByRole("button", { name: "Create Worker" })).toBeVisible();
+    await expect(page.getByLabel("Michi rail")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Image" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Video" })).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Guide" }).click();
+    await expect(page.getByLabel("Michi guide panel")).toBeVisible();
+    await expect(page.getByText("No page check yet")).toBeVisible();
+    await page.getByRole("button", { name: "Check page" }).click();
+    await expect(page.getByText("cloudflare.workers.overview")).toBeVisible();
+    await expect(page.getByText("Create Worker button")).toBeVisible();
 
     const response = await serviceWorker.evaluate(async () => {
       const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });

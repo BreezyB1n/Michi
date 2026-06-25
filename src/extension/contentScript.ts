@@ -1,4 +1,5 @@
 import { readCloudflarePageContext } from "./cloudflarePageReader";
+import { mountMichiInjectedShell } from "./injectedShell";
 import type { MichiRuntimeMessage } from "./runtimeMessages";
 
 type RuntimeMessageSender = unknown;
@@ -20,6 +21,8 @@ declare const chrome:
       runtime?: RuntimeApi;
     }
   | undefined;
+
+mountMichiInjectedShell();
 
 const isGetPageContextMessage = (
   message: unknown
