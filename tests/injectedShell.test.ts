@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { mountMichiInjectedShell } from "../src/extension/injectedShell";
+import {
+  highlightStyleForTarget,
+  mountMichiInjectedShell
+} from "../src/extension/injectedShell";
+import type { PageTarget } from "../src/domain/types";
 
 const renderCloudflareFixture = () => {
   document.body.innerHTML = `
@@ -59,5 +63,20 @@ describe("Injected Michi extension shell", () => {
 
     click(shadow?.querySelector("[data-action='minimize']") ?? null);
     expect(shadow?.querySelector("[data-panel]")).toBeNull();
+  });
+
+  it("creates target highlight styles only when a bounding box exists", () => {
+    const target: PageTarget = {
+      id: "create-worker-button",
+      label: "Create Worker button",
+      role: "button",
+      text: "Create Worker",
+      confidence: "high",
+      boundingBox: { x: 10, y: 20, width: 120, height: 40 }
+    };
+
+    expect(highlightStyleForTarget(target)).toContain("left: 8px");
+    expect(highlightStyleForTarget(target)).toContain("top: 18px");
+    expect(highlightStyleForTarget({ ...target, boundingBox: undefined })).toBeUndefined();
   });
 });

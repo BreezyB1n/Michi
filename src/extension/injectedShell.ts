@@ -1,5 +1,5 @@
 import { readCloudflarePageContext } from "./cloudflarePageReader";
-import type { HostPageContext } from "../domain/types";
+import type { HostPageContext, PageTarget } from "../domain/types";
 
 const rootId = "michi-extension-root";
 
@@ -117,6 +117,15 @@ const shellStyles = `
     color: #262626;
     overflow-wrap: anywhere;
   }
+
+  .target-highlight {
+    position: fixed;
+    z-index: 2147483646;
+    border: 2px solid #f59e0b;
+    border-radius: 10px;
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2), 0 16px 36px rgba(15, 23, 42, 0.16);
+    pointer-events: none;
+  }
 `;
 
 const emptyContextCopy = `
@@ -143,6 +152,33 @@ const preferredTargetByRoute: Record<string, string> = {
 const primaryTargetForContext = (context: HostPageContext) =>
   context.targets.find((target) => target.id === preferredTargetByRoute[context.routeId]) ??
   context.targets[0];
+
+export const highlightStyleForTarget = (target: PageTarget | undefined) => {
+  if (!target?.boundingBox) {
+    return undefined;
+  }
+
+  const inset = 2;
+  const { x, y, width, height } = target.boundingBox;
+
+  return [
+    `left: ${Math.max(Math.round(x) - inset, 0)}px`,
+    `top: ${Math.max(Math.round(y) - inset, 0)}px`,
+    `width: ${Math.max(Math.round(width) + inset * 2, 0)}px`,
+    `height: ${Math.max(Math.round(height) + inset * 2, 0)}px`
+  ].join("; ");
+};
+
+const highlightCopy = (context: HostPageContext) => {
+  const target = primaryTargetForContext(context);
+  const style = highlightStyleForTarget(target);
+
+  if (!target || !style) {
+    return "";
+  }
+
+  return `<div class="target-highlight" data-highlight style="${style}" aria-label="Highlighted target: ${escapeHtml(target.label)}"></div>`;
+};
 
 const contextCopy = (context: HostPageContext) => {
   const target = primaryTargetForContext(context);
@@ -194,6 +230,7 @@ export const mountMichiInjectedShell = (
     shadow.innerHTML = `
       <style>${shellStyles}</style>
       <div class="shell" aria-label="Michi injected shell">
+        ${state.context ? highlightCopy(state.context) : ""}
         <div class="rail" aria-label="Michi rail">
           <button type="button" data-action="guide" aria-label="Guide">Guide</button>
           <button type="button" data-action="check" aria-label="Check page">Check page</button>

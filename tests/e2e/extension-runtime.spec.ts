@@ -69,6 +69,7 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await page.getByRole("button", { name: "Check page" }).click();
     await expect(page.getByText("cloudflare.workers.overview")).toBeVisible();
     await expect(page.getByText("Create Worker button")).toBeVisible();
+    await expect(page.getByLabel("Highlighted target: Create Worker button")).toBeVisible();
 
     const response = await serviceWorker.evaluate(async () => {
       const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
