@@ -44,7 +44,7 @@ import {
   type GuideSession,
   type ServiceKind
 } from "./domain/guideCore";
-import { createCloudflareMockPageContextProvider } from "./domain/pageContextProvider";
+import { createMichiPageContextRuntime } from "./domain/pageContextRuntime";
 
 const sampleIntent = "I want to build a small service that other people can access.";
 
@@ -61,9 +61,9 @@ const App = () => {
   const [intent, setIntent] = useState(sampleIntent);
   const [session, setSession] = useState<GuideSession>(() => resetSession());
   const [panelOpen, setPanelOpen] = useState(false);
-  const [pageContextProvider] = useState(() => createCloudflareMockPageContextProvider());
+  const [pageContextRuntime] = useState(() => createMichiPageContextRuntime());
   const [hostPageContext, setHostPageContext] = useState<HostPageContext>(() =>
-    pageContextProvider.getCurrentContextSync()
+    pageContextRuntime.getInitialContext()
   );
   const [pulseKey, setPulseKey] = useState(0);
 
@@ -85,10 +85,19 @@ const App = () => {
 
   const updateFromContext = (
     baseSession: GuideSession,
-    context = pageContextProvider.getCurrentContextSync()
+    contextResult: HostPageContext | Promise<HostPageContext> = pageContextRuntime.getCurrentContext()
   ) => {
-    setHostPageContext(context);
-    updateSession(applyHostPageContext(baseSession, context));
+    const applyContext = (context: HostPageContext) => {
+      setHostPageContext(context);
+      updateSession(applyHostPageContext(baseSession, context));
+    };
+
+    if (contextResult instanceof Promise) {
+      void contextResult.then(applyContext);
+      return;
+    }
+
+    applyContext(contextResult);
   };
 
   const handleStart = () => {
@@ -99,7 +108,10 @@ const App = () => {
     const nextSession = chooseServiceKind(session, kind);
 
     if (kind === "backend-api") {
-      updateFromContext(nextSession, pageContextProvider.setStepIndex(nextSession.activeStepIndex));
+      updateFromContext(
+        nextSession,
+        pageContextRuntime.syncGuideStep(nextSession.activeStepIndex)
+      );
       return;
     }
 
@@ -116,7 +128,7 @@ const App = () => {
 
     updateFromContext(
       nextSession,
-      pageContextProvider.setStepIndex(nextSession.activeStepIndex)
+      pageContextRuntime.syncGuideStep(nextSession.activeStepIndex)
     );
   };
 
@@ -125,12 +137,12 @@ const App = () => {
 
     updateFromContext(
       nextSession,
-      pageContextProvider.setStepIndex(nextSession.activeStepIndex)
+      pageContextRuntime.syncGuideStep(nextSession.activeStepIndex)
     );
   };
 
   const handleRecovery = () => {
-    updateFromContext(session, pageContextProvider.recoverToStep(session.activeStepIndex));
+    updateFromContext(session, pageContextRuntime.recoverToStep(session.activeStepIndex));
   };
 
   const handleCheck = () => {
@@ -138,12 +150,19 @@ const App = () => {
   };
 
   const handlePageDrift = () => {
-    updateFromContext(session, pageContextProvider.simulatePageDrift(session.activeStepIndex));
+    updateFromContext(session, pageContextRuntime.simulatePageDrift(session.activeStepIndex));
   };
 
   const handleReset = () => {
     setIntent(sampleIntent);
-    setHostPageContext(pageContextProvider.recoverToStep(0));
+    const contextResult = pageContextRuntime.recoverToStep(0);
+
+    if (contextResult instanceof Promise) {
+      void contextResult.then(setHostPageContext);
+    } else {
+      setHostPageContext(contextResult);
+    }
+
     updateSession(resetSession());
   };
 
