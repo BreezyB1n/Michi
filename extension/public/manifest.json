@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Michi",
+  "version": "0.3.0",
+  "description": "Development runtime for Michi page anchoring on Cloudflare dashboard pages.",
+  "action": {
+    "default_title": "Michi"
+  },
+  "permissions": ["activeTab"],
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://dash.cloudflare.com/*"],
+      "js": ["content-script.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

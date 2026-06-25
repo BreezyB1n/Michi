@@ -314,7 +314,8 @@ Recovery copy should explain:
 - Use extension provider only in the extension runtime build.
 - Keep `Guide`, `Check`, and `Min` rail behavior unchanged.
 - Show unsupported context and page-drift recovery through the existing UI.
-- Run existing local regression tests plus manual unpacked-extension validation.
+- Run existing local regression tests plus automated unpacked-extension fixture validation.
+- Leave real Cloudflare-session validation as a manual follow-up until Michi injects or packages an interactive extension UI surface.
 
 ## Expected Implementation Scope
 
@@ -366,12 +367,12 @@ Rollback should remove the extension entrypoints and provider adapter without to
 
 ### Browser Runtime Checks
 
-- Build the extension artifact.
-- Load unpacked extension from the generated directory.
-- Open a Cloudflare dashboard-like fixture page.
-- Trigger Michi `Check`.
+- Build the extension artifact before browser runtime checks.
+- Launch Chromium with the generated unpacked extension through Playwright `launchPersistentContext`.
+- Open a routed `https://dash.cloudflare.com/*` fixture page so the manifest match and content script path are exercised.
+- Ask the extension runtime to message the active tab content script and return `HostPageContext`.
 - Confirm the page context shows route, target, and evidence from the content script.
-- Open an unsupported page and confirm the UI shows unsupported context.
+- Keep unsupported-page behavior covered by unit/provider tests until an interactive extension UI is available.
 
 ### Existing Regression Tests
 
