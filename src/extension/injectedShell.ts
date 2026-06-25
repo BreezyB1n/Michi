@@ -301,6 +301,15 @@ export const mountMichiInjectedShell = (
   const shadow = host.attachShadow({ mode: "open" });
   const state: ShellState = { open: false };
 
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key !== "Escape" || !state.open) {
+      return;
+    }
+
+    state.open = false;
+    render();
+  };
+
   const render = () => {
     shadow.innerHTML = `
       <style>${shellStyles}</style>
@@ -346,6 +355,7 @@ export const mountMichiInjectedShell = (
     });
   };
 
+  doc.addEventListener("keydown", handleKeyDown);
   render();
   return host;
 };

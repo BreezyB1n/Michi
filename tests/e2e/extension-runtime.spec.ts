@@ -72,6 +72,10 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByText("cloudflare.workers.overview")).toBeVisible();
     await expect(page.getByText("Create Worker button")).toBeVisible();
     await expect(page.getByLabel("Highlighted target: Create Worker button")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByLabel("Michi guide panel")).toHaveCount(0);
+    await page.getByRole("button", { name: "Guide" }).click();
+    await expect(page.getByText("cloudflare.workers.overview")).toBeVisible();
 
     const response = await serviceWorker.evaluate(async () => {
       const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });

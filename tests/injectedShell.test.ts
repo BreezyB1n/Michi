@@ -85,6 +85,27 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.querySelector("[data-panel]")).toBeNull();
   });
 
+  it("collapses with Escape without clearing checked context", () => {
+    renderCloudflareFixture();
+
+    const root = mountMichiInjectedShell(document, {
+      href: "https://dash.cloudflare.com/example-account/workers-and-pages",
+      title: "Workers & Pages"
+    });
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='guide']") ?? null);
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    expect(shadow?.textContent).toContain("cloudflare.workers.overview");
+
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(shadow?.querySelector("[data-panel]")).toBeNull();
+
+    click(shadow?.querySelector("[data-action='guide']") ?? null);
+    expect(shadow?.textContent).toContain("cloudflare.workers.overview");
+    expect(shadow?.textContent).toContain("Create Worker button");
+  });
+
   it("creates target highlight styles only when a bounding box exists", () => {
     const target: PageTarget = {
       id: "create-worker-button",
