@@ -274,7 +274,7 @@ export const recoveryGuidanceForContext = (
   if (context.routeId === "cloudflare.unsupported") {
     return {
       title: "Unsupported page",
-      reason: "Michi only reads Cloudflare dashboard pages in this milestone.",
+      reason: "Michi only reads supported Cloudflare dashboard pages in this milestone.",
       recoveryAction: "Open the Cloudflare dashboard, navigate to Workers & Pages, then click Check page again."
     };
   }
@@ -522,6 +522,10 @@ const panelBodyCopy = (state: ShellState) => {
     return intentCopy(state.intent);
   }
 
+  if (state.context?.routeId === "cloudflare.unsupported") {
+    return contextCopy(state.context, undefined);
+  }
+
   if (state.phase === "clarify") {
     return clarificationCopy(state.intent);
   }
@@ -620,7 +624,7 @@ export const mountMichiInjectedShell = (
       state.context = readCloudflarePageContext(doc, location);
       const nextStepIndex = guideStepIndexForContext(state.context);
       state.activeStepIndex = nextStepIndex >= 0 ? nextStepIndex : undefined;
-      if (nextStepIndex >= 0) {
+      if (nextStepIndex >= 0 || state.context.routeId === "cloudflare.unsupported") {
         state.phase = "guide";
       }
       render();

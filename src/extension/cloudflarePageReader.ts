@@ -10,6 +10,7 @@ type PageReaderLocation = {
 type RouteDefinition = {
   routeId: string;
   locationLabel: string;
+  unsupportedReason?: "non-cloudflare" | "cloudflare-area";
 };
 
 const candidateSelector = [
@@ -116,7 +117,8 @@ const detectRoute = (url: URL, pageText: string): RouteDefinition => {
   if (url.hostname !== "dash.cloudflare.com") {
     return {
       routeId: "cloudflare.unsupported",
-      locationLabel: "Unsupported page context"
+      locationLabel: "Unsupported page context",
+      unsupportedReason: "non-cloudflare"
     };
   }
 
@@ -148,9 +150,17 @@ const detectRoute = (url: URL, pageText: string): RouteDefinition => {
     };
   }
 
+  if (url.pathname.split("/").filter(Boolean).length <= 1) {
+    return {
+      routeId: "cloudflare.dashboard.home",
+      locationLabel: "Cloudflare dashboard / Home"
+    };
+  }
+
   return {
-    routeId: "cloudflare.dashboard.home",
-    locationLabel: "Cloudflare dashboard / Home"
+    routeId: "cloudflare.unsupported",
+    locationLabel: "Unsupported Cloudflare dashboard area",
+    unsupportedReason: "cloudflare-area"
   };
 };
 
@@ -186,7 +196,8 @@ const extractTargets = (doc: Document): PageTarget[] => {
   return targets;
 };
 
-const signalForRoute = (routeId: string, targets: PageTarget[]): PageSignal => {
+const signalForRoute = (route: RouteDefinition, targets: PageTarget[]): PageSignal => {
+  const { routeId } = route;
   const workerUrl = targets.find((target) => target.id === "worker-url");
 
   if (workerUrl) {
@@ -199,6 +210,16 @@ const signalForRoute = (routeId: string, targets: PageTarget[]): PageSignal => {
   }
 
   if (routeId === "cloudflare.unsupported") {
+    if (route.unsupportedReason === "cloudflare-area") {
+      return {
+        id: "unsupported-cloudflare-area",
+        label: "Unsupported Cloudflare area",
+        value:
+          "This Cloudflare dashboard area is outside Michi's Workers guide path. Open Workers & Pages and click Check page again.",
+        severity: "info"
+      };
+    }
+
     return {
       id: "unsupported-page",
       label: "Unsupported page",
@@ -235,6 +256,6 @@ export const readCloudflarePageContext = (
     routeId: route.routeId,
     detectedAt: new Date().toISOString(),
     targets,
-    signals: [signalForRoute(route.routeId, targets)]
+    signals: [signalForRoute(route, targets)]
   };
 };

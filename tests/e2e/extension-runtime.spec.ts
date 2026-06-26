@@ -41,6 +41,7 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await page.route("https://dash.cloudflare.com/**", async (route) => {
       const requestUrl = route.request().url();
       const isMissingTargetFixture = requestUrl.includes("/missing-target");
+      const isUnsupportedAreaFixture = requestUrl.includes("/analytics");
       const isStarterEditorFixture = requestUrl.includes("/starter-editor");
       const isDeployReviewFixture = requestUrl.includes("/deploy-review");
       const isDeployResultFixture = requestUrl.includes("/deploy-result");
@@ -66,6 +67,9 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
                       : isStarterEditorFixture
                         ? `<h1>Worker starter editor</h1>
                            <pre><code>export default { async fetch(request) { return new Response("Hello from Michi"); } }</code></pre>`
+                      : isUnsupportedAreaFixture
+                        ? `<h1>Analytics</h1>
+                           <p>Traffic insights for this account.</p>`
                     : `<h1>Workers & Pages</h1>
                        ${isMissingTargetFixture ? "<p>Loading actions...</p>" : "<button>Create Worker</button>"}`
                 }
@@ -187,6 +191,17 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByText("Target missing")).toBeVisible();
     await expect(page.getByText(/Create Worker button/)).toBeVisible();
     await expect(page.getByLabel("Highlighted target: Create Worker button")).toHaveCount(0);
+
+    await page.goto("https://dash.cloudflare.com/example-account/analytics");
+    await expect(page.getByLabel("Michi rail")).toBeVisible();
+    await page.getByRole("button", { name: "Guide" }).click();
+    await page.getByRole("button", { name: "Check page" }).click();
+    const unsupportedPanel = page.getByLabel("Michi guide panel");
+    await expect(page.getByText("Unsupported page")).toBeVisible();
+    await expect(unsupportedPanel.getByText(/supported Cloudflare dashboard pages/)).toBeVisible();
+    await expect(unsupportedPanel.getByText(/Workers & Pages/)).toBeVisible();
+    await expect(page.getByText("Step 1 / 5")).toHaveCount(0);
+    await expect(page.getByLabel(/Highlighted target/)).toHaveCount(0);
   } finally {
     await context.close();
   }

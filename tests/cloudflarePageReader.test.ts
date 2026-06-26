@@ -101,4 +101,32 @@ describe("Cloudflare page reader", () => {
       })
     );
   });
+
+  it("treats unsupported Cloudflare dashboard areas as unsupported context", () => {
+    const context = readCloudflarePageContext(
+      renderDocument(`
+        <nav><a href="/workers-and-pages">Workers & Pages</a></nav>
+        <main>
+          <h1>Analytics</h1>
+          <p>Traffic insights for this account.</p>
+        </main>
+      `),
+      {
+        href: "https://dash.cloudflare.com/example-account/analytics",
+        title: "Analytics"
+      }
+    );
+
+    expect(context.routeId).toBe("cloudflare.unsupported");
+    expect(context.locationLabel).toBe("Unsupported Cloudflare dashboard area");
+    expect(context.targets).toHaveLength(0);
+    expect(context.signals[0]).toEqual(
+      expect.objectContaining({
+        id: "unsupported-cloudflare-area",
+        label: "Unsupported Cloudflare area",
+        severity: "info",
+        value: expect.stringContaining("Workers & Pages")
+      })
+    );
+  });
 });

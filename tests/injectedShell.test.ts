@@ -27,6 +27,16 @@ const renderDeploymentResultFixture = () => {
   `;
 };
 
+const renderUnsupportedAreaFixture = () => {
+  document.body.innerHTML = `
+    <nav><a href="/workers-and-pages">Workers & Pages</a></nav>
+    <main>
+      <h1>Analytics</h1>
+      <p>Traffic insights for this account.</p>
+    </main>
+  `;
+};
+
 const click = (element: Element | null) => {
   if (!element) {
     throw new Error("Expected element to exist before click.");
@@ -295,5 +305,55 @@ describe("Injected Michi extension shell", () => {
 
     expect(guidance?.title).toBe("Unsupported page");
     expect(guidance?.recoveryAction).toContain("Cloudflare dashboard");
+  });
+
+  it("shows unsupported recovery after a stale critical confirmation phase", () => {
+    renderCloudflareFixture();
+    const location = {
+      href: "https://dash.cloudflare.com/example-account/workers-and-pages",
+      title: "Workers & Pages"
+    };
+    const root = mountMichiInjectedShell(document, location);
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    expect(shadow?.textContent).toContain("Confirm Create Worker");
+
+    renderUnsupportedAreaFixture();
+    location.href = "https://dash.cloudflare.com/example-account/analytics";
+    location.title = "Analytics";
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+
+    expect(shadow?.textContent).toContain("Unsupported page");
+    expect(shadow?.textContent).toContain("supported Cloudflare dashboard pages");
+    expect(shadow?.textContent).toContain("Workers & Pages");
+    expect(shadow?.textContent).not.toContain("Confirm Create Worker");
+    expect(shadow?.textContent).not.toContain("Step 1 / 5");
+  });
+
+  it("shows unsupported recovery after a stale completion phase", () => {
+    renderDeploymentResultFixture();
+    const location = {
+      href: "https://dash.cloudflare.com/example-account/workers/services/view/michi-starter/deployments",
+      title: "Deployment complete"
+    };
+    const root = mountMichiInjectedShell(document, location);
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    click(shadow?.querySelector("[data-action='complete-guide']") ?? null);
+    expect(shadow?.textContent).toContain("Primary path complete");
+
+    renderUnsupportedAreaFixture();
+    location.href = "https://dash.cloudflare.com/example-account/analytics";
+    location.title = "Analytics";
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+
+    expect(shadow?.textContent).toContain("Unsupported page");
+    expect(shadow?.textContent).toContain("supported Cloudflare dashboard pages");
+    expect(shadow?.textContent).toContain("Workers & Pages");
+    expect(shadow?.textContent).not.toContain("Primary path complete");
+    expect(shadow?.textContent).not.toContain("Cloudflare DNS");
   });
 });

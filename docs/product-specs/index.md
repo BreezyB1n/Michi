@@ -17,3 +17,4 @@ Product specs are the source of truth for what Michi should build.
 - `extension-injected-critical-confirmation.md`
 - `extension-injected-completion-followup.md`
 - `extension-injected-full-path-smoke.md`
+- `extension-injected-unsupported-hardening.md`
