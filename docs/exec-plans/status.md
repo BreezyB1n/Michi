@@ -21,6 +21,7 @@ Michi has a verified local React workbench and a Cloudflare-only unpacked extens
 | Runtime error surface | `completed/extension-runtime-error-surface.md` | Provider/runtime failures map to explicit recovery state and service-worker error coverage. |
 | Highlight reposition | `completed/extension-highlight-reposition.md` | Target highlight stays aligned after window and nested-container scroll plus resize. |
 | Workers guide flow shared state | `completed/workers-guide-flow-shared.md` | Injected-shell Workers guide flow decisions now live in shared domain helpers with focused unit coverage. |
+| Shared guide session reducer | `completed/shared-guide-session-reducer.md` | React workbench guide-session transitions now run through a pure reducer behind the existing `GuideCore` facade. |
 
 ## Active Work
 
@@ -32,7 +33,7 @@ No active execution plan is currently open.
 
 ## Recommended Next Direction
 
-The next product slice should decide whether React workbench `GuideCore` should adopt the shared Workers flow helper, or whether Michi is ready to package a React-based extension panel. The safer next step is a shared guide-session reducer that both surfaces can call before changing the extension UI technology.
+The next product slice should decide how much of the injected extension shell should adopt the shared guide-session reducer. The safer path is to bridge one extension action at a time, starting with intent/start and service-kind choice, before considering a React-based extension panel.
 
 ## Verification Baseline
 

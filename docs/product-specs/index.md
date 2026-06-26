@@ -23,3 +23,4 @@ Product specs are the source of truth for what Michi should build.
 - `extension-runtime-error-surface.md`
 - `extension-highlight-reposition.md`
 - `workers-guide-flow-shared.md`
+- `shared-guide-session-reducer.md`
