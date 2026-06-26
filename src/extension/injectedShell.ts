@@ -14,7 +14,7 @@ type ShellState = {
   context?: HostPageContext;
   activeStepIndex?: number;
   intent: string;
-  phase: "intent" | "clarify" | "guide" | "confirm" | "static-complete";
+  phase: "intent" | "clarify" | "guide" | "confirm" | "complete" | "static-complete";
 };
 
 type RecoveryGuidance = {
@@ -254,6 +254,9 @@ const targetLabelById: Record<string, string> = {
   "worker-url": "Worker URL"
 };
 
+const finalWorkerStepIndex = workersGuideSteps.length - 1;
+const finalWorkerStep = workersGuideSteps[finalWorkerStepIndex];
+
 const primaryTargetForContext = (context: HostPageContext) =>
   preferredTargetByRoute[context.routeId]
     ? context.targets.find((target) => target.id === preferredTargetByRoute[context.routeId])
@@ -319,6 +322,26 @@ const highlightCopy = (context: HostPageContext) => {
   return `<div class="target-highlight" data-highlight style="${style}" aria-label="Highlighted target: ${escapeHtml(target.label)}"></div>`;
 };
 
+const isWorkerGuideComplete = (
+  context: HostPageContext | undefined,
+  activeStepIndex: number | undefined
+) => {
+  if (!context || activeStepIndex !== finalWorkerStepIndex) {
+    return false;
+  }
+
+  return (
+    context.routeId === finalWorkerStep.expectedRouteId &&
+    context.targets.some((target) => target.id === finalWorkerStep.targetId) &&
+    context.signals.some((signal) => signal.severity === "success")
+  );
+};
+
+const completionEvidence = (context: HostPageContext | undefined) =>
+  context?.signals.find((signal) => signal.severity === "success")?.value ??
+  context?.signals[0]?.value ??
+  "Worker URL evidence is available.";
+
 const intentCopy = (intent: string) => `
   <section class="guide-summary" aria-label="Intent entry">
     <div>
@@ -380,7 +403,30 @@ const confirmationCopy = (activeStepIndex: number | undefined) => {
   </section>`;
 };
 
-const guideSummaryCopy = (activeStepIndex: number | undefined) => {
+const completionCopy = (context: HostPageContext | undefined) => {
+  const dnsCapability = capabilities["cloudflare-dns"];
+
+  return `<section class="guide-summary" aria-label="Guide completion">
+    <div>
+      <p class="eyebrow">Primary path complete</p>
+      <p class="step-title">Worker URL verified</p>
+    </div>
+    <p>${escapeHtml(completionEvidence(context))}</p>
+    <div>
+      <p class="eyebrow">Follow-up route</p>
+      <p class="capability">
+        <strong>${escapeHtml(dnsCapability.name)}</strong>
+        <span>${escapeHtml(dnsCapability.concept)}</span>
+      </p>
+    </div>
+    <p>${escapeHtml(dnsCapability.explanation)}</p>
+  </section>`;
+};
+
+const guideSummaryCopy = (
+  activeStepIndex: number | undefined,
+  options: { canComplete?: boolean } = {}
+) => {
   if (activeStepIndex === undefined || activeStepIndex < 0) {
     return "";
   }
@@ -394,6 +440,10 @@ const guideSummaryCopy = (activeStepIndex: number | undefined) => {
   const workersCapability = capabilities["cloudflare-workers"];
   const canGoPrevious = activeStepIndex > 0;
   const canGoNext = activeStepIndex < workersGuideSteps.length - 1;
+  const isFinalStep = activeStepIndex === finalWorkerStepIndex;
+  const forwardAction = isFinalStep ? "complete-guide" : "next-step";
+  const forwardLabel = isFinalStep ? "Complete guide" : "Next step";
+  const forwardDisabled = isFinalStep ? !options.canComplete : !canGoNext;
 
   return `<section class="guide-summary" aria-label="Current guide step">
     <div>
@@ -423,7 +473,7 @@ const guideSummaryCopy = (activeStepIndex: number | undefined) => {
     </dl>
     <div class="step-toolbar" aria-label="Guide step navigation">
       <button type="button" data-action="previous-step" aria-label="Previous" ${canGoPrevious ? "" : "disabled"}>Previous</button>
-      <button type="button" data-action="next-step" aria-label="Next step" ${canGoNext ? "" : "disabled"}>Next step</button>
+      <button type="button" data-action="${forwardAction}" aria-label="${forwardLabel}" ${forwardDisabled ? "disabled" : ""}>${forwardLabel}</button>
     </div>
   </section>`;
 };
@@ -434,7 +484,9 @@ const contextCopy = (context: HostPageContext, activeStepIndex: number | undefin
   const guidance = recoveryGuidanceForContext(context);
 
   return `
-    ${guideSummaryCopy(activeStepIndex)}
+    ${guideSummaryCopy(activeStepIndex, {
+      canComplete: isWorkerGuideComplete(context, activeStepIndex)
+    })}
     ${
       guidance
         ? `<div class="recovery" role="status" aria-label="${escapeHtml(guidance.title)}">
@@ -476,6 +528,10 @@ const panelBodyCopy = (state: ShellState) => {
 
   if (state.phase === "static-complete") {
     return staticSiteCopy();
+  }
+
+  if (state.phase === "complete") {
+    return completionCopy(state.context);
   }
 
   if (state.phase === "confirm") {
@@ -625,6 +681,13 @@ export const mountMichiInjectedShell = (
         state.activeStepIndex === undefined
           ? undefined
           : Math.min(state.activeStepIndex + 1, workersGuideSteps.length - 1);
+      render();
+    });
+
+    shadow.querySelector("[data-action='complete-guide']")?.addEventListener("click", () => {
+      if (isWorkerGuideComplete(state.context, state.activeStepIndex)) {
+        state.phase = "complete";
+      }
       render();
     });
   };

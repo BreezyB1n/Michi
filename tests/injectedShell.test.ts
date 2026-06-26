@@ -16,6 +16,17 @@ const renderCloudflareFixture = () => {
   `;
 };
 
+const renderDeploymentResultFixture = () => {
+  document.body.innerHTML = `
+    <nav><a href="/workers-and-pages">Workers & Pages</a></nav>
+    <main>
+      <h1>Deployment complete</h1>
+      <p>Your Worker is available at:</p>
+      <a href="https://michi-starter.example.workers.dev">https://michi-starter.example.workers.dev</a>
+    </main>
+  `;
+};
+
 const click = (element: Element | null) => {
   if (!element) {
     throw new Error("Expected element to exist before click.");
@@ -169,6 +180,57 @@ describe("Injected Michi extension shell", () => {
     click(shadow?.querySelector("[data-action='confirm-action']") ?? null);
     expect(shadow?.textContent).toContain("Step 3 / 5");
     expect(shadow?.textContent).toContain("Review the starter response");
+  });
+
+  it("completes the Workers guide with DNS follow-up after Worker URL evidence", () => {
+    renderDeploymentResultFixture();
+
+    const root = mountMichiInjectedShell(document, {
+      href: "https://dash.cloudflare.com/example-account/workers/services/view/michi-starter/deployments",
+      title: "Deployment complete"
+    });
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    expect(shadow?.textContent).toContain("Step 5 / 5");
+    expect(shadow?.textContent).toContain("Verify the Worker URL");
+    expect(shadow?.textContent).toContain("Worker URL detected");
+    expect(shadow?.textContent).toContain("Complete guide");
+
+    click(shadow?.querySelector("[data-action='complete-guide']") ?? null);
+    expect(shadow?.textContent).toContain("Primary path complete");
+    expect(shadow?.textContent).toContain("Worker URL verified");
+    expect(shadow?.textContent).toContain("https://michi-starter.example.workers.dev");
+    expect(shadow?.textContent).toContain("Follow-up route");
+    expect(shadow?.textContent).toContain("Cloudflare DNS");
+    expect(shadow?.textContent).toContain("Domain routing");
+  });
+
+  it("does not complete from local final-step navigation without Worker URL evidence", () => {
+    renderCloudflareFixture();
+
+    const root = mountMichiInjectedShell(document);
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='guide']") ?? null);
+    click(shadow?.querySelector("[data-action='start-guide']") ?? null);
+    click(shadow?.querySelector("[data-action='choose-backend-api']") ?? null);
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    click(shadow?.querySelector("[data-action='confirm-action']") ?? null);
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    click(shadow?.querySelector("[data-action='confirm-action']") ?? null);
+
+    expect(shadow?.textContent).toContain("Step 5 / 5");
+    expect(shadow?.textContent).toContain("Verify the Worker URL");
+    const completeButton = shadow?.querySelector("[data-action='complete-guide']");
+    expect(completeButton).toBeInstanceOf(HTMLButtonElement);
+    expect((completeButton as HTMLButtonElement | null)?.disabled).toBe(true);
+
+    click(completeButton ?? null);
+    expect(shadow?.textContent).not.toContain("Primary path complete");
+    expect(shadow?.textContent).not.toContain("Worker URL verified");
   });
 
   it("collapses with Escape without clearing checked context", () => {

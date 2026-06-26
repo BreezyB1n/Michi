@@ -15,3 +15,4 @@ Product specs are the source of truth for what Michi should build.
 - `extension-injected-guide-navigation.md`
 - `extension-injected-session-start.md`
 - `extension-injected-critical-confirmation.md`
+- `extension-injected-completion-followup.md`
