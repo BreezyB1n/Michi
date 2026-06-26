@@ -142,5 +142,13 @@ export const blockingStates: Record<BlockingState["id"], BlockingState> = {
     reason:
       "The expected entry is not visible in the simulated page state, which means the current step cannot be anchored.",
     recoveryAction: "Use the dashboard search for Workers & Pages, then let Michi re-check the page state."
+  },
+  "extension-runtime-unavailable": {
+    id: "extension-runtime-unavailable",
+    title: "Extension runtime unavailable",
+    reason:
+      "Michi could not read the active Cloudflare page from the extension runtime, so it cannot anchor the next guide step.",
+    recoveryAction:
+      "Open or refresh a supported Cloudflare dashboard tab, then run the page check again."
   }
 };

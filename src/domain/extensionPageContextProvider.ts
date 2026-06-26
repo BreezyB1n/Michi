@@ -2,6 +2,7 @@ import {
   isPageContextMessage,
   type MichiRuntimeMessage
 } from "../extension/runtimeMessages";
+import { extensionContextUnavailableSignalId } from "./pageContextSignals";
 import type { HostPageContext, PageContextProvider } from "./types";
 
 type RuntimeLastError = {
@@ -35,7 +36,7 @@ export const unsupportedPageContext = (
   targets: [],
   signals: [
     {
-      id: "extension-context-unavailable",
+      id: extensionContextUnavailableSignalId,
       label: "Extension context unavailable",
       value: reason,
       severity

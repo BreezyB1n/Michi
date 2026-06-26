@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ArrowCounterClockwise,
   ArrowRight,
@@ -44,7 +44,9 @@ import {
   type GuideSession,
   type ServiceKind
 } from "./domain/guideCore";
+import { unsupportedPageContext } from "./domain/extensionPageContextProvider";
 import { createMichiPageContextRuntime } from "./domain/pageContextRuntime";
+import type { MichiPageContextRuntime } from "./domain/pageContextRuntime";
 
 const sampleIntent = "I want to build a small service that other people can access.";
 
@@ -57,11 +59,23 @@ const phaseLabels: Record<GuideSession["phase"], string> = {
   complete: "Complete"
 };
 
-const App = () => {
+type AppProps = {
+  pageContextRuntime?: MichiPageContextRuntime;
+};
+
+type ContextRequest = () => HostPageContext | PromiseLike<HostPageContext>;
+
+const isPromiseLike = <T,>(value: T | PromiseLike<T>): value is PromiseLike<T> =>
+  typeof (value as PromiseLike<T>).then === "function";
+
+const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) => {
   const [intent, setIntent] = useState(sampleIntent);
   const [session, setSession] = useState<GuideSession>(() => resetSession());
   const [panelOpen, setPanelOpen] = useState(false);
-  const [pageContextRuntime] = useState(() => createMichiPageContextRuntime());
+  const contextRequestIdRef = useRef(0);
+  const [pageContextRuntime] = useState(
+    () => providedPageContextRuntime ?? createMichiPageContextRuntime()
+  );
   const [hostPageContext, setHostPageContext] = useState<HostPageContext>(() =>
     pageContextRuntime.getInitialContext()
   );
@@ -83,24 +97,71 @@ const App = () => {
     setSession(nextSession);
   };
 
+  const nextContextRequestId = () => {
+    contextRequestIdRef.current += 1;
+    return contextRequestIdRef.current;
+  };
+
+  const runtimeErrorContextFromError = (error: unknown): HostPageContext =>
+    unsupportedPageContext(
+      error instanceof Error ? error.message : "Extension context request failed.",
+      "error"
+    );
+
   const updateFromContext = (
     baseSession: GuideSession,
-    contextResult: HostPageContext | Promise<HostPageContext> = pageContextRuntime.getCurrentContext()
+    readContext: ContextRequest = () => pageContextRuntime.getCurrentContext()
   ) => {
+    const requestId = nextContextRequestId();
     const applyContext = (context: HostPageContext) => {
+      if (requestId !== contextRequestIdRef.current) {
+        return;
+      }
+
       setHostPageContext(context);
       updateSession(applyHostPageContext(baseSession, context));
     };
 
-    if (contextResult instanceof Promise) {
-      void contextResult.then(applyContext);
-      return;
-    }
+    try {
+      const contextResult = readContext();
+      if (isPromiseLike(contextResult)) {
+        void Promise.resolve(contextResult).then(applyContext).catch((error: unknown) => {
+          applyContext(runtimeErrorContextFromError(error));
+        });
+        return;
+      }
 
-    applyContext(contextResult);
+      applyContext(contextResult);
+    } catch (error) {
+      applyContext(runtimeErrorContextFromError(error));
+    }
+  };
+
+  const updateHostContext = (readContext: ContextRequest) => {
+    const requestId = nextContextRequestId();
+    const applyContext = (context: HostPageContext) => {
+      if (requestId === contextRequestIdRef.current) {
+        setHostPageContext(context);
+      }
+    };
+
+    try {
+      const contextResult = readContext();
+      if (isPromiseLike(contextResult)) {
+        void Promise.resolve(contextResult).then(applyContext).catch((error: unknown) => {
+          applyContext(runtimeErrorContextFromError(error));
+        });
+        return;
+      }
+
+      applyContext(contextResult);
+    } catch (error) {
+      applyContext(runtimeErrorContextFromError(error));
+    }
   };
 
   const handleStart = () => {
+    nextContextRequestId();
     updateSession(startSession(intent));
   };
 
@@ -110,11 +171,12 @@ const App = () => {
     if (kind === "backend-api") {
       updateFromContext(
         nextSession,
-        pageContextRuntime.syncGuideStep(nextSession.activeStepIndex)
+        () => pageContextRuntime.syncGuideStep(nextSession.activeStepIndex)
       );
       return;
     }
 
+    nextContextRequestId();
     updateSession(nextSession);
   };
 
@@ -122,13 +184,14 @@ const App = () => {
     const nextSession = advanceStep(session);
 
     if (nextSession.phase === "confirm" || nextSession.steps.length === 0) {
+      nextContextRequestId();
       updateSession(nextSession);
       return;
     }
 
     updateFromContext(
       nextSession,
-      pageContextRuntime.syncGuideStep(nextSession.activeStepIndex)
+      () => pageContextRuntime.syncGuideStep(nextSession.activeStepIndex)
     );
   };
 
@@ -137,12 +200,12 @@ const App = () => {
 
     updateFromContext(
       nextSession,
-      pageContextRuntime.syncGuideStep(nextSession.activeStepIndex)
+      () => pageContextRuntime.syncGuideStep(nextSession.activeStepIndex)
     );
   };
 
   const handleRecovery = () => {
-    updateFromContext(session, pageContextRuntime.recoverToStep(session.activeStepIndex));
+    updateFromContext(session, () => pageContextRuntime.recoverToStep(session.activeStepIndex));
   };
 
   const handleCheck = () => {
@@ -150,19 +213,12 @@ const App = () => {
   };
 
   const handlePageDrift = () => {
-    updateFromContext(session, pageContextRuntime.simulatePageDrift(session.activeStepIndex));
+    updateFromContext(session, () => pageContextRuntime.simulatePageDrift(session.activeStepIndex));
   };
 
   const handleReset = () => {
     setIntent(sampleIntent);
-    const contextResult = pageContextRuntime.recoverToStep(0);
-
-    if (contextResult instanceof Promise) {
-      void contextResult.then(setHostPageContext);
-    } else {
-      setHostPageContext(contextResult);
-    }
-
+    updateHostContext(() => pageContextRuntime.recoverToStep(0));
     updateSession(resetSession());
   };
 
@@ -254,6 +310,22 @@ const App = () => {
       </main>
     </IconContext.Provider>
   );
+};
+
+const statusLabelForSession = (session: GuideSession, hostPageContext: HostPageContext) => {
+  if (session.pageState.blockingState?.id === "extension-runtime-unavailable") {
+    return "Extension runtime error";
+  }
+
+  if (session.pageState.blockingState) {
+    return session.pageState.blockingState.title;
+  }
+
+  if (hostPageContext.blockingState) {
+    return hostPageContext.blockingState.title;
+  }
+
+  return session.pageState.completionSatisfied ? "Ready" : "Needs check";
 };
 
 type HostWebsiteProps = {
@@ -353,13 +425,7 @@ const HostWebsite = ({ session, hostPageContext }: HostWebsiteProps) => (
               />
               <StateRow
                 label="Status"
-                value={
-                  hostPageContext.blockingState
-                    ? hostPageContext.blockingState.title
-                    : session.pageState.completionSatisfied
-                      ? "Ready"
-                      : "Needs check"
-                }
+                value={statusLabelForSession(session, hostPageContext)}
               />
             </dl>
             <div className="mt-4 grid gap-2.5" aria-label="Recent console activity">
@@ -713,7 +779,13 @@ const PageStatePanel = ({ session, hostPageContext, pulseKey }: PageStatePanelPr
       <StateRow label="Highlighted target" value={session.pageState.targetElement} />
       <StateRow
         label="Provider status"
-        value={hostPageContext.blockingState ? "Blocked by page context" : "Synced"}
+        value={
+          session.pageState.blockingState?.id === "extension-runtime-unavailable"
+            ? "Extension runtime error"
+            : hostPageContext.blockingState
+              ? "Blocked by page context"
+              : "Synced"
+        }
       />
       <StateRow
         label="Evidence"
