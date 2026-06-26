@@ -1,8 +1,45 @@
 import { chromium, expect, test } from "@playwright/test";
-import { existsSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const extensionPath = path.resolve(process.cwd(), "dist-extension");
+
+const installRuntimeProbe = () => {
+  writeFileSync(
+    path.join(extensionPath, "runtime-probe.html"),
+    `
+      <!doctype html>
+      <html>
+        <head><title>Michi runtime probe</title></head>
+        <body>
+          <main>
+            <h1>Michi runtime probe</h1>
+            <pre id="response">pending</pre>
+          </main>
+          <script src="runtime-probe.js"></script>
+        </body>
+      </html>
+    `
+  );
+  writeFileSync(
+    path.join(extensionPath, "runtime-probe.js"),
+    `
+      const responseElement = document.getElementById("response");
+      chrome.runtime.sendMessage({ type: "MICHI_GET_PAGE_CONTEXT" })
+        .then((response) => {
+          responseElement.textContent = JSON.stringify(response);
+          responseElement.dataset.ready = "true";
+        })
+        .catch((error) => {
+          responseElement.textContent = JSON.stringify({
+            type: "MICHI_PROBE_RUNTIME_ERROR",
+            reason: error instanceof Error ? error.message : "Probe could not reach runtime."
+          });
+          responseElement.dataset.ready = "true";
+        });
+    `
+  );
+};
 
 declare const chrome: {
   tabs: {
@@ -20,6 +57,7 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     !existsSync(path.join(extensionPath, "manifest.json")),
     "Run npm run build:extension before the extension runtime smoke."
   );
+  installRuntimeProbe();
 
   const userDataDir = testInfo.outputPath("extension-user-data");
   const context = await chromium.launchPersistentContext(userDataDir, {
@@ -202,6 +240,22 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(unsupportedPanel.getByText(/Workers & Pages/)).toBeVisible();
     await expect(page.getByText("Step 1 / 5")).toHaveCount(0);
     await expect(page.getByLabel(/Highlighted target/)).toHaveCount(0);
+
+    const extensionId = new URL(serviceWorker.url()).host;
+    const probePage = await context.newPage();
+    await probePage.goto(`chrome-extension://${extensionId}/runtime-probe.html`);
+    await expect(probePage.getByRole("heading", { name: "Michi runtime probe" })).toBeVisible();
+    const responseElement = probePage.locator("#response");
+    await expect(responseElement).toHaveAttribute("data-ready", "true");
+    const failureResponse = JSON.parse((await responseElement.textContent()) ?? "null");
+
+    expect(failureResponse).toEqual(
+      expect.objectContaining({
+        type: "MICHI_PAGE_CONTEXT_ERROR",
+        reason: expect.stringMatching(/receiving end|Could not establish connection|content script/i)
+      })
+    );
+    await probePage.close();
   } finally {
     await context.close();
   }

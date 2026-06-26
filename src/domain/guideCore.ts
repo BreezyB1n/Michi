@@ -4,6 +4,7 @@ import {
   pageStatesByStep,
   workersGuideSteps
 } from "./siteSkillPack";
+import { hasExtensionContextUnavailableSignal } from "./pageContextSignals";
 import type {
   BlockingState,
   GuideSession,
@@ -48,6 +49,13 @@ const hasUsableTarget = (context: HostPageContext, step?: GuideStep) => {
 const hasExpectedRoute = (context: HostPageContext, step?: GuideStep) =>
   !step?.expectedRouteId || context.routeId === step.expectedRouteId;
 
+const contextWithExtensionRuntimeUnavailable = (
+  context: HostPageContext
+): HostPageContext => ({
+  ...context,
+  blockingState: blockingStates["extension-runtime-unavailable"]
+});
+
 const contextWithPageDrift = (context: HostPageContext): HostPageContext => ({
   ...context,
   blockingState: blockingStates["page-drift"],
@@ -71,10 +79,15 @@ export const hostPageContextToPageState = (
   const primarySignal = context.signals[0];
 
   if (context.blockingState) {
+    const evidencePrefix =
+      context.blockingState.id === "extension-runtime-unavailable"
+        ? "Extension runtime unavailable"
+        : "Page drift detected";
+
     return {
       location: context.locationLabel,
       targetElement: target?.label ?? "Expected page target missing",
-      evidence: `Page drift detected: ${primarySignal?.value ?? context.blockingState.reason}`,
+      evidence: `${evidencePrefix}: ${primarySignal?.value ?? context.blockingState.reason}`,
       completionSatisfied: false,
       blockingState: context.blockingState
     };
@@ -93,18 +106,21 @@ export const applyHostPageContext = (
   context: HostPageContext
 ): GuideSession => {
   const currentStep = session.steps[session.activeStepIndex];
+  const providerContext = hasExtensionContextUnavailableSignal(context)
+    ? contextWithExtensionRuntimeUnavailable(context)
+    : context;
 
-  if (session.phase === "confirm" && !context.blockingState) {
+  if (session.phase === "confirm" && !providerContext.blockingState) {
     return {
       ...session,
-      pageState: hostPageContextToPageState(context, currentStep)
+      pageState: hostPageContextToPageState(providerContext, currentStep)
     };
   }
 
   const effectiveContext =
-    context.blockingState || hasExpectedRoute(context, currentStep) || !currentStep
-      ? context
-      : contextWithPageDrift(context);
+    providerContext.blockingState || hasExpectedRoute(providerContext, currentStep) || !currentStep
+      ? providerContext
+      : contextWithPageDrift(providerContext);
 
   const anchored =
     !currentStep || effectiveContext.blockingState || hasUsableTarget(effectiveContext, currentStep);

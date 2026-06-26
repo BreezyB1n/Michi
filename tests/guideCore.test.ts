@@ -14,6 +14,7 @@ import {
   createCloudflareMockPageContextProvider,
   pageDriftContextForStep
 } from "../src/domain/pageContextProvider";
+import { unsupportedPageContext } from "../src/domain/extensionPageContextProvider";
 
 const sampleIntent = "I want to build a small service that other people can access.";
 
@@ -102,6 +103,19 @@ describe("Guide Agent Core", () => {
     expect(drifted.phase).toBe("recovery");
     expect(drifted.pageState.blockingState?.id).toBe("page-drift");
     expect(drifted.pageState.evidence).toContain("Page drift detected");
+  });
+
+  it("maps extension runtime failures into a recovery step", () => {
+    const session = chooseServiceKind(startSession(sampleIntent), "backend-api");
+    const failed = applyHostPageContext(
+      session,
+      unsupportedPageContext("No receiving end", "error")
+    );
+
+    expect(failed.phase).toBe("recovery");
+    expect(failed.pageState.blockingState?.id).toBe("extension-runtime-unavailable");
+    expect(failed.pageState.blockingState?.title).toBe("Extension runtime unavailable");
+    expect(failed.pageState.evidence).toContain("No receiving end");
   });
 
   it("recovers from page drift when provider returns the expected context", () => {
