@@ -16,12 +16,42 @@ const renderCloudflareFixture = () => {
   `;
 };
 
+const renderDeploymentResultFixture = () => {
+  document.body.innerHTML = `
+    <nav><a href="/workers-and-pages">Workers & Pages</a></nav>
+    <main>
+      <h1>Deployment complete</h1>
+      <p>Your Worker is available at:</p>
+      <a href="https://michi-starter.example.workers.dev">https://michi-starter.example.workers.dev</a>
+    </main>
+  `;
+};
+
+const renderUnsupportedAreaFixture = () => {
+  document.body.innerHTML = `
+    <nav><a href="/workers-and-pages">Workers & Pages</a></nav>
+    <main>
+      <h1>Analytics</h1>
+      <p>Traffic insights for this account.</p>
+    </main>
+  `;
+};
+
 const click = (element: Element | null) => {
   if (!element) {
     throw new Error("Expected element to exist before click.");
   }
 
   element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+};
+
+const input = (element: Element | null, value: string) => {
+  if (!(element instanceof HTMLTextAreaElement)) {
+    throw new Error("Expected textarea to exist before input.");
+  }
+
+  element.value = value;
+  element.dispatchEvent(new Event("input", { bubbles: true }));
 };
 
 const hostContext = (overrides: Partial<HostPageContext> = {}): HostPageContext => ({
@@ -63,6 +93,28 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).not.toMatch(/Image|Video/);
   });
 
+  it("starts a local guide session from intent and backend clarification", () => {
+    renderCloudflareFixture();
+
+    const root = mountMichiInjectedShell(document);
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='guide']") ?? null);
+    expect(shadow?.textContent).toContain("User intent");
+    expect(shadow?.textContent).toContain("Start guide");
+
+    input(shadow?.querySelector("[data-intent]") ?? null, "Build a JSON API for customers.");
+    click(shadow?.querySelector("[data-action='start-guide']") ?? null);
+    expect(shadow?.textContent).toContain("What kind of service are you building?");
+    expect(shadow?.textContent).toContain("Backend logic or API");
+
+    click(shadow?.querySelector("[data-action='choose-backend-api']") ?? null);
+    expect(shadow?.textContent).toContain("Cloudflare Workers");
+    expect(shadow?.textContent).toContain("Step 1 / 5");
+    expect(shadow?.textContent).toContain("Find the Workers entry");
+    expect(shadow?.textContent).toContain("Open the Workers & Pages area from the Cloudflare account sidebar.");
+  });
+
   it("opens, checks page context, and minimizes", () => {
     renderCloudflareFixture();
 
@@ -74,15 +126,121 @@ describe("Injected Michi extension shell", () => {
 
     click(shadow?.querySelector("[data-action='guide']") ?? null);
     expect(shadow?.textContent).toContain("Michi guide");
-    expect(shadow?.textContent).toContain("No page check yet");
+    expect(shadow?.textContent).toContain("User intent");
 
     click(shadow?.querySelector("[data-action='check']") ?? null);
     expect(shadow?.textContent).toContain("cloudflare.workers.overview");
     expect(shadow?.textContent).toContain("Create Worker button");
     expect(shadow?.textContent).toContain("Cloudflare route detected");
+    expect(shadow?.textContent).toContain("Cloudflare Workers");
+    expect(shadow?.textContent).toContain("Step 2 / 5");
+    expect(shadow?.textContent).toContain("Create a Worker");
+    expect(shadow?.textContent).toContain("Choose Create Worker and keep the generated starter service.");
+    expect(shadow?.textContent).toContain("A Worker draft exists and the editor or setup view is visible.");
 
     click(shadow?.querySelector("[data-action='minimize']") ?? null);
     expect(shadow?.querySelector("[data-panel]")).toBeNull();
+  });
+
+  it("navigates guide steps locally after checking the page", () => {
+    renderCloudflareFixture();
+
+    const root = mountMichiInjectedShell(document, {
+      href: "https://dash.cloudflare.com/example-account/workers-and-pages",
+      title: "Workers & Pages"
+    });
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    expect(shadow?.textContent).toContain("Step 2 / 5");
+    expect(shadow?.textContent).toContain("Create a Worker");
+
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    expect(shadow?.textContent).toContain("Confirm Create Worker");
+
+    click(shadow?.querySelector("[data-action='confirm-action']") ?? null);
+    expect(shadow?.textContent).toContain("Step 3 / 5");
+    expect(shadow?.textContent).toContain("Review the starter response");
+    expect(shadow?.textContent).toContain("Read the starter handler and keep the default response for the demo.");
+
+    click(shadow?.querySelector("[data-action='previous-step']") ?? null);
+    expect(shadow?.textContent).toContain("Step 2 / 5");
+    expect(shadow?.textContent).toContain("Create a Worker");
+  });
+
+  it("requires confirmation before advancing past a critical guide step", () => {
+    renderCloudflareFixture();
+
+    const root = mountMichiInjectedShell(document, {
+      href: "https://dash.cloudflare.com/example-account/workers-and-pages",
+      title: "Workers & Pages"
+    });
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    expect(shadow?.textContent).toContain("Step 2 / 5");
+    expect(shadow?.textContent).toContain("Create a Worker");
+
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    expect(shadow?.textContent).toContain("Critical write action");
+    expect(shadow?.textContent).toContain("Confirm Create Worker");
+    expect(shadow?.textContent).toContain("Creates a new Cloudflare Worker resource");
+    expect(shadow?.textContent).not.toContain("Step 3 / 5");
+
+    click(shadow?.querySelector("[data-action='confirm-action']") ?? null);
+    expect(shadow?.textContent).toContain("Step 3 / 5");
+    expect(shadow?.textContent).toContain("Review the starter response");
+  });
+
+  it("completes the Workers guide with DNS follow-up after Worker URL evidence", () => {
+    renderDeploymentResultFixture();
+
+    const root = mountMichiInjectedShell(document, {
+      href: "https://dash.cloudflare.com/example-account/workers/services/view/michi-starter/deployments",
+      title: "Deployment complete"
+    });
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    expect(shadow?.textContent).toContain("Step 5 / 5");
+    expect(shadow?.textContent).toContain("Verify the Worker URL");
+    expect(shadow?.textContent).toContain("Worker URL detected");
+    expect(shadow?.textContent).toContain("Complete guide");
+
+    click(shadow?.querySelector("[data-action='complete-guide']") ?? null);
+    expect(shadow?.textContent).toContain("Primary path complete");
+    expect(shadow?.textContent).toContain("Worker URL verified");
+    expect(shadow?.textContent).toContain("https://michi-starter.example.workers.dev");
+    expect(shadow?.textContent).toContain("Follow-up route");
+    expect(shadow?.textContent).toContain("Cloudflare DNS");
+    expect(shadow?.textContent).toContain("Domain routing");
+  });
+
+  it("does not complete from local final-step navigation without Worker URL evidence", () => {
+    renderCloudflareFixture();
+
+    const root = mountMichiInjectedShell(document);
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='guide']") ?? null);
+    click(shadow?.querySelector("[data-action='start-guide']") ?? null);
+    click(shadow?.querySelector("[data-action='choose-backend-api']") ?? null);
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    click(shadow?.querySelector("[data-action='confirm-action']") ?? null);
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    click(shadow?.querySelector("[data-action='confirm-action']") ?? null);
+
+    expect(shadow?.textContent).toContain("Step 5 / 5");
+    expect(shadow?.textContent).toContain("Verify the Worker URL");
+    const completeButton = shadow?.querySelector("[data-action='complete-guide']");
+    expect(completeButton).toBeInstanceOf(HTMLButtonElement);
+    expect((completeButton as HTMLButtonElement | null)?.disabled).toBe(true);
+
+    click(completeButton ?? null);
+    expect(shadow?.textContent).not.toContain("Primary path complete");
+    expect(shadow?.textContent).not.toContain("Worker URL verified");
   });
 
   it("collapses with Escape without clearing checked context", () => {
@@ -147,5 +305,55 @@ describe("Injected Michi extension shell", () => {
 
     expect(guidance?.title).toBe("Unsupported page");
     expect(guidance?.recoveryAction).toContain("Cloudflare dashboard");
+  });
+
+  it("shows unsupported recovery after a stale critical confirmation phase", () => {
+    renderCloudflareFixture();
+    const location = {
+      href: "https://dash.cloudflare.com/example-account/workers-and-pages",
+      title: "Workers & Pages"
+    };
+    const root = mountMichiInjectedShell(document, location);
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    expect(shadow?.textContent).toContain("Confirm Create Worker");
+
+    renderUnsupportedAreaFixture();
+    location.href = "https://dash.cloudflare.com/example-account/analytics";
+    location.title = "Analytics";
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+
+    expect(shadow?.textContent).toContain("Unsupported page");
+    expect(shadow?.textContent).toContain("supported Cloudflare dashboard pages");
+    expect(shadow?.textContent).toContain("Workers & Pages");
+    expect(shadow?.textContent).not.toContain("Confirm Create Worker");
+    expect(shadow?.textContent).not.toContain("Step 1 / 5");
+  });
+
+  it("shows unsupported recovery after a stale completion phase", () => {
+    renderDeploymentResultFixture();
+    const location = {
+      href: "https://dash.cloudflare.com/example-account/workers/services/view/michi-starter/deployments",
+      title: "Deployment complete"
+    };
+    const root = mountMichiInjectedShell(document, location);
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    click(shadow?.querySelector("[data-action='complete-guide']") ?? null);
+    expect(shadow?.textContent).toContain("Primary path complete");
+
+    renderUnsupportedAreaFixture();
+    location.href = "https://dash.cloudflare.com/example-account/analytics";
+    location.title = "Analytics";
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+
+    expect(shadow?.textContent).toContain("Unsupported page");
+    expect(shadow?.textContent).toContain("supported Cloudflare dashboard pages");
+    expect(shadow?.textContent).toContain("Workers & Pages");
+    expect(shadow?.textContent).not.toContain("Primary path complete");
+    expect(shadow?.textContent).not.toContain("Cloudflare DNS");
   });
 });

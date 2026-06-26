@@ -1,4 +1,5 @@
 import { readCloudflarePageContext } from "./cloudflarePageReader";
+import { capabilities, workersGuideSteps } from "../domain/siteSkillPack";
 import type { HostPageContext, PageTarget } from "../domain/types";
 
 const rootId = "michi-extension-root";
@@ -11,6 +12,9 @@ type ShellLocation = {
 type ShellState = {
   open: boolean;
   context?: HostPageContext;
+  activeStepIndex?: number;
+  intent: string;
+  phase: "intent" | "clarify" | "guide" | "confirm" | "complete" | "static-complete";
 };
 
 type RecoveryGuidance = {
@@ -67,6 +71,20 @@ const shellStyles = `
 
   button:hover {
     background: rgba(245, 158, 11, 0.12);
+  }
+
+  textarea {
+    all: unset;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 92px;
+    padding: 10px;
+    border: 1px solid rgba(23, 23, 23, 0.12);
+    border-radius: 12px;
+    background: rgba(245, 245, 245, 0.78);
+    color: #171717;
+    font: 550 13px/1.45 inherit;
+    resize: vertical;
   }
 
   .panel {
@@ -147,6 +165,54 @@ const shellStyles = `
     margin-top: 6px;
   }
 
+  .guide-summary {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(23, 23, 23, 0.1);
+  }
+
+  .capability {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    color: #171717;
+  }
+
+  .capability strong {
+    font: 750 13px/1.2 inherit;
+  }
+
+  .capability span {
+    font: 700 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: #737373;
+    text-transform: uppercase;
+  }
+
+  .step-title {
+    font: 750 15px/1.25 inherit;
+    color: #171717;
+  }
+
+  .step-toolbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .step-toolbar button {
+    min-height: 34px;
+    border: 1px solid rgba(23, 23, 23, 0.12);
+    background: rgba(245, 245, 245, 0.78);
+  }
+
+  .step-toolbar button:disabled {
+    cursor: not-allowed;
+    color: #a3a3a3;
+    background: rgba(245, 245, 245, 0.45);
+  }
+
   .target-highlight {
     position: fixed;
     z-index: 2147483646;
@@ -161,6 +227,8 @@ const emptyContextCopy = `
   <p class="eyebrow">Page check</p>
   <p>No page check yet</p>
 `;
+
+const sampleIntent = "I want to build a small service that other people can access.";
 
 const escapeHtml = (value: string) =>
   value
@@ -186,10 +254,19 @@ const targetLabelById: Record<string, string> = {
   "worker-url": "Worker URL"
 };
 
+const finalWorkerStepIndex = workersGuideSteps.length - 1;
+const finalWorkerStep = workersGuideSteps[finalWorkerStepIndex];
+
 const primaryTargetForContext = (context: HostPageContext) =>
   preferredTargetByRoute[context.routeId]
     ? context.targets.find((target) => target.id === preferredTargetByRoute[context.routeId])
     : context.targets[0];
+
+export const guideStepForContext = (context: HostPageContext) =>
+  workersGuideSteps.find((step) => step.expectedRouteId === context.routeId);
+
+const guideStepIndexForContext = (context: HostPageContext) =>
+  workersGuideSteps.findIndex((step) => step.expectedRouteId === context.routeId);
 
 export const recoveryGuidanceForContext = (
   context: HostPageContext
@@ -197,7 +274,7 @@ export const recoveryGuidanceForContext = (
   if (context.routeId === "cloudflare.unsupported") {
     return {
       title: "Unsupported page",
-      reason: "Michi only reads Cloudflare dashboard pages in this milestone.",
+      reason: "Michi only reads supported Cloudflare dashboard pages in this milestone.",
       recoveryAction: "Open the Cloudflare dashboard, navigate to Workers & Pages, then click Check page again."
     };
   }
@@ -245,12 +322,171 @@ const highlightCopy = (context: HostPageContext) => {
   return `<div class="target-highlight" data-highlight style="${style}" aria-label="Highlighted target: ${escapeHtml(target.label)}"></div>`;
 };
 
-const contextCopy = (context: HostPageContext) => {
+const isWorkerGuideComplete = (
+  context: HostPageContext | undefined,
+  activeStepIndex: number | undefined
+) => {
+  if (!context || activeStepIndex !== finalWorkerStepIndex) {
+    return false;
+  }
+
+  return (
+    context.routeId === finalWorkerStep.expectedRouteId &&
+    context.targets.some((target) => target.id === finalWorkerStep.targetId) &&
+    context.signals.some((signal) => signal.severity === "success")
+  );
+};
+
+const completionEvidence = (context: HostPageContext | undefined) =>
+  context?.signals.find((signal) => signal.severity === "success")?.value ??
+  context?.signals[0]?.value ??
+  "Worker URL evidence is available.";
+
+const intentCopy = (intent: string) => `
+  <section class="guide-summary" aria-label="Intent entry">
+    <div>
+      <p class="eyebrow">User intent</p>
+      <textarea data-intent aria-label="User intent" rows="4">${escapeHtml(intent)}</textarea>
+    </div>
+    <button type="button" data-action="start-guide" aria-label="Start guide">Start guide</button>
+  </section>
+`;
+
+const clarificationCopy = (intent: string) => `
+  <section class="guide-summary" aria-label="Service clarification">
+    <div>
+      <p class="eyebrow">User intent</p>
+      <p>${escapeHtml(intent)}</p>
+    </div>
+    <div>
+      <p class="eyebrow">Path decision</p>
+      <p class="step-title">What kind of service are you building?</p>
+    </div>
+    <div class="step-toolbar" aria-label="Service type choices">
+      <button type="button" data-action="choose-backend-api" aria-label="Backend logic or API">Backend logic or API</button>
+      <button type="button" data-action="choose-static-site" aria-label="Static website">Static website</button>
+    </div>
+  </section>
+`;
+
+const staticSiteCopy = () => `
+  <section class="guide-summary" aria-label="Static website route">
+    <div>
+      <p class="eyebrow">Capability</p>
+      <p class="capability">
+        <strong>${escapeHtml(capabilities["cloudflare-pages"].name)}</strong>
+        <span>${escapeHtml(capabilities["cloudflare-pages"].concept)}</span>
+      </p>
+    </div>
+    <p>${escapeHtml(capabilities["cloudflare-pages"].explanation)}</p>
+  </section>
+`;
+
+const confirmationCopy = (activeStepIndex: number | undefined) => {
+  const step =
+    activeStepIndex === undefined || activeStepIndex < 0
+      ? undefined
+      : workersGuideSteps[activeStepIndex];
+  const criticalAction = step?.criticalAction;
+
+  if (!step || !criticalAction) {
+    return "";
+  }
+
+  return `<section class="guide-summary" aria-label="Critical action confirmation">
+    <div>
+      <p class="eyebrow">Critical write action</p>
+      <p class="step-title">Confirm ${escapeHtml(criticalAction.label)}</p>
+    </div>
+    <p>${escapeHtml(criticalAction.impact)}</p>
+    <button type="button" data-action="confirm-action" aria-label="Confirm action">Confirm action</button>
+  </section>`;
+};
+
+const completionCopy = (context: HostPageContext | undefined) => {
+  const dnsCapability = capabilities["cloudflare-dns"];
+
+  return `<section class="guide-summary" aria-label="Guide completion">
+    <div>
+      <p class="eyebrow">Primary path complete</p>
+      <p class="step-title">Worker URL verified</p>
+    </div>
+    <p>${escapeHtml(completionEvidence(context))}</p>
+    <div>
+      <p class="eyebrow">Follow-up route</p>
+      <p class="capability">
+        <strong>${escapeHtml(dnsCapability.name)}</strong>
+        <span>${escapeHtml(dnsCapability.concept)}</span>
+      </p>
+    </div>
+    <p>${escapeHtml(dnsCapability.explanation)}</p>
+  </section>`;
+};
+
+const guideSummaryCopy = (
+  activeStepIndex: number | undefined,
+  options: { canComplete?: boolean } = {}
+) => {
+  if (activeStepIndex === undefined || activeStepIndex < 0) {
+    return "";
+  }
+
+  const step = workersGuideSteps[activeStepIndex];
+
+  if (!step) {
+    return "";
+  }
+
+  const workersCapability = capabilities["cloudflare-workers"];
+  const canGoPrevious = activeStepIndex > 0;
+  const canGoNext = activeStepIndex < workersGuideSteps.length - 1;
+  const isFinalStep = activeStepIndex === finalWorkerStepIndex;
+  const forwardAction = isFinalStep ? "complete-guide" : "next-step";
+  const forwardLabel = isFinalStep ? "Complete guide" : "Next step";
+  const forwardDisabled = isFinalStep ? !options.canComplete : !canGoNext;
+
+  return `<section class="guide-summary" aria-label="Current guide step">
+    <div>
+      <p class="eyebrow">Capability</p>
+      <p class="capability">
+        <strong>${escapeHtml(workersCapability.name)}</strong>
+        <span>${escapeHtml(workersCapability.concept)}</span>
+      </p>
+    </div>
+    <div>
+      <p class="eyebrow">Step ${activeStepIndex + 1} / ${workersGuideSteps.length}</p>
+      <p class="step-title">${escapeHtml(step.title)}</p>
+    </div>
+    <dl>
+      <div>
+        <dt>Action</dt>
+        <dd>${escapeHtml(step.action)}</dd>
+      </div>
+      <div>
+        <dt>Step purpose</dt>
+        <dd>${escapeHtml(step.purpose)}</dd>
+      </div>
+      <div>
+        <dt>Completion check</dt>
+        <dd>${escapeHtml(step.completionCheck)}</dd>
+      </div>
+    </dl>
+    <div class="step-toolbar" aria-label="Guide step navigation">
+      <button type="button" data-action="previous-step" aria-label="Previous" ${canGoPrevious ? "" : "disabled"}>Previous</button>
+      <button type="button" data-action="${forwardAction}" aria-label="${forwardLabel}" ${forwardDisabled ? "disabled" : ""}>${forwardLabel}</button>
+    </div>
+  </section>`;
+};
+
+const contextCopy = (context: HostPageContext, activeStepIndex: number | undefined) => {
   const target = primaryTargetForContext(context);
   const signal = context.signals[0];
   const guidance = recoveryGuidanceForContext(context);
 
   return `
+    ${guideSummaryCopy(activeStepIndex, {
+      canComplete: isWorkerGuideComplete(context, activeStepIndex)
+    })}
     ${
       guidance
         ? `<div class="recovery" role="status" aria-label="${escapeHtml(guidance.title)}">
@@ -281,6 +517,42 @@ const contextCopy = (context: HostPageContext) => {
   `;
 };
 
+const panelBodyCopy = (state: ShellState) => {
+  if (state.phase === "intent" && !state.context) {
+    return intentCopy(state.intent);
+  }
+
+  if (state.context?.routeId === "cloudflare.unsupported") {
+    return contextCopy(state.context, undefined);
+  }
+
+  if (state.phase === "clarify") {
+    return clarificationCopy(state.intent);
+  }
+
+  if (state.phase === "static-complete") {
+    return staticSiteCopy();
+  }
+
+  if (state.phase === "complete") {
+    return completionCopy(state.context);
+  }
+
+  if (state.phase === "confirm") {
+    return confirmationCopy(state.activeStepIndex);
+  }
+
+  if (state.context) {
+    return contextCopy(state.context, state.activeStepIndex);
+  }
+
+  if (state.activeStepIndex !== undefined) {
+    return guideSummaryCopy(state.activeStepIndex);
+  }
+
+  return emptyContextCopy;
+};
+
 export const mountMichiInjectedShell = (
   doc: Document = document,
   location: ShellLocation = {
@@ -299,7 +571,11 @@ export const mountMichiInjectedShell = (
   doc.documentElement.appendChild(host);
 
   const shadow = host.attachShadow({ mode: "open" });
-  const state: ShellState = { open: false };
+  const state: ShellState = {
+    open: false,
+    intent: sampleIntent,
+    phase: "intent"
+  };
 
   const handleKeyDown = (event: KeyboardEvent) => {
     if (event.key !== "Escape" || !state.open) {
@@ -330,7 +606,7 @@ export const mountMichiInjectedShell = (
                   <button type="button" data-action="minimize" aria-label="Minimize panel">Min</button>
                 </div>
                 <div class="panel-body">
-                  ${state.context ? contextCopy(state.context) : emptyContextCopy}
+                  ${panelBodyCopy(state)}
                 </div>
               </section>`
             : ""
@@ -346,11 +622,76 @@ export const mountMichiInjectedShell = (
     shadow.querySelector("[data-action='check']")?.addEventListener("click", () => {
       state.open = true;
       state.context = readCloudflarePageContext(doc, location);
+      const nextStepIndex = guideStepIndexForContext(state.context);
+      state.activeStepIndex = nextStepIndex >= 0 ? nextStepIndex : undefined;
+      if (nextStepIndex >= 0 || state.context.routeId === "cloudflare.unsupported") {
+        state.phase = "guide";
+      }
       render();
     });
 
     shadow.querySelector("[data-action='minimize']")?.addEventListener("click", () => {
       state.open = false;
+      render();
+    });
+
+    shadow.querySelector("[data-action='previous-step']")?.addEventListener("click", () => {
+      state.activeStepIndex =
+        state.activeStepIndex === undefined ? undefined : Math.max(state.activeStepIndex - 1, 0);
+      render();
+    });
+
+    shadow.querySelector("[data-action='next-step']")?.addEventListener("click", () => {
+      const activeStep =
+        state.activeStepIndex === undefined ? undefined : workersGuideSteps[state.activeStepIndex];
+
+      if (activeStep?.criticalAction) {
+        state.phase = "confirm";
+      } else {
+        state.activeStepIndex =
+          state.activeStepIndex === undefined
+            ? undefined
+            : Math.min(state.activeStepIndex + 1, workersGuideSteps.length - 1);
+      }
+      render();
+    });
+
+    shadow.querySelector("[data-intent]")?.addEventListener("input", (event) => {
+      if (event.target instanceof HTMLTextAreaElement) {
+        state.intent = event.target.value;
+      }
+    });
+
+    shadow.querySelector("[data-action='start-guide']")?.addEventListener("click", () => {
+      state.phase = "clarify";
+      render();
+    });
+
+    shadow.querySelector("[data-action='choose-backend-api']")?.addEventListener("click", () => {
+      state.phase = "guide";
+      state.activeStepIndex = 0;
+      render();
+    });
+
+    shadow.querySelector("[data-action='choose-static-site']")?.addEventListener("click", () => {
+      state.phase = "static-complete";
+      state.activeStepIndex = undefined;
+      render();
+    });
+
+    shadow.querySelector("[data-action='confirm-action']")?.addEventListener("click", () => {
+      state.phase = "guide";
+      state.activeStepIndex =
+        state.activeStepIndex === undefined
+          ? undefined
+          : Math.min(state.activeStepIndex + 1, workersGuideSteps.length - 1);
+      render();
+    });
+
+    shadow.querySelector("[data-action='complete-guide']")?.addEventListener("click", () => {
+      if (isWorkerGuideComplete(state.context, state.activeStepIndex)) {
+        state.phase = "complete";
+      }
       render();
     });
   };
