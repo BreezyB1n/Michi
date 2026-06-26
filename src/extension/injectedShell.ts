@@ -2,21 +2,22 @@ import { readCloudflarePageContext } from "./cloudflarePageReader";
 import { capabilities, workersGuideSteps } from "../domain/siteSkillPack";
 import {
   canCompleteWorkersGuide,
-  checkedContextWorkersGuideState,
-  completeWorkersGuideState,
-  confirmWorkersGuideActionState,
   finalWorkersGuideStepIndex,
-  nextWorkersGuideState,
   preferredTargetForContext,
   preferredTargetIdForRouteId,
-  previousWorkersGuideState,
   targetLabelForWorkersGuideTarget
 } from "../domain/workersGuideFlow";
 import type { WorkersGuideShellPhase } from "../domain/workersGuideFlow";
 import type { HostPageContext, PageTarget } from "../domain/types";
 import {
+  checkedContextFromReducer,
   chooseBackendApiFromReducer,
   chooseStaticSiteFromReducer,
+  completeGuideFromReducer,
+  confirmCriticalActionFromReducer,
+  nextStepFromReducer,
+  previousStepFromReducer,
+  resetGuideFromReducer,
   startGuideFromReducer
 } from "./extensionGuideSessionBridge";
 
@@ -124,6 +125,12 @@ const shellStyles = `
     align-items: center;
     justify-content: space-between;
     border-bottom: 1px solid rgba(23, 23, 23, 0.1);
+  }
+
+  .panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
   h2,
@@ -589,7 +596,10 @@ export const mountMichiInjectedShell = (
                     <p class="eyebrow">Guide Agent</p>
                     <h2>Michi guide</h2>
                   </div>
-                  <button type="button" data-action="minimize" aria-label="Minimize panel">Min</button>
+                  <div class="panel-actions" aria-label="Panel actions">
+                    <button type="button" data-action="reset-guide" aria-label="Reset guide">Reset</button>
+                    <button type="button" data-action="minimize" aria-label="Minimize panel">Min</button>
+                  </div>
                 </div>
                 <div class="panel-body">
                   ${panelBodyCopy(state)}
@@ -608,9 +618,10 @@ export const mountMichiInjectedShell = (
     shadow.querySelector("[data-action='check']")?.addEventListener("click", () => {
       state.open = true;
       state.context = readCloudflarePageContext(doc, location);
-      const nextGuideState = checkedContextWorkersGuideState(state.context, state);
+      const nextGuideState = checkedContextFromReducer(state, state.context);
       state.phase = nextGuideState.phase;
       state.activeStepIndex = nextGuideState.activeStepIndex;
+      state.intent = nextGuideState.intent;
       render();
     });
 
@@ -619,17 +630,30 @@ export const mountMichiInjectedShell = (
       render();
     });
 
-    shadow.querySelector("[data-action='previous-step']")?.addEventListener("click", () => {
-      const nextGuideState = previousWorkersGuideState(state);
+    shadow.querySelector("[data-action='reset-guide']")?.addEventListener("click", () => {
+      const nextGuideState = resetGuideFromReducer(state);
+      state.open = true;
+      state.context = undefined;
       state.phase = nextGuideState.phase;
       state.activeStepIndex = nextGuideState.activeStepIndex;
+      state.intent = nextGuideState.intent;
+      render();
+      shadow.querySelector<HTMLTextAreaElement>("[data-intent]")?.focus();
+    });
+
+    shadow.querySelector("[data-action='previous-step']")?.addEventListener("click", () => {
+      const nextGuideState = previousStepFromReducer(state);
+      state.phase = nextGuideState.phase;
+      state.activeStepIndex = nextGuideState.activeStepIndex;
+      state.intent = nextGuideState.intent;
       render();
     });
 
     shadow.querySelector("[data-action='next-step']")?.addEventListener("click", () => {
-      const nextGuideState = nextWorkersGuideState(state);
+      const nextGuideState = nextStepFromReducer(state);
       state.phase = nextGuideState.phase;
       state.activeStepIndex = nextGuideState.activeStepIndex;
+      state.intent = nextGuideState.intent;
       render();
     });
 
@@ -664,16 +688,21 @@ export const mountMichiInjectedShell = (
     });
 
     shadow.querySelector("[data-action='confirm-action']")?.addEventListener("click", () => {
-      const nextGuideState = confirmWorkersGuideActionState(state);
+      const nextGuideState = confirmCriticalActionFromReducer(state);
       state.phase = nextGuideState.phase;
       state.activeStepIndex = nextGuideState.activeStepIndex;
+      state.intent = nextGuideState.intent;
       render();
     });
 
     shadow.querySelector("[data-action='complete-guide']")?.addEventListener("click", () => {
-      const nextGuideState = completeWorkersGuideState(state, state.context);
+      const nextGuideState = completeGuideFromReducer(
+        state,
+        canCompleteWorkersGuide(state.context, state.activeStepIndex)
+      );
       state.phase = nextGuideState.phase;
       state.activeStepIndex = nextGuideState.activeStepIndex;
+      state.intent = nextGuideState.intent;
       render();
     });
   };

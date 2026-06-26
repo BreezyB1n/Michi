@@ -28,6 +28,26 @@ const renderDeploymentResultFixture = () => {
   `;
 };
 
+const renderStarterEditorFixture = () => {
+  document.body.innerHTML = `
+    <nav><a href="/workers-and-pages">Workers & Pages</a></nav>
+    <main>
+      <h1>Worker editor</h1>
+      <pre>export default { fetch() { return new Response("ok") } }</pre>
+    </main>
+  `;
+};
+
+const renderWorkersOverviewMissingTargetFixture = () => {
+  document.body.innerHTML = `
+    <nav><a href="/workers-and-pages">Workers & Pages</a></nav>
+    <main>
+      <h1>Workers & Pages</h1>
+      <p>The create action is still loading.</p>
+    </main>
+  `;
+};
+
 const renderUnsupportedAreaFixture = () => {
   document.body.innerHTML = `
     <nav><a href="/workers-and-pages">Workers & Pages</a></nav>
@@ -253,6 +273,52 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).toContain("Review the starter response");
   });
 
+  it("does not re-anchor pending confirmation when checking a later route", () => {
+    renderCloudflareFixture();
+    const location = {
+      href: "https://dash.cloudflare.com/example-account/workers-and-pages",
+      title: "Workers & Pages"
+    };
+    const root = mountMichiInjectedShell(document, location);
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    expect(shadow?.textContent).toContain("Confirm Create Worker");
+
+    renderStarterEditorFixture();
+    location.href = "https://dash.cloudflare.com/example-account/workers/services/edit/michi-starter";
+    location.title = "Worker editor";
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+
+    expect(shadow?.textContent).toContain("Confirm Create Worker");
+    expect(shadow?.textContent).toContain("Creates a new Cloudflare Worker resource");
+    expect(shadow?.textContent).not.toContain("Step 3 / 5");
+    expect(shadow?.textContent).not.toContain("Review the starter response");
+  });
+
+  it("shows target-missing recovery over stale confirmation copy", () => {
+    renderCloudflareFixture();
+    const location = {
+      href: "https://dash.cloudflare.com/example-account/workers-and-pages",
+      title: "Workers & Pages"
+    };
+    const root = mountMichiInjectedShell(document, location);
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    expect(shadow?.textContent).toContain("Confirm Create Worker");
+
+    renderWorkersOverviewMissingTargetFixture();
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+
+    expect(shadow?.textContent).toContain("Target missing");
+    expect(shadow?.textContent).toContain("Create Worker button");
+    expect(shadow?.textContent).not.toContain("Confirm Create Worker");
+    expect(shadow?.textContent).not.toContain("Creates a new Cloudflare Worker resource");
+  });
+
   it("completes the Workers guide with DNS follow-up after Worker URL evidence", () => {
     renderDeploymentResultFixture();
 
@@ -275,6 +341,135 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).toContain("Follow-up route");
     expect(shadow?.textContent).toContain("Cloudflare DNS");
     expect(shadow?.textContent).toContain("Domain routing");
+  });
+
+  it("resets a completed guide to intent entry and clears page evidence", () => {
+    renderDeploymentResultFixture();
+    const workerUrl = document.querySelector("a[href*='workers.dev']");
+    if (!workerUrl) {
+      throw new Error("Expected Worker URL fixture link.");
+    }
+    setElementRect(workerUrl, { x: 42, y: 88, width: 220, height: 24 });
+
+    const root = mountMichiInjectedShell(document, {
+      href: "https://dash.cloudflare.com/example-account/workers/services/view/michi-starter/deployments",
+      title: "Deployment complete"
+    });
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    click(shadow?.querySelector("[data-action='complete-guide']") ?? null);
+    expect(shadow?.textContent).toContain("Primary path complete");
+    expect(shadow?.querySelector("[data-highlight]")).not.toBeNull();
+    expect(shadow?.querySelector(".rail [data-action='reset-guide']")).toBeNull();
+
+    click(shadow?.querySelector("[data-action='reset-guide']") ?? null);
+
+    expect(shadow?.querySelector("[data-panel]")).not.toBeNull();
+    expect(shadow?.textContent).toContain("User intent");
+    expect(shadow?.textContent).toContain("Start guide");
+    expect(shadow?.textContent).not.toContain("Primary path complete");
+    expect(shadow?.textContent).not.toContain("Cloudflare DNS");
+    expect(shadow?.textContent).not.toContain("cloudflare.workers.deploy-result");
+    expect(shadow?.querySelector("[data-highlight]")).toBeNull();
+  });
+
+  it("resets an active guide step back to the intent entry", () => {
+    renderCloudflareFixture();
+
+    const root = mountMichiInjectedShell(document);
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='guide']") ?? null);
+    click(shadow?.querySelector("[data-action='start-guide']") ?? null);
+    click(shadow?.querySelector("[data-action='choose-backend-api']") ?? null);
+    expect(shadow?.textContent).toContain("Step 1 / 5");
+
+    click(shadow?.querySelector("[data-action='reset-guide']") ?? null);
+
+    expect(shadow?.textContent).toContain("User intent");
+    expect(shadow?.textContent).toContain("Start guide");
+    expect(shadow?.textContent).not.toContain("Step 1 / 5");
+    expect(shadow?.textContent).not.toContain("Find the Workers entry");
+  });
+
+  it("resets a critical confirmation back to the intent entry", () => {
+    renderCloudflareFixture();
+
+    const root = mountMichiInjectedShell(document, {
+      href: "https://dash.cloudflare.com/example-account/workers-and-pages",
+      title: "Workers & Pages"
+    });
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    expect(shadow?.textContent).toContain("Confirm Create Worker");
+
+    click(shadow?.querySelector("[data-action='reset-guide']") ?? null);
+
+    expect(shadow?.textContent).toContain("User intent");
+    expect(shadow?.textContent).toContain("Start guide");
+    expect(shadow?.textContent).not.toContain("Confirm Create Worker");
+    expect(shadow?.textContent).not.toContain("Critical write action");
+  });
+
+  it("resets a static-site acknowledgement back to the intent entry", () => {
+    renderCloudflareFixture();
+
+    const root = mountMichiInjectedShell(document);
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='guide']") ?? null);
+    click(shadow?.querySelector("[data-action='start-guide']") ?? null);
+    click(shadow?.querySelector("[data-action='choose-static-site']") ?? null);
+    expect(shadow?.textContent).toContain("Cloudflare Pages");
+
+    click(shadow?.querySelector("[data-action='reset-guide']") ?? null);
+
+    expect(shadow?.textContent).toContain("User intent");
+    expect(shadow?.textContent).toContain("Start guide");
+    expect(shadow?.textContent).not.toContain("Cloudflare Pages");
+    expect(shadow?.textContent).not.toContain("static websites and frontend projects");
+  });
+
+  it("moves focus to the intent input after reset", () => {
+    renderCloudflareFixture();
+
+    const root = mountMichiInjectedShell(document);
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='guide']") ?? null);
+    click(shadow?.querySelector("[data-action='start-guide']") ?? null);
+    const resetButton = shadow?.querySelector("[data-action='reset-guide']");
+    if (!(resetButton instanceof HTMLButtonElement)) {
+      throw new Error("Expected reset button.");
+    }
+
+    resetButton.focus();
+    click(resetButton);
+
+    expect(shadow?.activeElement).toBe(shadow?.querySelector("[data-intent]"));
+  });
+
+  it("resets recovery guidance back to the intent entry", () => {
+    renderWorkersOverviewMissingTargetFixture();
+
+    const root = mountMichiInjectedShell(document, {
+      href: "https://dash.cloudflare.com/example-account/workers-and-pages/missing-target",
+      title: "Workers & Pages"
+    });
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    expect(shadow?.textContent).toContain("Target missing");
+
+    click(shadow?.querySelector("[data-action='reset-guide']") ?? null);
+
+    expect(shadow?.textContent).toContain("User intent");
+    expect(shadow?.textContent).toContain("Start guide");
+    expect(shadow?.textContent).not.toContain("Target missing");
+    expect(shadow?.textContent).not.toContain("cloudflare.workers.overview");
   });
 
   it("does not complete from local final-step navigation without Worker URL evidence", () => {

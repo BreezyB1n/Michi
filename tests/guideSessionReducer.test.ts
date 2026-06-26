@@ -84,6 +84,24 @@ describe("Guide session reducer", () => {
     expect(confirmed.pageState.evidence).toContain("Worker draft");
   });
 
+  it("moves to the previous guide step and clamps at the first step", () => {
+    let session = backendSession();
+
+    session = guideSessionReducer(session, { type: "advance" });
+    session = guideSessionReducer(session, { type: "advance" });
+    session = guideSessionReducer(session, { type: "confirm-critical-action" });
+    expect(session.activeStepIndex).toBe(2);
+
+    const previous = guideSessionReducer(session, { type: "previous" });
+    expect(previous.phase).toBe("guide");
+    expect(previous.activeStepIndex).toBe(1);
+    expect(previous.pageState.targetElement).toBe("Create Worker button");
+
+    const first = guideSessionReducer(backendSession(), { type: "previous" });
+    expect(first.activeStepIndex).toBe(0);
+    expect(first.pageState.targetElement).toBe("Workers & Pages sidebar item");
+  });
+
   it("does not let provider context bypass a pending critical confirmation", () => {
     const provider = createCloudflareMockPageContextProvider();
     let session = backendSession();
