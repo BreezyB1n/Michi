@@ -135,6 +135,9 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).toContain("Create a Worker");
 
     click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    expect(shadow?.textContent).toContain("Confirm Create Worker");
+
+    click(shadow?.querySelector("[data-action='confirm-action']") ?? null);
     expect(shadow?.textContent).toContain("Step 3 / 5");
     expect(shadow?.textContent).toContain("Review the starter response");
     expect(shadow?.textContent).toContain("Read the starter handler and keep the default response for the demo.");
@@ -142,6 +145,30 @@ describe("Injected Michi extension shell", () => {
     click(shadow?.querySelector("[data-action='previous-step']") ?? null);
     expect(shadow?.textContent).toContain("Step 2 / 5");
     expect(shadow?.textContent).toContain("Create a Worker");
+  });
+
+  it("requires confirmation before advancing past a critical guide step", () => {
+    renderCloudflareFixture();
+
+    const root = mountMichiInjectedShell(document, {
+      href: "https://dash.cloudflare.com/example-account/workers-and-pages",
+      title: "Workers & Pages"
+    });
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    expect(shadow?.textContent).toContain("Step 2 / 5");
+    expect(shadow?.textContent).toContain("Create a Worker");
+
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    expect(shadow?.textContent).toContain("Critical write action");
+    expect(shadow?.textContent).toContain("Confirm Create Worker");
+    expect(shadow?.textContent).toContain("Creates a new Cloudflare Worker resource");
+    expect(shadow?.textContent).not.toContain("Step 3 / 5");
+
+    click(shadow?.querySelector("[data-action='confirm-action']") ?? null);
+    expect(shadow?.textContent).toContain("Step 3 / 5");
+    expect(shadow?.textContent).toContain("Review the starter response");
   });
 
   it("collapses with Escape without clearing checked context", () => {

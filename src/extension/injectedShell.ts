@@ -14,7 +14,7 @@ type ShellState = {
   context?: HostPageContext;
   activeStepIndex?: number;
   intent: string;
-  phase: "intent" | "clarify" | "guide" | "static-complete";
+  phase: "intent" | "clarify" | "guide" | "confirm" | "static-complete";
 };
 
 type RecoveryGuidance = {
@@ -359,6 +359,27 @@ const staticSiteCopy = () => `
   </section>
 `;
 
+const confirmationCopy = (activeStepIndex: number | undefined) => {
+  const step =
+    activeStepIndex === undefined || activeStepIndex < 0
+      ? undefined
+      : workersGuideSteps[activeStepIndex];
+  const criticalAction = step?.criticalAction;
+
+  if (!step || !criticalAction) {
+    return "";
+  }
+
+  return `<section class="guide-summary" aria-label="Critical action confirmation">
+    <div>
+      <p class="eyebrow">Critical write action</p>
+      <p class="step-title">Confirm ${escapeHtml(criticalAction.label)}</p>
+    </div>
+    <p>${escapeHtml(criticalAction.impact)}</p>
+    <button type="button" data-action="confirm-action" aria-label="Confirm action">Confirm action</button>
+  </section>`;
+};
+
 const guideSummaryCopy = (activeStepIndex: number | undefined) => {
   if (activeStepIndex === undefined || activeStepIndex < 0) {
     return "";
@@ -455,6 +476,10 @@ const panelBodyCopy = (state: ShellState) => {
 
   if (state.phase === "static-complete") {
     return staticSiteCopy();
+  }
+
+  if (state.phase === "confirm") {
+    return confirmationCopy(state.activeStepIndex);
   }
 
   if (state.context) {
@@ -557,10 +582,17 @@ export const mountMichiInjectedShell = (
     });
 
     shadow.querySelector("[data-action='next-step']")?.addEventListener("click", () => {
-      state.activeStepIndex =
-        state.activeStepIndex === undefined
-          ? undefined
-          : Math.min(state.activeStepIndex + 1, workersGuideSteps.length - 1);
+      const activeStep =
+        state.activeStepIndex === undefined ? undefined : workersGuideSteps[state.activeStepIndex];
+
+      if (activeStep?.criticalAction) {
+        state.phase = "confirm";
+      } else {
+        state.activeStepIndex =
+          state.activeStepIndex === undefined
+            ? undefined
+            : Math.min(state.activeStepIndex + 1, workersGuideSteps.length - 1);
+      }
       render();
     });
 
@@ -584,6 +616,15 @@ export const mountMichiInjectedShell = (
     shadow.querySelector("[data-action='choose-static-site']")?.addEventListener("click", () => {
       state.phase = "static-complete";
       state.activeStepIndex = undefined;
+      render();
+    });
+
+    shadow.querySelector("[data-action='confirm-action']")?.addEventListener("click", () => {
+      state.phase = "guide";
+      state.activeStepIndex =
+        state.activeStepIndex === undefined
+          ? undefined
+          : Math.min(state.activeStepIndex + 1, workersGuideSteps.length - 1);
       render();
     });
   };
