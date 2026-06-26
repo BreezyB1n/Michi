@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createExtensionPageContextProvider } from "../src/domain/extensionPageContextProvider";
 import type { HostPageContext } from "../src/domain/types";
 
@@ -29,6 +29,10 @@ const cloudflareContext: HostPageContext = {
 };
 
 describe("Extension page context provider", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("maps successful extension messages to HostPageContext", async () => {
     const sendMessage = vi.fn((_message, callback) => {
       callback({
@@ -69,6 +73,59 @@ describe("Extension page context provider", () => {
     );
   });
 
+  it("maps missing extension runtime to controlled unsupported context", async () => {
+    const provider = createExtensionPageContextProvider(undefined);
+
+    const context = await provider.getCurrentContext();
+
+    expect(context.routeId).toBe("cloudflare.unsupported");
+    expect(context.signals[0]).toEqual(
+      expect.objectContaining({
+        severity: "error",
+        value: "Chrome extension runtime is not available."
+      })
+    );
+  });
+
+  it("maps explicit extension error responses to controlled unsupported context", async () => {
+    const provider = createExtensionPageContextProvider({
+      sendMessage: vi.fn((_message, callback) => {
+        callback({
+          type: "MICHI_PAGE_CONTEXT_ERROR",
+          reason: "Content script not ready"
+        });
+      })
+    });
+
+    const context = await provider.getCurrentContext();
+
+    expect(context.routeId).toBe("cloudflare.unsupported");
+    expect(context.signals[0]).toEqual(
+      expect.objectContaining({
+        severity: "error",
+        value: "Content script not ready"
+      })
+    );
+  });
+
+  it("maps invalid extension responses to controlled unsupported context", async () => {
+    const provider = createExtensionPageContextProvider({
+      sendMessage: vi.fn((_message, callback) => {
+        callback({ type: "MICHI_UNKNOWN_RESPONSE" } as never);
+      })
+    });
+
+    const context = await provider.getCurrentContext();
+
+    expect(context.routeId).toBe("cloudflare.unsupported");
+    expect(context.signals[0]).toEqual(
+      expect.objectContaining({
+        severity: "error",
+        value: "Extension returned no page context."
+      })
+    );
+  });
+
   it("maps synchronous runtime exceptions to controlled unsupported context", async () => {
     const provider = createExtensionPageContextProvider({
       sendMessage: vi.fn(() => {
@@ -85,5 +142,59 @@ describe("Extension page context provider", () => {
         value: "Extension context invalidated"
       })
     );
+  });
+
+  it("maps stalled extension messages to controlled unsupported context after timeout", async () => {
+    vi.useFakeTimers();
+
+    const provider = createExtensionPageContextProvider(
+      {
+        sendMessage: vi.fn(() => undefined)
+      },
+      { timeoutMs: 25 }
+    );
+
+    const contextPromise = provider.getCurrentContext();
+    await vi.advanceTimersByTimeAsync(24);
+
+    await expect(Promise.race([contextPromise, Promise.resolve("pending")])).resolves.toBe("pending");
+
+    await vi.advanceTimersByTimeAsync(1);
+    const context = await contextPromise;
+
+    expect(context.routeId).toBe("cloudflare.unsupported");
+    expect(context.signals[0]).toEqual(
+      expect.objectContaining({
+        severity: "error",
+        value: "Extension page context request timed out after 25ms."
+      })
+    );
+  });
+
+  it("ignores late extension callbacks after timeout resolves", async () => {
+    vi.useFakeTimers();
+    let responseCallback: ((response?: { type: "MICHI_PAGE_CONTEXT"; context: HostPageContext }) => void) | undefined;
+
+    const provider = createExtensionPageContextProvider(
+      {
+        sendMessage: vi.fn((_message, callback) => {
+          responseCallback = callback;
+        })
+      },
+      { timeoutMs: 10 }
+    );
+
+    const contextPromise = provider.getCurrentContext();
+    await vi.advanceTimersByTimeAsync(10);
+
+    responseCallback?.({
+      type: "MICHI_PAGE_CONTEXT",
+      context: cloudflareContext
+    });
+
+    const context = await contextPromise;
+
+    expect(context.routeId).toBe("cloudflare.unsupported");
+    expect(context.signals[0].value).toBe("Extension page context request timed out after 10ms.");
   });
 });

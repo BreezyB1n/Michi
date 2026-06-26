@@ -17,6 +17,12 @@ export type ExtensionRuntimeLike = {
   lastError?: RuntimeLastError;
 };
 
+type ExtensionPageContextProviderOptions = {
+  timeoutMs?: number;
+};
+
+const defaultContextRequestTimeoutMs = 2_000;
+
 declare const chrome:
   | {
       runtime?: ExtensionRuntimeLike;
@@ -48,7 +54,8 @@ const getDefaultRuntime = (): ExtensionRuntimeLike | undefined =>
   typeof chrome !== "undefined" ? chrome.runtime : undefined;
 
 export const createExtensionPageContextProvider = (
-  runtime = getDefaultRuntime()
+  runtime = getDefaultRuntime(),
+  options: ExtensionPageContextProviderOptions = {}
 ): PageContextProvider => ({
   getCurrentContext: async () => {
     if (!runtime) {
@@ -56,29 +63,53 @@ export const createExtensionPageContextProvider = (
     }
 
     return new Promise<HostPageContext>((resolve) => {
+      const timeoutMs = options.timeoutMs ?? defaultContextRequestTimeoutMs;
+      let settled = false;
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      const resolveOnce = (context: HostPageContext) => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        if (timeoutId !== undefined) {
+          clearTimeout(timeoutId);
+        }
+        resolve(context);
+      };
+
+      timeoutId = setTimeout(() => {
+        resolveOnce(
+          unsupportedPageContext(
+            `Extension page context request timed out after ${timeoutMs}ms.`,
+            "error"
+          )
+        );
+      }, timeoutMs);
+
       try {
         runtime.sendMessage({ type: "MICHI_GET_PAGE_CONTEXT" }, (response) => {
           const lastError = runtime.lastError;
 
           if (lastError?.message) {
-            resolve(unsupportedPageContext(lastError.message, "error"));
+            resolveOnce(unsupportedPageContext(lastError.message, "error"));
             return;
           }
 
           if (isPageContextMessage(response)) {
-            resolve(response.context);
+            resolveOnce(response.context);
             return;
           }
 
           if (response?.type === "MICHI_PAGE_CONTEXT_ERROR") {
-            resolve(unsupportedPageContext(response.reason, "error"));
+            resolveOnce(unsupportedPageContext(response.reason, "error"));
             return;
           }
 
-          resolve(unsupportedPageContext("Extension returned no page context.", "error"));
+          resolveOnce(unsupportedPageContext("Extension returned no page context.", "error"));
         });
       } catch (error) {
-        resolve(
+        resolveOnce(
           unsupportedPageContext(
             error instanceof Error ? error.message : "Extension context request failed.",
             "error"
