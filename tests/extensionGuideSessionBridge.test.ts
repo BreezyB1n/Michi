@@ -247,6 +247,186 @@ describe("Extension guide session bridge", () => {
     });
   });
 
+  it("infers the Pages guide from a checked Pages route before path selection", () => {
+    expect(
+      checkedContextFromReducer(
+        {
+          open: true,
+          intent: "Publish a static site.",
+          phase: "intent"
+        },
+        context({
+          url: "https://dash.cloudflare.com/example-account/pages",
+          title: "Pages",
+          locationLabel: "Pages / Overview",
+          routeId: "cloudflare.pages.overview",
+          targets: [
+            target({
+              id: "create-pages-button",
+              label: "Create Pages project button",
+              role: "button",
+              text: "Create Pages project",
+              confidence: "high"
+            })
+          ]
+        })
+      )
+    ).toEqual({
+      open: true,
+      intent: "Publish a static site.",
+      phase: "guide",
+      activeStepIndex: 1,
+      serviceKind: "static-site"
+    });
+  });
+
+  it("keeps a selected Pages guide in recovery when checking a Workers route", () => {
+    expect(
+      checkedContextFromReducer(
+        {
+          open: true,
+          intent: "Publish a static site.",
+          phase: "guide",
+          serviceKind: "static-site",
+          activeStepIndex: 1
+        },
+        context()
+      )
+    ).toEqual({
+      open: true,
+      intent: "Publish a static site.",
+      phase: "recovery",
+      activeStepIndex: 1,
+      serviceKind: "static-site"
+    });
+  });
+
+  it("keeps a selected Pages confirmation in recovery when checking a Workers route", () => {
+    expect(
+      checkedContextFromReducer(
+        {
+          open: true,
+          intent: "Publish a static site.",
+          phase: "confirm",
+          serviceKind: "static-site",
+          activeStepIndex: 3
+        },
+        context()
+      )
+    ).toEqual({
+      open: true,
+      intent: "Publish a static site.",
+      phase: "recovery",
+      activeStepIndex: 3,
+      serviceKind: "static-site"
+    });
+  });
+
+  it("keeps a selected Workers confirmation in recovery when checking a Pages route", () => {
+    expect(
+      checkedContextFromReducer(
+        {
+          open: true,
+          intent: "Build a JSON API for customers.",
+          phase: "confirm",
+          serviceKind: "backend-api",
+          activeStepIndex: 3
+        },
+        context({
+          url: "https://dash.cloudflare.com/example-account/pages/deploy-review",
+          title: "Deploy Pages project",
+          locationLabel: "Pages / Deployment review",
+          routeId: "cloudflare.pages.deploy-review",
+          targets: [
+            target({
+              id: "deploy-pages-button",
+              label: "Deploy Pages button",
+              role: "button",
+              text: "Deploy Pages project",
+              confidence: "high"
+            })
+          ]
+        })
+      )
+    ).toEqual({
+      open: true,
+      intent: "Build a JSON API for customers.",
+      phase: "recovery",
+      activeStepIndex: 3,
+      serviceKind: "backend-api"
+    });
+  });
+
+  it("returns from route-mismatch recovery to guide when checking the selected path", () => {
+    expect(
+      checkedContextFromReducer(
+        {
+          open: true,
+          intent: "Publish a static site.",
+          phase: "recovery",
+          serviceKind: "static-site",
+          activeStepIndex: 1
+        },
+        context({
+          url: "https://dash.cloudflare.com/example-account/pages",
+          title: "Pages",
+          locationLabel: "Pages / Overview",
+          routeId: "cloudflare.pages.overview",
+          targets: [
+            target({
+              id: "create-pages-button",
+              label: "Create Pages project button",
+              role: "button",
+              text: "Create Pages project",
+              confidence: "high"
+            })
+          ]
+        })
+      )
+    ).toEqual({
+      open: true,
+      intent: "Publish a static site.",
+      phase: "guide",
+      activeStepIndex: 1,
+      serviceKind: "static-site"
+    });
+  });
+
+  it("keeps a selected Workers guide in recovery when checking a Pages route", () => {
+    expect(
+      checkedContextFromReducer(
+        {
+          open: true,
+          intent: "Build a JSON API for customers.",
+          phase: "guide",
+          serviceKind: "backend-api",
+          activeStepIndex: 1
+        },
+        context({
+          url: "https://dash.cloudflare.com/example-account/pages",
+          title: "Pages",
+          locationLabel: "Pages / Overview",
+          routeId: "cloudflare.pages.overview",
+          targets: [
+            target({
+              id: "create-pages-button",
+              label: "Create Pages project button",
+              role: "button",
+              text: "Create Pages project",
+              confidence: "high"
+            })
+          ]
+        })
+      )
+    ).toEqual({
+      open: true,
+      intent: "Build a JSON API for customers.",
+      phase: "recovery",
+      activeStepIndex: 1,
+      serviceKind: "backend-api"
+    });
+  });
+
   it("does not re-anchor a pending critical confirmation to a later checked route", () => {
     expect(
       checkedContextFromReducer(

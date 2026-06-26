@@ -264,6 +264,77 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).toContain("Publishes the Pages project to a reachable URL");
   });
 
+  it("shows route-mismatch recovery when a Pages guide checks a Workers route", () => {
+    renderPagesOverviewFixture();
+
+    const location = {
+      href: "https://dash.cloudflare.com/example-account/pages",
+      title: "Pages"
+    };
+    const root = mountMichiInjectedShell(document, location);
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='guide']") ?? null);
+    click(shadow?.querySelector("[data-action='start-guide']") ?? null);
+    click(shadow?.querySelector("[data-action='choose-static-site']") ?? null);
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    expect(shadow?.textContent).toContain("Create a Pages project");
+
+    renderCloudflareFixture();
+    const createWorkerButton = document.querySelector("button");
+    if (!createWorkerButton) {
+      throw new Error("Expected Worker create button.");
+    }
+    setElementRect(createWorkerButton, { x: 32, y: 88, width: 144, height: 42 });
+    location.href = "https://dash.cloudflare.com/example-account/workers-and-pages";
+    location.title = "Workers & Pages";
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+
+    expect(shadow?.textContent).toContain("Route mismatch");
+    expect(shadow?.textContent).toContain("active guide is Cloudflare Pages");
+    expect(shadow?.textContent).toContain("current page belongs to Cloudflare Workers");
+    expect(shadow?.textContent).toContain("reset and choose the other path");
+    expect(shadow?.querySelector("[data-highlight]")).toBeNull();
+    expect(shadow?.textContent).not.toContain("Create a Worker");
+
+    renderPagesDeployReviewFixture();
+    location.href = "https://dash.cloudflare.com/example-account/pages/deploy-review";
+    location.title = "Deploy Pages project";
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+
+    expect(shadow?.textContent).toContain("Step 4 / 5");
+    expect(shadow?.textContent).toContain("Deploy the Pages project");
+    expect(shadow?.textContent).not.toContain("Route mismatch");
+  });
+
+  it("shows route-mismatch recovery over stale Pages confirmation copy", () => {
+    renderPagesDeployReviewFixture();
+
+    const location = {
+      href: "https://dash.cloudflare.com/example-account/pages/deploy-review",
+      title: "Deploy Pages project"
+    };
+    const root = mountMichiInjectedShell(document, location);
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='guide']") ?? null);
+    click(shadow?.querySelector("[data-action='start-guide']") ?? null);
+    click(shadow?.querySelector("[data-action='choose-static-site']") ?? null);
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    expect(shadow?.textContent).toContain("Confirm Deploy Pages project");
+
+    renderCloudflareFixture();
+    location.href = "https://dash.cloudflare.com/example-account/workers-and-pages";
+    location.title = "Workers & Pages";
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+
+    expect(shadow?.textContent).toContain("Route mismatch");
+    expect(shadow?.textContent).toContain("active guide is Cloudflare Pages");
+    expect(shadow?.textContent).not.toContain("Confirm Deploy Pages project");
+    expect(shadow?.textContent).not.toContain("Publishes the Pages project to a reachable URL");
+  });
+
   it("completes the Pages guide with DNS follow-up after Pages URL evidence", () => {
     renderPagesDeployResultFixture();
 
@@ -732,6 +803,30 @@ describe("Injected Michi extension shell", () => {
 
     expect(guidance?.title).toBe("Unsupported page");
     expect(guidance?.recoveryAction).toContain("Cloudflare dashboard");
+  });
+
+  it("describes route mismatch between the active guide and checked page", () => {
+    const guidance = recoveryGuidanceForContext(
+      hostContext({
+        routeId: "cloudflare.pages.overview",
+        locationLabel: "Pages / Overview",
+        targets: [
+          {
+            id: "create-pages-button",
+            label: "Create Pages project button",
+            role: "button",
+            text: "Create Pages project",
+            confidence: "high"
+          }
+        ]
+      }),
+      "backend-api"
+    );
+
+    expect(guidance?.title).toBe("Route mismatch");
+    expect(guidance?.reason).toContain("active guide is Cloudflare Workers");
+    expect(guidance?.reason).toContain("current page belongs to Cloudflare Pages");
+    expect(guidance?.recoveryAction).toContain("reset and choose the other path");
   });
 
   it("shows unsupported recovery after a stale critical confirmation phase", () => {

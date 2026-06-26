@@ -269,6 +269,11 @@ const escapeHtml = (value: string) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 
+const capabilityNameForServiceKind = (serviceKind: ServiceKind) =>
+  serviceKind === "static-site"
+    ? capabilities["cloudflare-pages"].name
+    : capabilities["cloudflare-workers"].name;
+
 export const recoveryGuidanceForContext = (
   context: HostPageContext,
   serviceKind: ServiceKind = serviceKindForRouteId(context.routeId) ?? "backend-api"
@@ -278,6 +283,18 @@ export const recoveryGuidanceForContext = (
       title: "Unsupported page",
       reason: "Michi only reads supported Cloudflare dashboard pages in this milestone.",
       recoveryAction: "Open the Cloudflare dashboard, navigate to Workers & Pages, then click Check page again."
+    };
+  }
+
+  const detectedServiceKind = serviceKindForRouteId(context.routeId);
+  if (detectedServiceKind && detectedServiceKind !== serviceKind) {
+    return {
+      title: "Route mismatch",
+      reason: `The active guide is ${capabilityNameForServiceKind(
+        serviceKind
+      )}, but the current page belongs to ${capabilityNameForServiceKind(detectedServiceKind)}.`,
+      recoveryAction:
+        "Return to the selected guide path's expected Cloudflare page, or reset and choose the other path."
     };
   }
 
@@ -313,10 +330,18 @@ export const highlightStyleForTarget = (target: PageTarget | undefined) => {
   ].join("; ");
 };
 
-const highlightCopy = (context: HostPageContext) => {
+const highlightCopy = (
+  context: HostPageContext,
+  serviceKind: ServiceKind | undefined
+) => {
+  const detectedServiceKind = serviceKindForRouteId(context.routeId);
+  if (serviceKind && detectedServiceKind && serviceKind !== detectedServiceKind) {
+    return "";
+  }
+
   const target = preferredTargetForContextAndServiceKind(
     context,
-    serviceKindForRouteId(context.routeId) ?? "backend-api"
+    serviceKind ?? detectedServiceKind ?? "backend-api"
   );
   const style = highlightStyleForTarget(target);
 
@@ -565,10 +590,7 @@ const panelBodyCopy = (state: ShellState) => {
 
 export const mountMichiInjectedShell = (
   doc: Document = document,
-  location: ShellLocation = {
-    href: window.location.href,
-    title: document.title
-  }
+  location?: ShellLocation
 ) => {
   const existing = doc.getElementById(rootId);
 
@@ -587,6 +609,11 @@ export const mountMichiInjectedShell = (
     phase: "intent"
   };
   const ownerWindow = doc.defaultView ?? window;
+  const currentLocation = (): ShellLocation =>
+    location ?? {
+      href: ownerWindow.location.href,
+      title: doc.title
+    };
   const applyGuideState = (nextGuideState: {
     activeStepIndex?: number;
     intent: string;
@@ -613,7 +640,7 @@ export const mountMichiInjectedShell = (
       return;
     }
 
-    state.context = readCloudflarePageContext(doc, location);
+    state.context = readCloudflarePageContext(doc, currentLocation());
     render();
   };
 
@@ -621,7 +648,7 @@ export const mountMichiInjectedShell = (
     shadow.innerHTML = `
       <style>${shellStyles}</style>
       <div class="shell" aria-label="Michi injected shell">
-        ${state.context ? highlightCopy(state.context) : ""}
+        ${state.context ? highlightCopy(state.context, state.serviceKind) : ""}
         <div class="rail" aria-label="Michi rail">
           <button type="button" data-action="guide" aria-label="Guide">Guide</button>
           <button type="button" data-action="check" aria-label="Check page">Check page</button>
@@ -655,7 +682,7 @@ export const mountMichiInjectedShell = (
 
     shadow.querySelector("[data-action='check']")?.addEventListener("click", () => {
       state.open = true;
-      state.context = readCloudflarePageContext(doc, location);
+      state.context = readCloudflarePageContext(doc, currentLocation());
       const nextGuideState = checkedContextFromReducer(state, state.context);
       applyGuideState(nextGuideState);
       render();

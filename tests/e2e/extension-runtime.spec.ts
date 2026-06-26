@@ -294,10 +294,35 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByText("Create Pages project button")).toBeVisible();
     await expect(page.getByLabel("Highlighted target: Create Pages project button")).toBeVisible();
 
-    await page.goto("https://dash.cloudflare.com/example-account/pages/deploy-review");
-    await expect(page.getByLabel("Michi rail")).toBeVisible();
-    await page.getByRole("button", { name: "Guide" }).click();
+    await page.evaluate(() => {
+      window.history.pushState({}, "", "/example-account/workers-and-pages");
+      document.body.innerHTML = `
+        <nav><a href="/workers-and-pages">Workers & Pages</a></nav>
+        <main>
+          <h1>Workers & Pages</h1>
+          <button>Create Worker</button>
+        </main>
+      `;
+    });
     await page.getByRole("button", { name: "Check page" }).click();
+    await expect(page.getByText("Route mismatch")).toBeVisible();
+    await expect(page.getByText(/active guide is Cloudflare Pages/)).toBeVisible();
+    await expect(page.getByText(/current page belongs to Cloudflare Workers/)).toBeVisible();
+    await expect(page.getByLabel("Highlighted target: Create Worker button")).toHaveCount(0);
+
+    await page.evaluate(() => {
+      window.history.pushState({}, "", "/example-account/pages/deploy-review");
+      document.body.innerHTML = `
+        <nav><a href="/workers-and-pages">Workers & Pages</a></nav>
+        <main>
+          <h1>Deploy Pages project</h1>
+          <p>Review the Pages deployment before publishing.</p>
+          <button>Deploy Pages project</button>
+        </main>
+      `;
+    });
+    await page.getByRole("button", { name: "Check page" }).click();
+    await expect(page.getByText("Route mismatch")).toHaveCount(0);
     await expect(page.getByText("cloudflare.pages.deploy-review")).toBeVisible();
     await expect(page.getByText("Step 4 / 5")).toBeVisible();
     await expect(page.getByText("Deploy the Pages project", { exact: true })).toBeVisible();

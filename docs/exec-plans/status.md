@@ -2,7 +2,7 @@
 
 ## Current State
 
-Michi has a verified local React workbench and a Cloudflare-only unpacked extension runtime. The current extension surface is an injected, collapsed-by-default shell with deterministic Workers guide behavior, page context checks, target highlights, recovery states, critical-action confirmation, completion follow-up, permission guards, runtime-error handling, and scroll/resize highlight refresh.
+Michi has a verified local React workbench and a Cloudflare-only unpacked extension runtime. The current extension surface is an injected, collapsed-by-default shell with deterministic Workers and Pages guide behavior, page context checks, target highlights, recovery states, critical-action confirmation, completion follow-up, permission guards, runtime-error handling, route-state guards, and scroll/resize highlight refresh.
 
 ## Completed Milestones
 
@@ -27,6 +27,7 @@ Michi has a verified local React workbench and a Cloudflare-only unpacked extens
 | Extension reducer page-check bridge | `completed/extension-reducer-page-check-bridge.md` | Injected-shell page checks now project through the shared guide-session reducer while preserving page anchoring and critical confirmation safety. |
 | Extension reducer reset bridge | `completed/extension-reducer-reset-bridge.md` | Injected-shell Reset now projects through the shared guide-session reducer, clears shell-only page evidence, and keeps the rail compact. |
 | Cloudflare Pages guide path | `completed/cloudflare-pages-guide-path.md` | Static-site intent now routes to a deterministic Pages guide path across the React workbench and injected extension shell, including Pages page anchoring, confirmation, completion evidence, and DNS follow-up. |
+| Extension route-state guard | `completed/extension-route-state-guard.md` | Injected-shell Check page now preserves the selected Workers/Pages guide path, sends cross-path checks to recovery, suppresses wrong-path highlights, and reads SPA-style URL changes dynamically. |
 
 ## Active Work
 
@@ -38,7 +39,7 @@ Michi has a verified local React workbench and a Cloudflare-only unpacked extens
 
 ## Recommended Next Direction
 
-The next product slice should introduce an extension-side route/state guard that preserves guide intent when users navigate between Pages and Workers contexts, then add a lightweight PR/branch freshness checklist to the execution workflow.
+The next product slice should add a lightweight PR/branch freshness checklist to the execution workflow, then start separating extension runtime concerns from demo-only shell fixtures.
 
 ## Verification Baseline
 
