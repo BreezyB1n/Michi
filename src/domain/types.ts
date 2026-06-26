@@ -22,7 +22,11 @@ export type GuideStep = {
 };
 
 export type BlockingState = {
-  id: "not-signed-in" | "permission-missing" | "page-drift";
+  id:
+    | "not-signed-in"
+    | "permission-missing"
+    | "page-drift"
+    | "extension-runtime-unavailable";
   title: string;
   reason: string;
   recoveryAction: string;

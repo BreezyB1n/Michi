@@ -1,8 +1,45 @@
 import { chromium, expect, test } from "@playwright/test";
-import { existsSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const extensionPath = path.resolve(process.cwd(), "dist-extension");
+
+const installRuntimeProbe = () => {
+  writeFileSync(
+    path.join(extensionPath, "runtime-probe.html"),
+    `
+      <!doctype html>
+      <html>
+        <head><title>Michi runtime probe</title></head>
+        <body>
+          <main>
+            <h1>Michi runtime probe</h1>
+            <pre id="response">pending</pre>
+          </main>
+          <script src="runtime-probe.js"></script>
+        </body>
+      </html>
+    `
+  );
+  writeFileSync(
+    path.join(extensionPath, "runtime-probe.js"),
+    `
+      const responseElement = document.getElementById("response");
+      chrome.runtime.sendMessage({ type: "MICHI_GET_PAGE_CONTEXT" })
+        .then((response) => {
+          responseElement.textContent = JSON.stringify(response);
+          responseElement.dataset.ready = "true";
+        })
+        .catch((error) => {
+          responseElement.textContent = JSON.stringify({
+            type: "MICHI_PROBE_RUNTIME_ERROR",
+            reason: error instanceof Error ? error.message : "Probe could not reach runtime."
+          });
+          responseElement.dataset.ready = "true";
+        });
+    `
+  );
+};
 
 declare const chrome: {
   tabs: {
@@ -20,6 +57,7 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     !existsSync(path.join(extensionPath, "manifest.json")),
     "Run npm run build:extension before the extension runtime smoke."
   );
+  installRuntimeProbe();
 
   const userDataDir = testInfo.outputPath("extension-user-data");
   const context = await chromium.launchPersistentContext(userDataDir, {
@@ -45,13 +83,29 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
       const isStarterEditorFixture = requestUrl.includes("/starter-editor");
       const isDeployReviewFixture = requestUrl.includes("/deploy-review");
       const isDeployResultFixture = requestUrl.includes("/deploy-result");
+      const isNestedScrollFixture = requestUrl.includes("/nested-scroll");
 
       await route.fulfill({
         contentType: "text/html",
         body: `
           <!doctype html>
           <html>
-            <head><title>Workers & Pages</title></head>
+            <head>
+              <title>Workers & Pages</title>
+              <style>
+                body { min-height: 1800px; }
+                main { padding-top: 360px; }
+                [data-scroll-container] {
+                  height: 260px;
+                  overflow: auto;
+                  border: 1px solid #ddd;
+                }
+                [data-scroll-spacer] {
+                  height: 520px;
+                  padding-top: 360px;
+                }
+              </style>
+            </head>
             <body>
               ${isMissingTargetFixture ? "" : '<nav><a href="/workers-and-pages">Workers & Pages</a></nav>'}
               <main>
@@ -70,6 +124,13 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
                       : isUnsupportedAreaFixture
                         ? `<h1>Analytics</h1>
                            <p>Traffic insights for this account.</p>`
+                    : isNestedScrollFixture
+                      ? `<section data-scroll-container>
+                           <div data-scroll-spacer>
+                             <h1>Workers & Pages</h1>
+                             <button>Create Worker</button>
+                           </div>
+                         </section>`
                     : `<h1>Workers & Pages</h1>
                        ${isMissingTargetFixture ? "<p>Loading actions...</p>" : "<button>Create Worker</button>"}`
                 }
@@ -105,6 +166,17 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByText("Choose Create Worker and keep the generated starter service.")).toBeVisible();
     await expect(page.getByText("A Worker draft exists and the editor or setup view is visible.")).toBeVisible();
     await expect(page.getByLabel("Highlighted target: Create Worker button")).toBeVisible();
+    const highlightBeforeScroll = await page
+      .getByLabel("Highlighted target: Create Worker button")
+      .boundingBox();
+    expect(highlightBeforeScroll?.y).toBeGreaterThan(300);
+    await page.evaluate(() => window.scrollTo(0, 120));
+    await expect
+      .poll(async () => {
+        const box = await page.getByLabel("Highlighted target: Create Worker button").boundingBox();
+        return box?.y ?? Number.POSITIVE_INFINITY;
+      }, { message: "Expected highlight to stay visible after window scroll." })
+      .toBeLessThan((highlightBeforeScroll?.y ?? 0) - 80);
     await page.getByRole("button", { name: "Next step" }).click();
     await expect(page.getByText("Critical write action")).toBeVisible();
     await expect(page.getByText("Confirm Create Worker")).toBeVisible();
@@ -184,6 +256,27 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByText("Worker URL verified")).toBeVisible();
     await expect(page.getByText("Cloudflare DNS")).toBeVisible();
 
+    await page.goto("https://dash.cloudflare.com/example-account/workers-and-pages/nested-scroll");
+    await expect(page.getByLabel("Michi rail")).toBeVisible();
+    await page.getByRole("button", { name: "Guide" }).click();
+    await page.getByRole("button", { name: "Check page" }).click();
+    await expect(page.getByLabel("Highlighted target: Create Worker button")).toBeVisible();
+    const highlightBeforeNestedScroll = await page
+      .getByLabel("Highlighted target: Create Worker button")
+      .boundingBox();
+    expect(highlightBeforeNestedScroll?.y).toBeGreaterThan(300);
+    await page.locator("[data-scroll-container]").evaluate((element) => {
+      element.scrollTop = 120;
+      element.dispatchEvent(new Event("scroll"));
+    });
+    await expect(page.getByLabel("Highlighted target: Create Worker button")).toBeVisible();
+    await expect
+      .poll(async () => {
+        const box = await page.getByLabel("Highlighted target: Create Worker button").boundingBox();
+        return box?.y ?? Number.POSITIVE_INFINITY;
+      }, { message: "Expected highlight to stay visible after nested scroll." })
+      .toBeLessThan((highlightBeforeNestedScroll?.y ?? 0) - 80);
+
     await page.goto("https://dash.cloudflare.com/example-account/workers-and-pages/missing-target");
     await expect(page.getByLabel("Michi rail")).toBeVisible();
     await page.getByRole("button", { name: "Guide" }).click();
@@ -202,6 +295,22 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(unsupportedPanel.getByText(/Workers & Pages/)).toBeVisible();
     await expect(page.getByText("Step 1 / 5")).toHaveCount(0);
     await expect(page.getByLabel(/Highlighted target/)).toHaveCount(0);
+
+    const extensionId = new URL(serviceWorker.url()).host;
+    const probePage = await context.newPage();
+    await probePage.goto(`chrome-extension://${extensionId}/runtime-probe.html`);
+    await expect(probePage.getByRole("heading", { name: "Michi runtime probe" })).toBeVisible();
+    const responseElement = probePage.locator("#response");
+    await expect(responseElement).toHaveAttribute("data-ready", "true");
+    const failureResponse = JSON.parse((await responseElement.textContent()) ?? "null");
+
+    expect(failureResponse).toEqual(
+      expect.objectContaining({
+        type: "MICHI_PAGE_CONTEXT_ERROR",
+        reason: expect.stringMatching(/receiving end|Could not establish connection|content script/i)
+      })
+    );
+    await probePage.close();
   } finally {
     await context.close();
   }

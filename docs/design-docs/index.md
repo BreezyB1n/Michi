@@ -5,3 +5,6 @@ Design docs explain why Michi behaves the way it does. Product behavior should b
 ## Current Docs
 
 - `core-beliefs.md`
+- `workers-guide-flow-shared-decision.md`
+- `shared-guide-session-reducer-decision.md`
+- `extension-reducer-intent-bridge-decision.md`

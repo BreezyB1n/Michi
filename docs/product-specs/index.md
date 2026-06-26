@@ -20,3 +20,8 @@ Product specs are the source of truth for what Michi should build.
 - `extension-injected-unsupported-hardening.md`
 - `extension-permission-guard.md`
 - `extension-computed-dynamic-import-guard.md`
+- `extension-runtime-error-surface.md`
+- `extension-highlight-reposition.md`
+- `workers-guide-flow-shared.md`
+- `shared-guide-session-reducer.md`
+- `extension-reducer-intent-bridge.md`
