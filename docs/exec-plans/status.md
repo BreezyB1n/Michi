@@ -20,6 +20,7 @@ Michi has a verified local React workbench and a Cloudflare-only unpacked extens
 | Computed dynamic import guard | `completed/extension-computed-dynamic-import-guard.md` | Extension source graph rejects unscannable computed dynamic imports. |
 | Runtime error surface | `completed/extension-runtime-error-surface.md` | Provider/runtime failures map to explicit recovery state and service-worker error coverage. |
 | Highlight reposition | `completed/extension-highlight-reposition.md` | Target highlight stays aligned after window and nested-container scroll plus resize. |
+| Workers guide flow shared state | `completed/workers-guide-flow-shared.md` | Injected-shell Workers guide flow decisions now live in shared domain helpers with focused unit coverage. |
 
 ## Active Work
 
@@ -31,7 +32,7 @@ No active execution plan is currently open.
 
 ## Recommended Next Direction
 
-The next product slice should consolidate duplicated guide-state logic between the React workbench and vanilla injected shell. The extension shell has grown from a simple page-context proof into a local guide surface, so the next decision should evaluate whether to extract shared guide-session reducers/helpers or package a React-based extension panel.
+The next product slice should decide whether React workbench `GuideCore` should adopt the shared Workers flow helper, or whether Michi is ready to package a React-based extension panel. The safer next step is a shared guide-session reducer that both surfaces can call before changing the extension UI technology.
 
 ## Verification Baseline
 
