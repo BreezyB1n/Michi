@@ -23,10 +23,18 @@ type BlockedApiReference = {
   snippet: string;
 };
 
+type DynamicImportIssue = {
+  file: string;
+  line: number;
+  snippet: string;
+  reason: string;
+};
+
 type ExtensionPermissionReport = {
   manifest: ExtensionManifest;
   scannedFiles: string[];
   blockedApiReferences: BlockedApiReference[];
+  dynamicImportIssues: DynamicImportIssue[];
 };
 
 type ExtensionPermissionReportOptions = {
@@ -42,8 +50,23 @@ const defaultEntryFiles = [
 ];
 const extensionSourceExtensions = [".ts", ".tsx", ".js", ".jsx"];
 
-const relativeImportSpecifiers = (sourceFile: ts.SourceFile) => {
+const lineForNode = (sourceFile: ts.SourceFile, node: ts.Node) =>
+  sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
+
+const dynamicImportIssue = (
+  sourceFile: ts.SourceFile,
+  node: ts.Node,
+  file: string
+): DynamicImportIssue => ({
+  file: path.relative(process.cwd(), file),
+  line: lineForNode(sourceFile, node),
+  snippet: node.getText(sourceFile).replace(/\s+/g, " "),
+  reason: "dynamic import must use a literal relative specifier"
+});
+
+const relativeImportSpecifiers = (file: string, sourceFile: ts.SourceFile) => {
   const specifiers: string[] = [];
+  const dynamicImportIssues: DynamicImportIssue[] = [];
 
   const visit = (node: ts.Node) => {
     if (
@@ -65,12 +88,15 @@ const relativeImportSpecifiers = (sourceFile: ts.SourceFile) => {
 
     if (
       ts.isCallExpression(node) &&
-      node.expression.kind === ts.SyntaxKind.ImportKeyword &&
-      node.arguments.length === 1 &&
-      ts.isStringLiteral(node.arguments[0]) &&
-      node.arguments[0].text.startsWith(".")
+      node.expression.kind === ts.SyntaxKind.ImportKeyword
     ) {
-      specifiers.push(node.arguments[0].text);
+      const [specifier] = node.arguments;
+
+      if (node.arguments.length === 1 && ts.isStringLiteral(specifier) && specifier.text.startsWith(".")) {
+        specifiers.push(specifier.text);
+      } else {
+        dynamicImportIssues.push(dynamicImportIssue(sourceFile, node, file));
+      }
     }
 
     ts.forEachChild(node, visit);
@@ -78,7 +104,7 @@ const relativeImportSpecifiers = (sourceFile: ts.SourceFile) => {
 
   visit(sourceFile);
 
-  return specifiers;
+  return { specifiers, dynamicImportIssues };
 };
 
 const resolveRelativeSourceFile = (fromFile: string, specifier: string) => {
@@ -95,6 +121,7 @@ const resolveRelativeSourceFile = (fromFile: string, specifier: string) => {
 const extensionSourceGraphFiles = (rootDir: string, entryFiles: string[]) => {
   const visited = new Set<string>();
   const files: string[] = [];
+  const dynamicImportIssues: DynamicImportIssue[] = [];
 
   const visitFile = (file: string) => {
     const absoluteFile = path.resolve(rootDir, file);
@@ -108,8 +135,10 @@ const extensionSourceGraphFiles = (rootDir: string, entryFiles: string[]) => {
 
     const sourceText = readFileSync(absoluteFile, "utf8");
     const sourceFile = ts.createSourceFile(absoluteFile, sourceText, ts.ScriptTarget.Latest, true);
+    const importAnalysis = relativeImportSpecifiers(absoluteFile, sourceFile);
+    dynamicImportIssues.push(...importAnalysis.dynamicImportIssues);
 
-    for (const specifier of relativeImportSpecifiers(sourceFile)) {
+    for (const specifier of importAnalysis.specifiers) {
       const resolved = resolveRelativeSourceFile(absoluteFile, specifier);
 
       if (resolved) {
@@ -119,11 +148,8 @@ const extensionSourceGraphFiles = (rootDir: string, entryFiles: string[]) => {
   };
 
   entryFiles.forEach(visitFile);
-  return files;
+  return { files, dynamicImportIssues };
 };
-
-const lineForNode = (sourceFile: ts.SourceFile, node: ts.Node) =>
-  sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
 
 const blockedReference = (
   sourceFile: ts.SourceFile,
@@ -273,11 +299,15 @@ export const createExtensionPermissionReport = (
   const entryFiles = options.entryFiles ?? defaultEntryFiles;
   const absoluteManifestPath = path.resolve(rootDir, options.manifestPath ?? defaultManifestPath);
   const manifest = JSON.parse(readFileSync(absoluteManifestPath, "utf8")) as ExtensionManifest;
-  const sourceFiles = extensionSourceGraphFiles(rootDir, entryFiles);
+  const sourceGraph = extensionSourceGraphFiles(rootDir, entryFiles);
 
   return {
     manifest,
-    scannedFiles: sourceFiles.map((file) => path.relative(rootDir, file)),
-    blockedApiReferences: sourceFiles.flatMap(blockedApiReferencesInFile)
+    scannedFiles: sourceGraph.files.map((file) => path.relative(rootDir, file)),
+    blockedApiReferences: sourceGraph.files.flatMap(blockedApiReferencesInFile),
+    dynamicImportIssues: sourceGraph.dynamicImportIssues.map((issue) => ({
+      ...issue,
+      file: path.relative(rootDir, path.resolve(process.cwd(), issue.file))
+    }))
   };
 };

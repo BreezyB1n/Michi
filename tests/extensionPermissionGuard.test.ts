@@ -24,6 +24,7 @@ describe("extension permission guard", () => {
 
   it("keeps extension runtime source free of persistent, network, and scripting APIs", () => {
     expect(report.blockedApiReferences).toEqual([]);
+    expect(report.dynamicImportIssues).toEqual([]);
   });
 
   it("scans the extension entry dependency graph and blocks forbidden API spellings", () => {
@@ -105,6 +106,56 @@ describe("extension permission guard", () => {
       expect(fixtureReport.blockedApiReferences.map((reference) => reference.snippet).join("\n")).not.toContain(
         "safeText"
       );
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true });
+    }
+  });
+
+  it("reports computed dynamic imports that cannot be scanned", () => {
+    const rootDir = mkdtempSync(path.join(tmpdir(), "michi-computed-import-guard-"));
+
+    try {
+      writeFileSync(
+        path.join(rootDir, "manifest.json"),
+        JSON.stringify({
+          manifest_version: 3,
+          permissions: ["activeTab"],
+          content_scripts: [
+            {
+              matches: ["https://dash.cloudflare.com/*"],
+              js: ["content-script.js"],
+              run_at: "document_idle"
+            }
+          ]
+        })
+      );
+      writeFileSync(
+        path.join(rootDir, "contentScript.ts"),
+        `
+          const moduleName = "network";
+          void import("./shared/" + moduleName);
+          void import("./shared/" + moduleName, {});
+        `
+      );
+
+      const fixtureReport = createExtensionPermissionReport({
+        rootDir,
+        manifestPath: "manifest.json",
+        entryFiles: ["contentScript.ts"]
+      });
+
+      expect(fixtureReport.dynamicImportIssues).toEqual([
+        expect.objectContaining({
+          file: "contentScript.ts",
+          reason: "dynamic import must use a literal relative specifier",
+          snippet: expect.stringContaining('import("./shared/" + moduleName)')
+        }),
+        expect.objectContaining({
+          file: "contentScript.ts",
+          reason: "dynamic import must use a literal relative specifier",
+          snippet: expect.stringContaining('import("./shared/" + moduleName, {})')
+        })
+      ]);
     } finally {
       rmSync(rootDir, { recursive: true, force: true });
     }
