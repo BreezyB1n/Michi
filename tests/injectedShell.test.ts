@@ -158,6 +158,24 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).toContain("Open the Workers & Pages area from the Cloudflare account sidebar.");
   });
 
+  it("routes static website clarification to Cloudflare Pages copy", () => {
+    renderCloudflareFixture();
+
+    const root = mountMichiInjectedShell(document);
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='guide']") ?? null);
+    input(shadow?.querySelector("[data-intent]") ?? null, "Publish a landing page.");
+    click(shadow?.querySelector("[data-action='start-guide']") ?? null);
+    click(shadow?.querySelector("[data-action='choose-static-site']") ?? null);
+
+    expect(shadow?.textContent).toContain("Cloudflare Pages");
+    expect(shadow?.textContent).toContain("Hosting");
+    expect(shadow?.textContent).toContain("static websites and frontend projects");
+    expect(shadow?.textContent).not.toContain("Step 1 / 5");
+    expect(shadow?.textContent).not.toContain("Find the Workers entry");
+  });
+
   it("opens, checks page context, and minimizes", () => {
     renderCloudflareFixture();
 
