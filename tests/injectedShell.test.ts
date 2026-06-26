@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   highlightStyleForTarget,
   mountMichiInjectedShell,
-  recoveryGuidanceForContext
+  recoveryGuidanceForContext,
+  unmountMichiInjectedShell
 } from "../src/extension/injectedShell";
 import type { HostPageContext, PageTarget } from "../src/domain/types";
 
@@ -37,6 +38,20 @@ const renderUnsupportedAreaFixture = () => {
   `;
 };
 
+const renderNestedScrollerFixture = () => {
+  document.body.innerHTML = `
+    <nav><a href="/workers-and-pages">Workers & Pages</a></nav>
+    <main>
+      <section data-scroll-container style="height: 220px; overflow: auto;">
+        <div style="height: 420px; padding-top: 260px;">
+          <h1>Workers & Pages</h1>
+          <button>Create Worker</button>
+        </div>
+      </section>
+    </main>
+  `;
+};
+
 const click = (element: Element | null) => {
   if (!element) {
     throw new Error("Expected element to exist before click.");
@@ -52,6 +67,23 @@ const input = (element: Element | null, value: string) => {
 
   element.value = value;
   element.dispatchEvent(new Event("input", { bubbles: true }));
+};
+
+const setElementRect = (
+  element: Element,
+  rect: { x: number; y: number; width: number; height: number }
+) => {
+  Object.defineProperty(element, "getBoundingClientRect", {
+    configurable: true,
+    value: () => ({
+      ...rect,
+      top: rect.y,
+      left: rect.x,
+      right: rect.x + rect.width,
+      bottom: rect.y + rect.height,
+      toJSON: () => rect
+    })
+  });
 };
 
 const hostContext = (overrides: Partial<HostPageContext> = {}): HostPageContext => ({
@@ -75,7 +107,7 @@ const hostContext = (overrides: Partial<HostPageContext> = {}): HostPageContext 
 
 describe("Injected Michi extension shell", () => {
   beforeEach(() => {
-    document.getElementById("michi-extension-root")?.remove();
+    unmountMichiInjectedShell(document);
   });
 
   it("mounts once in Shadow DOM with guide and check controls", () => {
@@ -91,6 +123,17 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).toContain("Guide");
     expect(shadow?.textContent).toContain("Check page");
     expect(shadow?.textContent).not.toMatch(/Image|Video/);
+  });
+
+  it("unmounts the shell and removes its host", () => {
+    renderCloudflareFixture();
+
+    mountMichiInjectedShell(document);
+    expect(document.querySelectorAll("#michi-extension-root")).toHaveLength(1);
+
+    unmountMichiInjectedShell(document);
+
+    expect(document.querySelectorAll("#michi-extension-root")).toHaveLength(0);
   });
 
   it("starts a local guide session from intent and backend clarification", () => {
@@ -277,6 +320,84 @@ describe("Injected Michi extension shell", () => {
     expect(highlightStyleForTarget(target)).toContain("left: 8px");
     expect(highlightStyleForTarget(target)).toContain("top: 18px");
     expect(highlightStyleForTarget({ ...target, boundingBox: undefined })).toBeUndefined();
+  });
+
+  it("refreshes target highlight coordinates after scrolling a checked page", () => {
+    renderCloudflareFixture();
+    const createButton = document.querySelector("button");
+    if (!createButton) {
+      throw new Error("Expected fixture create button.");
+    }
+    setElementRect(createButton, { x: 20, y: 40, width: 144, height: 42 });
+
+    const root = mountMichiInjectedShell(document, {
+      href: "https://dash.cloudflare.com/example-account/workers-and-pages",
+      title: "Workers & Pages"
+    });
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    expect(shadow?.querySelector("[data-highlight]")?.getAttribute("style")).toContain("top: 38px");
+
+    setElementRect(createButton, { x: 20, y: 96, width: 144, height: 42 });
+    window.dispatchEvent(new Event("scroll"));
+
+    expect(shadow?.querySelector("[data-highlight]")?.getAttribute("style")).toContain("top: 94px");
+    expect(shadow?.textContent).toContain("cloudflare.workers.overview");
+    expect(shadow?.textContent).toContain("Step 2 / 5");
+  });
+
+  it("refreshes target highlight coordinates after scrolling a nested container", () => {
+    renderNestedScrollerFixture();
+    const createButton = document.querySelector("button");
+    const scroller = document.querySelector("[data-scroll-container]");
+    if (!createButton || !scroller) {
+      throw new Error("Expected nested scrolling fixture.");
+    }
+    setElementRect(createButton, { x: 32, y: 260, width: 144, height: 42 });
+
+    const root = mountMichiInjectedShell(document, {
+      href: "https://dash.cloudflare.com/example-account/workers-and-pages",
+      title: "Workers & Pages"
+    });
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    expect(shadow?.querySelector("[data-highlight]")?.getAttribute("style")).toContain("top: 258px");
+
+    setElementRect(createButton, { x: 32, y: 156, width: 144, height: 42 });
+    scroller.dispatchEvent(new Event("scroll"));
+
+    expect(shadow?.querySelector("[data-highlight]")?.getAttribute("style")).toContain("top: 154px");
+    expect(shadow?.textContent).toContain("cloudflare.workers.overview");
+    expect(shadow?.textContent).toContain("Step 2 / 5");
+  });
+
+  it("refreshes highlight on resize without resetting confirmation state", () => {
+    renderCloudflareFixture();
+    const createButton = document.querySelector("button");
+    if (!createButton) {
+      throw new Error("Expected fixture create button.");
+    }
+    setElementRect(createButton, { x: 24, y: 60, width: 160, height: 44 });
+
+    const root = mountMichiInjectedShell(document, {
+      href: "https://dash.cloudflare.com/example-account/workers-and-pages",
+      title: "Workers & Pages"
+    });
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    expect(shadow?.textContent).toContain("Confirm Create Worker");
+
+    setElementRect(createButton, { x: 48, y: 84, width: 160, height: 44 });
+    window.dispatchEvent(new Event("resize"));
+
+    expect(shadow?.querySelector("[data-highlight]")?.getAttribute("style")).toContain("left: 46px");
+    expect(shadow?.querySelector("[data-highlight]")?.getAttribute("style")).toContain("top: 82px");
+    expect(shadow?.textContent).toContain("Confirm Create Worker");
+    expect(shadow?.textContent).not.toContain("Step 3 / 5");
   });
 
   it("describes how to recover when the expected route target is missing", () => {
