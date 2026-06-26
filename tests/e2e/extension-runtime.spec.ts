@@ -72,10 +72,16 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByText("cloudflare.workers.overview")).toBeVisible();
     await expect(page.getByText("Create Worker button")).toBeVisible();
     await expect(page.getByText("Cloudflare Workers")).toBeVisible();
+    await expect(page.getByText("Step 2 / 5")).toBeVisible();
     await expect(page.getByText("Create a Worker")).toBeVisible();
     await expect(page.getByText("Choose Create Worker and keep the generated starter service.")).toBeVisible();
     await expect(page.getByText("A Worker draft exists and the editor or setup view is visible.")).toBeVisible();
     await expect(page.getByLabel("Highlighted target: Create Worker button")).toBeVisible();
+    await page.getByRole("button", { name: "Next step" }).click();
+    await expect(page.getByText("Step 3 / 5")).toBeVisible();
+    await expect(page.getByText("Review the starter response")).toBeVisible();
+    await page.getByRole("button", { name: "Previous" }).click();
+    await expect(page.getByText("Step 2 / 5")).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page.getByLabel("Michi guide panel")).toHaveCount(0);
     await page.getByRole("button", { name: "Guide" }).click();

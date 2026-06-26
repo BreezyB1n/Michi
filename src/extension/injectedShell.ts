@@ -12,6 +12,7 @@ type ShellLocation = {
 type ShellState = {
   open: boolean;
   context?: HostPageContext;
+  activeStepIndex?: number;
 };
 
 type RecoveryGuidance = {
@@ -178,6 +179,24 @@ const shellStyles = `
     color: #171717;
   }
 
+  .step-toolbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .step-toolbar button {
+    min-height: 34px;
+    border: 1px solid rgba(23, 23, 23, 0.12);
+    background: rgba(245, 245, 245, 0.78);
+  }
+
+  .step-toolbar button:disabled {
+    cursor: not-allowed;
+    color: #a3a3a3;
+    background: rgba(245, 245, 245, 0.45);
+  }
+
   .target-highlight {
     position: fixed;
     z-index: 2147483646;
@@ -224,6 +243,9 @@ const primaryTargetForContext = (context: HostPageContext) =>
 
 export const guideStepForContext = (context: HostPageContext) =>
   workersGuideSteps.find((step) => step.expectedRouteId === context.routeId);
+
+const guideStepIndexForContext = (context: HostPageContext) =>
+  workersGuideSteps.findIndex((step) => step.expectedRouteId === context.routeId);
 
 export const recoveryGuidanceForContext = (
   context: HostPageContext
@@ -279,45 +301,61 @@ const highlightCopy = (context: HostPageContext) => {
   return `<div class="target-highlight" data-highlight style="${style}" aria-label="Highlighted target: ${escapeHtml(target.label)}"></div>`;
 };
 
-const contextCopy = (context: HostPageContext) => {
+const guideSummaryCopy = (activeStepIndex: number | undefined) => {
+  if (activeStepIndex === undefined || activeStepIndex < 0) {
+    return "";
+  }
+
+  const step = workersGuideSteps[activeStepIndex];
+
+  if (!step) {
+    return "";
+  }
+
+  const workersCapability = capabilities["cloudflare-workers"];
+  const canGoPrevious = activeStepIndex > 0;
+  const canGoNext = activeStepIndex < workersGuideSteps.length - 1;
+
+  return `<section class="guide-summary" aria-label="Current guide step">
+    <div>
+      <p class="eyebrow">Capability</p>
+      <p class="capability">
+        <strong>${escapeHtml(workersCapability.name)}</strong>
+        <span>${escapeHtml(workersCapability.concept)}</span>
+      </p>
+    </div>
+    <div>
+      <p class="eyebrow">Step ${activeStepIndex + 1} / ${workersGuideSteps.length}</p>
+      <p class="step-title">${escapeHtml(step.title)}</p>
+    </div>
+    <dl>
+      <div>
+        <dt>Action</dt>
+        <dd>${escapeHtml(step.action)}</dd>
+      </div>
+      <div>
+        <dt>Step purpose</dt>
+        <dd>${escapeHtml(step.purpose)}</dd>
+      </div>
+      <div>
+        <dt>Completion check</dt>
+        <dd>${escapeHtml(step.completionCheck)}</dd>
+      </div>
+    </dl>
+    <div class="step-toolbar" aria-label="Guide step navigation">
+      <button type="button" data-action="previous-step" aria-label="Previous" ${canGoPrevious ? "" : "disabled"}>Previous</button>
+      <button type="button" data-action="next-step" aria-label="Next step" ${canGoNext ? "" : "disabled"}>Next step</button>
+    </div>
+  </section>`;
+};
+
+const contextCopy = (context: HostPageContext, activeStepIndex: number | undefined) => {
   const target = primaryTargetForContext(context);
   const signal = context.signals[0];
   const guidance = recoveryGuidanceForContext(context);
-  const step = guideStepForContext(context);
-  const workersCapability = capabilities["cloudflare-workers"];
 
   return `
-    ${
-      step
-        ? `<section class="guide-summary" aria-label="Current guide step">
-            <div>
-              <p class="eyebrow">Capability</p>
-              <p class="capability">
-                <strong>${escapeHtml(workersCapability.name)}</strong>
-                <span>${escapeHtml(workersCapability.concept)}</span>
-              </p>
-            </div>
-            <div>
-              <p class="eyebrow">Guide step</p>
-              <p class="step-title">${escapeHtml(step.title)}</p>
-            </div>
-            <dl>
-              <div>
-                <dt>Action</dt>
-                <dd>${escapeHtml(step.action)}</dd>
-              </div>
-              <div>
-                <dt>Step purpose</dt>
-                <dd>${escapeHtml(step.purpose)}</dd>
-              </div>
-              <div>
-                <dt>Completion check</dt>
-                <dd>${escapeHtml(step.completionCheck)}</dd>
-              </div>
-            </dl>
-          </section>`
-        : ""
-    }
+    ${guideSummaryCopy(activeStepIndex)}
     ${
       guidance
         ? `<div class="recovery" role="status" aria-label="${escapeHtml(guidance.title)}">
@@ -397,7 +435,7 @@ export const mountMichiInjectedShell = (
                   <button type="button" data-action="minimize" aria-label="Minimize panel">Min</button>
                 </div>
                 <div class="panel-body">
-                  ${state.context ? contextCopy(state.context) : emptyContextCopy}
+                  ${state.context ? contextCopy(state.context, state.activeStepIndex) : emptyContextCopy}
                 </div>
               </section>`
             : ""
@@ -413,11 +451,27 @@ export const mountMichiInjectedShell = (
     shadow.querySelector("[data-action='check']")?.addEventListener("click", () => {
       state.open = true;
       state.context = readCloudflarePageContext(doc, location);
+      const nextStepIndex = guideStepIndexForContext(state.context);
+      state.activeStepIndex = nextStepIndex >= 0 ? nextStepIndex : undefined;
       render();
     });
 
     shadow.querySelector("[data-action='minimize']")?.addEventListener("click", () => {
       state.open = false;
+      render();
+    });
+
+    shadow.querySelector("[data-action='previous-step']")?.addEventListener("click", () => {
+      state.activeStepIndex =
+        state.activeStepIndex === undefined ? undefined : Math.max(state.activeStepIndex - 1, 0);
+      render();
+    });
+
+    shadow.querySelector("[data-action='next-step']")?.addEventListener("click", () => {
+      state.activeStepIndex =
+        state.activeStepIndex === undefined
+          ? undefined
+          : Math.min(state.activeStepIndex + 1, workersGuideSteps.length - 1);
       render();
     });
   };

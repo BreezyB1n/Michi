@@ -81,12 +81,36 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).toContain("Create Worker button");
     expect(shadow?.textContent).toContain("Cloudflare route detected");
     expect(shadow?.textContent).toContain("Cloudflare Workers");
+    expect(shadow?.textContent).toContain("Step 2 / 5");
     expect(shadow?.textContent).toContain("Create a Worker");
     expect(shadow?.textContent).toContain("Choose Create Worker and keep the generated starter service.");
     expect(shadow?.textContent).toContain("A Worker draft exists and the editor or setup view is visible.");
 
     click(shadow?.querySelector("[data-action='minimize']") ?? null);
     expect(shadow?.querySelector("[data-panel]")).toBeNull();
+  });
+
+  it("navigates guide steps locally after checking the page", () => {
+    renderCloudflareFixture();
+
+    const root = mountMichiInjectedShell(document, {
+      href: "https://dash.cloudflare.com/example-account/workers-and-pages",
+      title: "Workers & Pages"
+    });
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    expect(shadow?.textContent).toContain("Step 2 / 5");
+    expect(shadow?.textContent).toContain("Create a Worker");
+
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    expect(shadow?.textContent).toContain("Step 3 / 5");
+    expect(shadow?.textContent).toContain("Review the starter response");
+    expect(shadow?.textContent).toContain("Read the starter handler and keep the default response for the demo.");
+
+    click(shadow?.querySelector("[data-action='previous-step']") ?? null);
+    expect(shadow?.textContent).toContain("Step 2 / 5");
+    expect(shadow?.textContent).toContain("Create a Worker");
   });
 
   it("collapses with Escape without clearing checked context", () => {
