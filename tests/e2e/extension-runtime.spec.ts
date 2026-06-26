@@ -174,11 +174,8 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect
       .poll(async () => {
         const box = await page.getByLabel("Highlighted target: Create Worker button").boundingBox();
-        if (!box) {
-          throw new Error("Expected highlight to stay visible after window scroll.");
-        }
-        return box.y;
-      })
+        return box?.y ?? Number.POSITIVE_INFINITY;
+      }, { message: "Expected highlight to stay visible after window scroll." })
       .toBeLessThan((highlightBeforeScroll?.y ?? 0) - 80);
     await page.getByRole("button", { name: "Next step" }).click();
     await expect(page.getByText("Critical write action")).toBeVisible();
@@ -276,11 +273,8 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect
       .poll(async () => {
         const box = await page.getByLabel("Highlighted target: Create Worker button").boundingBox();
-        if (!box) {
-          throw new Error("Expected highlight to stay visible after nested scroll.");
-        }
-        return box.y;
-      })
+        return box?.y ?? Number.POSITIVE_INFINITY;
+      }, { message: "Expected highlight to stay visible after nested scroll." })
       .toBeLessThan((highlightBeforeNestedScroll?.y ?? 0) - 80);
 
     await page.goto("https://dash.cloudflare.com/example-account/workers-and-pages/missing-target");
