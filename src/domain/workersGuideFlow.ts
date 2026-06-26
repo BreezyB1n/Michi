@@ -74,47 +74,6 @@ export const checkedContextWorkersGuideState = (
   return state;
 };
 
-export const previousWorkersGuideState = (
-  state: WorkersGuideShellState
-): WorkersGuideShellState => ({
-  ...state,
-  activeStepIndex:
-    state.activeStepIndex === undefined ? undefined : Math.max(state.activeStepIndex - 1, 0)
-});
-
-export const nextWorkersGuideState = (
-  state: WorkersGuideShellState
-): WorkersGuideShellState => {
-  const activeStep =
-    state.activeStepIndex === undefined ? undefined : workersGuideSteps[state.activeStepIndex];
-
-  if (activeStep?.criticalAction) {
-    return {
-      ...state,
-      phase: "confirm"
-    };
-  }
-
-  return {
-    ...state,
-    activeStepIndex:
-      state.activeStepIndex === undefined
-        ? undefined
-        : Math.min(state.activeStepIndex + 1, finalWorkersGuideStepIndex)
-  };
-};
-
-export const confirmWorkersGuideActionState = (
-  state: WorkersGuideShellState
-): WorkersGuideShellState => ({
-  ...state,
-  phase: "guide",
-  activeStepIndex:
-    state.activeStepIndex === undefined
-      ? undefined
-      : Math.min(state.activeStepIndex + 1, finalWorkersGuideStepIndex)
-});
-
 export const canCompleteWorkersGuide = (
   context: HostPageContext | undefined,
   activeStepIndex: number | undefined
@@ -129,14 +88,3 @@ export const canCompleteWorkersGuide = (
     context.signals.some((signal) => signal.severity === "success")
   );
 };
-
-export const completeWorkersGuideState = (
-  state: WorkersGuideShellState,
-  context: HostPageContext | undefined
-): WorkersGuideShellState =>
-  canCompleteWorkersGuide(context, state.activeStepIndex)
-    ? {
-        ...state,
-        phase: "complete"
-      }
-    : state;

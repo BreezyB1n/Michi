@@ -3,7 +3,7 @@ import {
   guideSessionReducer
 } from "../domain/guideSessionReducer";
 import type { WorkersGuideShellPhase } from "../domain/workersGuideFlow";
-import type { ServiceKind } from "../domain/types";
+import type { GuideSession, ServiceKind } from "../domain/types";
 
 export type ExtensionGuideSessionBridgeState = {
   open: boolean;
@@ -24,6 +24,12 @@ const sessionFromIntent = (intent: string) =>
   guideSessionReducer(createGuideSession(), {
     type: "start",
     intent
+  });
+
+const backendSessionFromIntent = (intent: string) =>
+  guideSessionReducer(sessionFromIntent(intent), {
+    type: "choose-service-kind",
+    kind: "backend-api"
   });
 
 const assertNever = (value: never): never => {
@@ -70,6 +76,83 @@ const chooseServiceKindFromReducer = (
   return serviceChoiceFromReducer(state, kind);
 };
 
+const workersSessionForShellState = (
+  state: ExtensionGuideSessionBridgeState
+): GuideSession | undefined => {
+  if (
+    state.activeStepIndex === undefined ||
+    (state.phase !== "guide" && state.phase !== "confirm" && state.phase !== "complete")
+  ) {
+    return undefined;
+  }
+
+  let session = backendSessionFromIntent(state.intent);
+  const targetStepIndex = Math.min(
+    Math.max(state.activeStepIndex, 0),
+    Math.max(session.steps.length - 1, 0)
+  );
+
+  while (session.activeStepIndex < targetStepIndex && session.phase !== "complete") {
+    const advanced = guideSessionReducer(session, { type: "advance" });
+    session =
+      advanced.phase === "confirm"
+        ? guideSessionReducer(advanced, { type: "confirm-critical-action" })
+        : advanced;
+  }
+
+  if (state.phase === "confirm") {
+    return {
+      ...session,
+      phase: "confirm"
+    };
+  }
+
+  if (state.phase === "complete") {
+    return {
+      ...session,
+      phase: "complete"
+    };
+  }
+
+  return session;
+};
+
+const projectWorkersSessionToShellState = (
+  state: ExtensionGuideSessionBridgeState,
+  session: GuideSession | undefined
+): ExtensionGuideSessionBridgeState => {
+  if (!session) {
+    return state;
+  }
+
+  switch (session.phase) {
+    case "guide":
+    case "confirm":
+    case "complete":
+      return {
+        ...state,
+        intent: session.intent,
+        phase: session.phase,
+        activeStepIndex: session.activeStepIndex
+      };
+    default:
+      return state;
+  }
+};
+
+const projectFlowActionFromReducer = (
+  state: ExtensionGuideSessionBridgeState,
+  action: "previous" | "advance" | "confirm-critical-action"
+): ExtensionGuideSessionBridgeState => {
+  const session = workersSessionForShellState(state);
+
+  if (!session) {
+    return state;
+  }
+
+  return projectWorkersSessionToShellState(state, guideSessionReducer(session, { type: action }));
+};
+
 export const startGuideFromReducer = (
   state: ExtensionGuideSessionBridgeState
 ): ExtensionGuideSessionBridgeState => {
@@ -90,3 +173,22 @@ export const chooseBackendApiFromReducer = (
 export const chooseStaticSiteFromReducer = (
   state: ExtensionGuideSessionBridgeState
 ): ExtensionGuideSessionBridgeState => chooseServiceKindFromReducer(state, "static-site");
+
+export const previousStepFromReducer = (
+  state: ExtensionGuideSessionBridgeState
+): ExtensionGuideSessionBridgeState => projectFlowActionFromReducer(state, "previous");
+
+export const nextStepFromReducer = (
+  state: ExtensionGuideSessionBridgeState
+): ExtensionGuideSessionBridgeState => projectFlowActionFromReducer(state, "advance");
+
+export const confirmCriticalActionFromReducer = (
+  state: ExtensionGuideSessionBridgeState
+): ExtensionGuideSessionBridgeState =>
+  projectFlowActionFromReducer(state, "confirm-critical-action");
+
+export const completeGuideFromReducer = (
+  state: ExtensionGuideSessionBridgeState,
+  canComplete: boolean
+): ExtensionGuideSessionBridgeState =>
+  canComplete ? projectFlowActionFromReducer(state, "advance") : state;

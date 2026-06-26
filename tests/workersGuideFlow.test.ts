@@ -2,10 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   canCompleteWorkersGuide,
   checkedContextWorkersGuideState,
-  confirmWorkersGuideActionState,
-  nextWorkersGuideState,
   preferredTargetForContext,
-  previousWorkersGuideState,
   workersGuideStepForRouteId,
   workersGuideStepIndexForRouteId
 } from "../src/domain/workersGuideFlow";
@@ -74,28 +71,6 @@ describe("Workers guide flow helpers", () => {
       phase: "guide",
       activeStepIndex: 1
     });
-  });
-
-  it("enters confirmation before moving past a critical write step", () => {
-    expect(nextWorkersGuideState({ phase: "guide", activeStepIndex: 1 })).toEqual({
-      phase: "confirm",
-      activeStepIndex: 1
-    });
-  });
-
-  it("advances after explicit critical action confirmation", () => {
-    expect(confirmWorkersGuideActionState({ phase: "confirm", activeStepIndex: 1 })).toEqual({
-      phase: "guide",
-      activeStepIndex: 2
-    });
-  });
-
-  it("clamps previous-step navigation at the first guide step", () => {
-    expect(previousWorkersGuideState({ phase: "guide", activeStepIndex: 0 })).toEqual({
-      phase: "guide",
-      activeStepIndex: 0
-    });
-    expect(previousWorkersGuideState({ phase: "guide" })).toEqual({ phase: "guide" });
   });
 
   it("only completes the Workers guide with Worker URL success evidence on the final step", () => {

@@ -3,13 +3,9 @@ import { capabilities, workersGuideSteps } from "../domain/siteSkillPack";
 import {
   canCompleteWorkersGuide,
   checkedContextWorkersGuideState,
-  completeWorkersGuideState,
-  confirmWorkersGuideActionState,
   finalWorkersGuideStepIndex,
-  nextWorkersGuideState,
   preferredTargetForContext,
   preferredTargetIdForRouteId,
-  previousWorkersGuideState,
   targetLabelForWorkersGuideTarget
 } from "../domain/workersGuideFlow";
 import type { WorkersGuideShellPhase } from "../domain/workersGuideFlow";
@@ -17,6 +13,10 @@ import type { HostPageContext, PageTarget } from "../domain/types";
 import {
   chooseBackendApiFromReducer,
   chooseStaticSiteFromReducer,
+  completeGuideFromReducer,
+  confirmCriticalActionFromReducer,
+  nextStepFromReducer,
+  previousStepFromReducer,
   startGuideFromReducer
 } from "./extensionGuideSessionBridge";
 
@@ -620,16 +620,18 @@ export const mountMichiInjectedShell = (
     });
 
     shadow.querySelector("[data-action='previous-step']")?.addEventListener("click", () => {
-      const nextGuideState = previousWorkersGuideState(state);
+      const nextGuideState = previousStepFromReducer(state);
       state.phase = nextGuideState.phase;
       state.activeStepIndex = nextGuideState.activeStepIndex;
+      state.intent = nextGuideState.intent;
       render();
     });
 
     shadow.querySelector("[data-action='next-step']")?.addEventListener("click", () => {
-      const nextGuideState = nextWorkersGuideState(state);
+      const nextGuideState = nextStepFromReducer(state);
       state.phase = nextGuideState.phase;
       state.activeStepIndex = nextGuideState.activeStepIndex;
+      state.intent = nextGuideState.intent;
       render();
     });
 
@@ -664,16 +666,21 @@ export const mountMichiInjectedShell = (
     });
 
     shadow.querySelector("[data-action='confirm-action']")?.addEventListener("click", () => {
-      const nextGuideState = confirmWorkersGuideActionState(state);
+      const nextGuideState = confirmCriticalActionFromReducer(state);
       state.phase = nextGuideState.phase;
       state.activeStepIndex = nextGuideState.activeStepIndex;
+      state.intent = nextGuideState.intent;
       render();
     });
 
     shadow.querySelector("[data-action='complete-guide']")?.addEventListener("click", () => {
-      const nextGuideState = completeWorkersGuideState(state, state.context);
+      const nextGuideState = completeGuideFromReducer(
+        state,
+        canCompleteWorkersGuide(state.context, state.activeStepIndex)
+      );
       state.phase = nextGuideState.phase;
       state.activeStepIndex = nextGuideState.activeStepIndex;
+      state.intent = nextGuideState.intent;
       render();
     });
   };

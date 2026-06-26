@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   chooseBackendApiFromReducer,
   chooseStaticSiteFromReducer,
+  completeGuideFromReducer,
+  confirmCriticalActionFromReducer,
+  nextStepFromReducer,
+  previousStepFromReducer,
   startGuideFromReducer
 } from "../src/extension/extensionGuideSessionBridge";
 
@@ -62,5 +66,84 @@ describe("Extension guide session bridge", () => {
 
     expect(chooseBackendApiFromReducer(state)).toBe(state);
     expect(chooseStaticSiteFromReducer(state)).toBe(state);
+  });
+
+  it("projects previous-step navigation through the shared reducer", () => {
+    expect(
+      previousStepFromReducer({
+        open: true,
+        intent: "Build a JSON API for customers.",
+        phase: "guide",
+        activeStepIndex: 2
+      })
+    ).toEqual({
+      open: true,
+      intent: "Build a JSON API for customers.",
+      phase: "guide",
+      activeStepIndex: 1
+    });
+  });
+
+  it("projects next-step navigation and critical confirmation through the shared reducer", () => {
+    expect(
+      nextStepFromReducer({
+        open: true,
+        intent: "Build a JSON API for customers.",
+        phase: "guide",
+        activeStepIndex: 0
+      })
+    ).toEqual({
+      open: true,
+      intent: "Build a JSON API for customers.",
+      phase: "guide",
+      activeStepIndex: 1
+    });
+
+    expect(
+      nextStepFromReducer({
+        open: true,
+        intent: "Build a JSON API for customers.",
+        phase: "guide",
+        activeStepIndex: 1
+      })
+    ).toEqual({
+      open: true,
+      intent: "Build a JSON API for customers.",
+      phase: "confirm",
+      activeStepIndex: 1
+    });
+  });
+
+  it("projects explicit critical-action confirmation through the shared reducer", () => {
+    expect(
+      confirmCriticalActionFromReducer({
+        open: true,
+        intent: "Build a JSON API for customers.",
+        phase: "confirm",
+        activeStepIndex: 1
+      })
+    ).toEqual({
+      open: true,
+      intent: "Build a JSON API for customers.",
+      phase: "guide",
+      activeStepIndex: 2
+    });
+  });
+
+  it("projects final completion through the shared reducer only after evidence gating passes", () => {
+    const finalStepState = {
+      open: true,
+      intent: "Build a JSON API for customers.",
+      phase: "guide" as const,
+      activeStepIndex: 4
+    };
+
+    expect(completeGuideFromReducer(finalStepState, false)).toBe(finalStepState);
+    expect(completeGuideFromReducer(finalStepState, true)).toEqual({
+      open: true,
+      intent: "Build a JSON API for customers.",
+      phase: "complete",
+      activeStepIndex: 4
+    });
   });
 });

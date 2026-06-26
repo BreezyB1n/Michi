@@ -24,6 +24,7 @@ const emptyPageState: PageState = {
 export type GuideSessionAction =
   | { type: "start"; intent: string }
   | { type: "choose-service-kind"; kind: ServiceKind }
+  | { type: "previous" }
   | { type: "advance" }
   | { type: "confirm-critical-action" }
   | { type: "apply-host-page-context"; context: HostPageContext }
@@ -237,6 +238,20 @@ const advanceStep = (session: GuideSession): GuideSession => {
   };
 };
 
+const previousStep = (session: GuideSession): GuideSession => {
+  if (session.phase !== "guide") {
+    return session;
+  }
+
+  const previousStepIndex = Math.max(session.activeStepIndex - 1, 0);
+
+  return {
+    ...session,
+    activeStepIndex: previousStepIndex,
+    pageState: pageStateForStep(previousStepIndex)
+  };
+};
+
 const confirmCriticalAction = (session: GuideSession): GuideSession => {
   if (session.phase !== "confirm") {
     return session;
@@ -283,6 +298,8 @@ export const guideSessionReducer = (
       return startSession(action.intent);
     case "choose-service-kind":
       return chooseServiceKind(session, action.kind);
+    case "previous":
+      return previousStep(session);
     case "advance":
       return advanceStep(session);
     case "confirm-critical-action":

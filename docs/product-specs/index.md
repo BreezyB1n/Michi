@@ -25,3 +25,4 @@ Product specs are the source of truth for what Michi should build.
 - `workers-guide-flow-shared.md`
 - `shared-guide-session-reducer.md`
 - `extension-reducer-intent-bridge.md`
+- `extension-reducer-flow-bridge.md`

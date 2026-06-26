@@ -8,3 +8,4 @@ Design docs explain why Michi behaves the way it does. Product behavior should b
 - `workers-guide-flow-shared-decision.md`
 - `shared-guide-session-reducer-decision.md`
 - `extension-reducer-intent-bridge-decision.md`
+- `extension-reducer-flow-bridge-decision.md`
