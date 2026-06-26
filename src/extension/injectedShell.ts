@@ -13,6 +13,8 @@ type ShellState = {
   open: boolean;
   context?: HostPageContext;
   activeStepIndex?: number;
+  intent: string;
+  phase: "intent" | "clarify" | "guide" | "static-complete";
 };
 
 type RecoveryGuidance = {
@@ -69,6 +71,20 @@ const shellStyles = `
 
   button:hover {
     background: rgba(245, 158, 11, 0.12);
+  }
+
+  textarea {
+    all: unset;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 92px;
+    padding: 10px;
+    border: 1px solid rgba(23, 23, 23, 0.12);
+    border-radius: 12px;
+    background: rgba(245, 245, 245, 0.78);
+    color: #171717;
+    font: 550 13px/1.45 inherit;
+    resize: vertical;
   }
 
   .panel {
@@ -212,6 +228,8 @@ const emptyContextCopy = `
   <p>No page check yet</p>
 `;
 
+const sampleIntent = "I want to build a small service that other people can access.";
+
 const escapeHtml = (value: string) =>
   value
     .replace(/&/g, "&amp;")
@@ -301,6 +319,46 @@ const highlightCopy = (context: HostPageContext) => {
   return `<div class="target-highlight" data-highlight style="${style}" aria-label="Highlighted target: ${escapeHtml(target.label)}"></div>`;
 };
 
+const intentCopy = (intent: string) => `
+  <section class="guide-summary" aria-label="Intent entry">
+    <div>
+      <p class="eyebrow">User intent</p>
+      <textarea data-intent aria-label="User intent" rows="4">${escapeHtml(intent)}</textarea>
+    </div>
+    <button type="button" data-action="start-guide" aria-label="Start guide">Start guide</button>
+  </section>
+`;
+
+const clarificationCopy = (intent: string) => `
+  <section class="guide-summary" aria-label="Service clarification">
+    <div>
+      <p class="eyebrow">User intent</p>
+      <p>${escapeHtml(intent)}</p>
+    </div>
+    <div>
+      <p class="eyebrow">Path decision</p>
+      <p class="step-title">What kind of service are you building?</p>
+    </div>
+    <div class="step-toolbar" aria-label="Service type choices">
+      <button type="button" data-action="choose-backend-api" aria-label="Backend logic or API">Backend logic or API</button>
+      <button type="button" data-action="choose-static-site" aria-label="Static website">Static website</button>
+    </div>
+  </section>
+`;
+
+const staticSiteCopy = () => `
+  <section class="guide-summary" aria-label="Static website route">
+    <div>
+      <p class="eyebrow">Capability</p>
+      <p class="capability">
+        <strong>${escapeHtml(capabilities["cloudflare-pages"].name)}</strong>
+        <span>${escapeHtml(capabilities["cloudflare-pages"].concept)}</span>
+      </p>
+    </div>
+    <p>${escapeHtml(capabilities["cloudflare-pages"].explanation)}</p>
+  </section>
+`;
+
 const guideSummaryCopy = (activeStepIndex: number | undefined) => {
   if (activeStepIndex === undefined || activeStepIndex < 0) {
     return "";
@@ -386,6 +444,30 @@ const contextCopy = (context: HostPageContext, activeStepIndex: number | undefin
   `;
 };
 
+const panelBodyCopy = (state: ShellState) => {
+  if (state.phase === "intent" && !state.context) {
+    return intentCopy(state.intent);
+  }
+
+  if (state.phase === "clarify") {
+    return clarificationCopy(state.intent);
+  }
+
+  if (state.phase === "static-complete") {
+    return staticSiteCopy();
+  }
+
+  if (state.context) {
+    return contextCopy(state.context, state.activeStepIndex);
+  }
+
+  if (state.activeStepIndex !== undefined) {
+    return guideSummaryCopy(state.activeStepIndex);
+  }
+
+  return emptyContextCopy;
+};
+
 export const mountMichiInjectedShell = (
   doc: Document = document,
   location: ShellLocation = {
@@ -404,7 +486,11 @@ export const mountMichiInjectedShell = (
   doc.documentElement.appendChild(host);
 
   const shadow = host.attachShadow({ mode: "open" });
-  const state: ShellState = { open: false };
+  const state: ShellState = {
+    open: false,
+    intent: sampleIntent,
+    phase: "intent"
+  };
 
   const handleKeyDown = (event: KeyboardEvent) => {
     if (event.key !== "Escape" || !state.open) {
@@ -435,7 +521,7 @@ export const mountMichiInjectedShell = (
                   <button type="button" data-action="minimize" aria-label="Minimize panel">Min</button>
                 </div>
                 <div class="panel-body">
-                  ${state.context ? contextCopy(state.context, state.activeStepIndex) : emptyContextCopy}
+                  ${panelBodyCopy(state)}
                 </div>
               </section>`
             : ""
@@ -453,6 +539,9 @@ export const mountMichiInjectedShell = (
       state.context = readCloudflarePageContext(doc, location);
       const nextStepIndex = guideStepIndexForContext(state.context);
       state.activeStepIndex = nextStepIndex >= 0 ? nextStepIndex : undefined;
+      if (nextStepIndex >= 0) {
+        state.phase = "guide";
+      }
       render();
     });
 
@@ -472,6 +561,29 @@ export const mountMichiInjectedShell = (
         state.activeStepIndex === undefined
           ? undefined
           : Math.min(state.activeStepIndex + 1, workersGuideSteps.length - 1);
+      render();
+    });
+
+    shadow.querySelector("[data-intent]")?.addEventListener("input", (event) => {
+      if (event.target instanceof HTMLTextAreaElement) {
+        state.intent = event.target.value;
+      }
+    });
+
+    shadow.querySelector("[data-action='start-guide']")?.addEventListener("click", () => {
+      state.phase = "clarify";
+      render();
+    });
+
+    shadow.querySelector("[data-action='choose-backend-api']")?.addEventListener("click", () => {
+      state.phase = "guide";
+      state.activeStepIndex = 0;
+      render();
+    });
+
+    shadow.querySelector("[data-action='choose-static-site']")?.addEventListener("click", () => {
+      state.phase = "static-complete";
+      state.activeStepIndex = undefined;
       render();
     });
   };

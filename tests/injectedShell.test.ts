@@ -24,6 +24,15 @@ const click = (element: Element | null) => {
   element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 };
 
+const input = (element: Element | null, value: string) => {
+  if (!(element instanceof HTMLTextAreaElement)) {
+    throw new Error("Expected textarea to exist before input.");
+  }
+
+  element.value = value;
+  element.dispatchEvent(new Event("input", { bubbles: true }));
+};
+
 const hostContext = (overrides: Partial<HostPageContext> = {}): HostPageContext => ({
   url: "https://dash.cloudflare.com/example-account/workers-and-pages",
   title: "Workers & Pages",
@@ -63,6 +72,28 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).not.toMatch(/Image|Video/);
   });
 
+  it("starts a local guide session from intent and backend clarification", () => {
+    renderCloudflareFixture();
+
+    const root = mountMichiInjectedShell(document);
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='guide']") ?? null);
+    expect(shadow?.textContent).toContain("User intent");
+    expect(shadow?.textContent).toContain("Start guide");
+
+    input(shadow?.querySelector("[data-intent]") ?? null, "Build a JSON API for customers.");
+    click(shadow?.querySelector("[data-action='start-guide']") ?? null);
+    expect(shadow?.textContent).toContain("What kind of service are you building?");
+    expect(shadow?.textContent).toContain("Backend logic or API");
+
+    click(shadow?.querySelector("[data-action='choose-backend-api']") ?? null);
+    expect(shadow?.textContent).toContain("Cloudflare Workers");
+    expect(shadow?.textContent).toContain("Step 1 / 5");
+    expect(shadow?.textContent).toContain("Find the Workers entry");
+    expect(shadow?.textContent).toContain("Open the Workers & Pages area from the Cloudflare account sidebar.");
+  });
+
   it("opens, checks page context, and minimizes", () => {
     renderCloudflareFixture();
 
@@ -74,7 +105,7 @@ describe("Injected Michi extension shell", () => {
 
     click(shadow?.querySelector("[data-action='guide']") ?? null);
     expect(shadow?.textContent).toContain("Michi guide");
-    expect(shadow?.textContent).toContain("No page check yet");
+    expect(shadow?.textContent).toContain("User intent");
 
     click(shadow?.querySelector("[data-action='check']") ?? null);
     expect(shadow?.textContent).toContain("cloudflare.workers.overview");

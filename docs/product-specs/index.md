@@ -13,3 +13,4 @@ Product specs are the source of truth for what Michi should build.
 - `extension-injected-keyboard-accessibility.md`
 - `extension-injected-guide-semantics.md`
 - `extension-injected-guide-navigation.md`
+- `extension-injected-session-start.md`
