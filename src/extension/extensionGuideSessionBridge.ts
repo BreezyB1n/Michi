@@ -196,12 +196,17 @@ const contextWithPageDrift = (context: HostPageContext): HostPageContext => ({
 
 const checkedContextForSession = (session: GuideSession, context: HostPageContext) => {
   const currentStep = session.steps[session.activeStepIndex];
+  const detectedServiceKind = serviceKindForRouteId(context.routeId);
+  const routeMismatch =
+    session.serviceKind !== undefined &&
+    detectedServiceKind !== undefined &&
+    detectedServiceKind !== session.serviceKind;
   const missingExpectedTarget =
     session.phase === "confirm" &&
     currentStep?.expectedRouteId === context.routeId &&
     !hasUsableStepTarget(context, currentStep);
 
-  return missingExpectedTarget ? contextWithPageDrift(context) : context;
+  return routeMismatch || missingExpectedTarget ? contextWithPageDrift(context) : context;
 };
 
 const workersSessionForCheckedContext = (
