@@ -11,3 +11,4 @@ Product specs are the source of truth for what Michi should build.
 - `extension-target-highlight-overlay.md`
 - `extension-injected-recovery-guidance.md`
 - `extension-injected-keyboard-accessibility.md`
+- `extension-injected-guide-semantics.md`
