@@ -83,13 +83,29 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
       const isStarterEditorFixture = requestUrl.includes("/starter-editor");
       const isDeployReviewFixture = requestUrl.includes("/deploy-review");
       const isDeployResultFixture = requestUrl.includes("/deploy-result");
+      const isNestedScrollFixture = requestUrl.includes("/nested-scroll");
 
       await route.fulfill({
         contentType: "text/html",
         body: `
           <!doctype html>
           <html>
-            <head><title>Workers & Pages</title></head>
+            <head>
+              <title>Workers & Pages</title>
+              <style>
+                body { min-height: 1800px; }
+                main { padding-top: 360px; }
+                [data-scroll-container] {
+                  height: 260px;
+                  overflow: auto;
+                  border: 1px solid #ddd;
+                }
+                [data-scroll-spacer] {
+                  height: 520px;
+                  padding-top: 360px;
+                }
+              </style>
+            </head>
             <body>
               ${isMissingTargetFixture ? "" : '<nav><a href="/workers-and-pages">Workers & Pages</a></nav>'}
               <main>
@@ -108,6 +124,13 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
                       : isUnsupportedAreaFixture
                         ? `<h1>Analytics</h1>
                            <p>Traffic insights for this account.</p>`
+                    : isNestedScrollFixture
+                      ? `<section data-scroll-container>
+                           <div data-scroll-spacer>
+                             <h1>Workers & Pages</h1>
+                             <button>Create Worker</button>
+                           </div>
+                         </section>`
                     : `<h1>Workers & Pages</h1>
                        ${isMissingTargetFixture ? "<p>Loading actions...</p>" : "<button>Create Worker</button>"}`
                 }
@@ -143,6 +166,20 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByText("Choose Create Worker and keep the generated starter service.")).toBeVisible();
     await expect(page.getByText("A Worker draft exists and the editor or setup view is visible.")).toBeVisible();
     await expect(page.getByLabel("Highlighted target: Create Worker button")).toBeVisible();
+    const highlightBeforeScroll = await page
+      .getByLabel("Highlighted target: Create Worker button")
+      .boundingBox();
+    expect(highlightBeforeScroll?.y).toBeGreaterThan(300);
+    await page.evaluate(() => window.scrollTo(0, 120));
+    await expect
+      .poll(async () => {
+        const box = await page.getByLabel("Highlighted target: Create Worker button").boundingBox();
+        if (!box) {
+          throw new Error("Expected highlight to stay visible after window scroll.");
+        }
+        return box.y;
+      })
+      .toBeLessThan((highlightBeforeScroll?.y ?? 0) - 80);
     await page.getByRole("button", { name: "Next step" }).click();
     await expect(page.getByText("Critical write action")).toBeVisible();
     await expect(page.getByText("Confirm Create Worker")).toBeVisible();
@@ -221,6 +258,30 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByText("Primary path complete")).toBeVisible();
     await expect(page.getByText("Worker URL verified")).toBeVisible();
     await expect(page.getByText("Cloudflare DNS")).toBeVisible();
+
+    await page.goto("https://dash.cloudflare.com/example-account/workers-and-pages/nested-scroll");
+    await expect(page.getByLabel("Michi rail")).toBeVisible();
+    await page.getByRole("button", { name: "Guide" }).click();
+    await page.getByRole("button", { name: "Check page" }).click();
+    await expect(page.getByLabel("Highlighted target: Create Worker button")).toBeVisible();
+    const highlightBeforeNestedScroll = await page
+      .getByLabel("Highlighted target: Create Worker button")
+      .boundingBox();
+    expect(highlightBeforeNestedScroll?.y).toBeGreaterThan(300);
+    await page.locator("[data-scroll-container]").evaluate((element) => {
+      element.scrollTop = 120;
+      element.dispatchEvent(new Event("scroll"));
+    });
+    await expect(page.getByLabel("Highlighted target: Create Worker button")).toBeVisible();
+    await expect
+      .poll(async () => {
+        const box = await page.getByLabel("Highlighted target: Create Worker button").boundingBox();
+        if (!box) {
+          throw new Error("Expected highlight to stay visible after nested scroll.");
+        }
+        return box.y;
+      })
+      .toBeLessThan((highlightBeforeNestedScroll?.y ?? 0) - 80);
 
     await page.goto("https://dash.cloudflare.com/example-account/workers-and-pages/missing-target");
     await expect(page.getByLabel("Michi rail")).toBeVisible();

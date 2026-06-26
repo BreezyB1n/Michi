@@ -3,6 +3,7 @@ import { capabilities, workersGuideSteps } from "../domain/siteSkillPack";
 import type { HostPageContext, PageTarget } from "../domain/types";
 
 const rootId = "michi-extension-root";
+const shellCleanupByHost = new WeakMap<HTMLElement, () => void>();
 
 type ShellLocation = {
   href: string;
@@ -576,6 +577,7 @@ export const mountMichiInjectedShell = (
     intent: sampleIntent,
     phase: "intent"
   };
+  const ownerWindow = doc.defaultView ?? window;
 
   const handleKeyDown = (event: KeyboardEvent) => {
     if (event.key !== "Escape" || !state.open) {
@@ -583,6 +585,15 @@ export const mountMichiInjectedShell = (
     }
 
     state.open = false;
+    render();
+  };
+
+  const refreshCheckedContext = () => {
+    if (!state.context) {
+      return;
+    }
+
+    state.context = readCloudflarePageContext(doc, location);
     render();
   };
 
@@ -697,6 +708,27 @@ export const mountMichiInjectedShell = (
   };
 
   doc.addEventListener("keydown", handleKeyDown);
+  doc.addEventListener("scroll", refreshCheckedContext, { capture: true, passive: true });
+  ownerWindow.addEventListener("scroll", refreshCheckedContext, { passive: true });
+  ownerWindow.addEventListener("resize", refreshCheckedContext);
+  shellCleanupByHost.set(host, () => {
+    doc.removeEventListener("keydown", handleKeyDown);
+    doc.removeEventListener("scroll", refreshCheckedContext, { capture: true });
+    ownerWindow.removeEventListener("scroll", refreshCheckedContext);
+    ownerWindow.removeEventListener("resize", refreshCheckedContext);
+    shellCleanupByHost.delete(host);
+  });
   render();
   return host;
+};
+
+export const unmountMichiInjectedShell = (doc: Document = document) => {
+  const host = doc.getElementById(rootId);
+
+  if (!host) {
+    return;
+  }
+
+  shellCleanupByHost.get(host)?.();
+  host.remove();
 };
