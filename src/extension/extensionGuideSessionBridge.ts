@@ -3,7 +3,8 @@ import {
   guideSessionReducer
 } from "../domain/guideSessionReducer";
 import {
-  workersGuideStepIndexForContext
+  guideStepIndexForContext,
+  serviceKindForRouteId
 } from "../domain/workersGuideFlow";
 import { blockingStates } from "../domain/siteSkillPack";
 import type { WorkersGuideShellPhase } from "../domain/workersGuideFlow";
@@ -14,6 +15,7 @@ export type ExtensionGuideSessionBridgeState = {
   activeStepIndex?: number;
   intent: string;
   phase: WorkersGuideShellPhase;
+  serviceKind?: ServiceKind;
 };
 
 type ClarifyBridgeState = ExtensionGuideSessionBridgeState & {
@@ -31,9 +33,12 @@ const sessionFromIntent = (intent: string) =>
   });
 
 const backendSessionFromIntent = (intent: string) =>
+  serviceSessionFromIntent(intent, "backend-api");
+
+const serviceSessionFromIntent = (intent: string, kind: ServiceKind) =>
   guideSessionReducer(sessionFromIntent(intent), {
     type: "choose-service-kind",
-    kind: "backend-api"
+    kind
   });
 
 const assertNever = (value: never): never => {
@@ -51,18 +56,13 @@ const serviceChoiceFromReducer = (
 
   switch (kind) {
     case "backend-api":
-      return {
-        ...state,
-        intent: session.intent,
-        phase: "guide",
-        activeStepIndex: session.steps.length > 0 ? session.activeStepIndex : undefined
-      };
     case "static-site":
       return {
         ...state,
         intent: session.intent,
-        phase: "static-complete",
-        activeStepIndex: undefined
+        phase: "guide",
+        activeStepIndex: session.steps.length > 0 ? session.activeStepIndex : undefined,
+        serviceKind: session.serviceKind
       };
     default:
       return assertNever(kind);
@@ -93,7 +93,7 @@ const workersSessionForShellState = (
     return undefined;
   }
 
-  let session = backendSessionFromIntent(state.intent);
+  let session = serviceSessionFromIntent(state.intent, state.serviceKind ?? "backend-api");
   const targetStepIndex = Math.min(
     Math.max(state.activeStepIndex, 0),
     Math.max(session.steps.length - 1, 0)
@@ -148,7 +148,8 @@ const projectWorkersSessionToShellState = (
         ...state,
         intent: session.intent,
         phase: session.phase,
-        activeStepIndex: session.activeStepIndex
+        activeStepIndex: session.activeStepIndex,
+        serviceKind: session.serviceKind
       };
     default:
       return state;
@@ -211,18 +212,21 @@ const workersSessionForCheckedContext = (
     return workersSessionForShellState(state);
   }
 
+  const checkedServiceKind =
+    state.serviceKind ?? serviceKindForRouteId(context.routeId) ?? "backend-api";
   const anchoredStepIndex =
     context.routeId === "cloudflare.unsupported"
       ? undefined
-      : workersGuideStepIndexForContext(context);
+      : guideStepIndexForContext(context, checkedServiceKind);
   const anchoredPhase: WorkersGuideShellPhase = state.phase === "recovery" ? "recovery" : "guide";
   const shellState: ExtensionGuideSessionBridgeState =
     anchoredStepIndex === undefined
-      ? state
+      ? { ...state, serviceKind: checkedServiceKind }
       : {
           ...state,
           phase: anchoredPhase,
-          activeStepIndex: anchoredStepIndex
+          activeStepIndex: anchoredStepIndex,
+          serviceKind: checkedServiceKind
         };
 
   return workersSessionForShellState(shellState);
@@ -309,6 +313,7 @@ export const resetGuideFromReducer = (
     ...state,
     intent: session.intent,
     phase: "intent",
-    activeStepIndex: undefined
+    activeStepIndex: undefined,
+    serviceKind: undefined
   };
 };

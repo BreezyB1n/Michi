@@ -1,8 +1,9 @@
 import {
   blockingStates,
   capabilities,
-  pageStatesByStep,
-  workersGuideSteps
+  guideStepsByServiceKind,
+  pageStatesByServiceKind,
+  pageStatesByStep
 } from "./siteSkillPack";
 import { hasExtensionContextUnavailableSignal } from "./pageContextSignals";
 import type {
@@ -43,8 +44,11 @@ export const createGuideSession = (
   ...overrides
 });
 
-const pageStateForStep = (index: number): PageState =>
-  pageStatesByStep[Math.min(index, pageStatesByStep.length - 1)];
+const pageStateForStep = (index: number, kind: ServiceKind = "backend-api"): PageState => {
+  const pageStates = pageStatesByServiceKind[kind] ?? pageStatesByStep;
+
+  return pageStates[Math.min(index, pageStates.length - 1)];
+};
 
 const targetForStep = (context: HostPageContext, step?: GuideStep) => {
   if (!step?.targetId) {
@@ -178,17 +182,11 @@ const chooseServiceKind = (
       ...session,
       serviceKind: kind,
       selectedCapability: capabilities["cloudflare-pages"],
-      followUpCapability: capabilities["cloudflare-workers"],
-      steps: [],
+      followUpCapability: capabilities["cloudflare-dns"],
+      steps: guideStepsByServiceKind[kind],
       activeStepIndex: 0,
-      phase: "complete",
-      pageState: {
-        location: "Michi capability routing",
-        targetElement: "Cloudflare Pages route",
-        evidence:
-          "Static website intent maps to Pages. The MVP keeps the runnable happy path on Workers.",
-        completionSatisfied: true
-      }
+      phase: "guide",
+      pageState: pageStateForStep(0, kind)
     };
   }
 
@@ -197,10 +195,10 @@ const chooseServiceKind = (
     serviceKind: kind,
     selectedCapability: capabilities["cloudflare-workers"],
     followUpCapability: capabilities["cloudflare-dns"],
-    steps: workersGuideSteps,
+    steps: guideStepsByServiceKind[kind],
     activeStepIndex: 0,
     phase: "guide",
-    pageState: pageStateForStep(0)
+    pageState: pageStateForStep(0, kind)
   };
 };
 
@@ -225,7 +223,7 @@ const advanceStep = (session: GuideSession): GuideSession => {
     return {
       ...session,
       phase: "complete",
-      pageState: pageStateForStep(session.activeStepIndex),
+      pageState: pageStateForStep(session.activeStepIndex, session.serviceKind),
       followUpCapability: capabilities["cloudflare-dns"]
     };
   }
@@ -234,7 +232,7 @@ const advanceStep = (session: GuideSession): GuideSession => {
   return {
     ...session,
     activeStepIndex: nextStepIndex,
-    pageState: pageStateForStep(nextStepIndex)
+    pageState: pageStateForStep(nextStepIndex, session.serviceKind)
   };
 };
 
@@ -248,7 +246,7 @@ const previousStep = (session: GuideSession): GuideSession => {
   return {
     ...session,
     activeStepIndex: previousStepIndex,
-    pageState: pageStateForStep(previousStepIndex)
+    pageState: pageStateForStep(previousStepIndex, session.serviceKind)
   };
 };
 
@@ -262,7 +260,7 @@ const confirmCriticalAction = (session: GuideSession): GuideSession => {
     ...session,
     phase: "guide",
     activeStepIndex: nextStepIndex,
-    pageState: pageStateForStep(nextStepIndex)
+    pageState: pageStateForStep(nextStepIndex, session.serviceKind)
   };
 };
 
@@ -284,8 +282,10 @@ const recoverFromBlockingState = (session: GuideSession): GuideSession => ({
   ...session,
   phase: "guide",
   pageState: {
-    ...pageStateForStep(session.activeStepIndex),
-    evidence: `Signed in and ready. ${pageStateForStep(session.activeStepIndex).evidence}`
+    ...pageStateForStep(session.activeStepIndex, session.serviceKind),
+    evidence: `Signed in and ready. ${
+      pageStateForStep(session.activeStepIndex, session.serviceKind).evidence
+    }`
   }
 });
 

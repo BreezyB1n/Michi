@@ -1,6 +1,6 @@
 import { pageDriftContextForStep, createCloudflareMockPageContextProvider } from "./pageContextProvider";
 import { createExtensionPageContextProvider, unsupportedPageContext } from "./extensionPageContextProvider";
-import type { HostPageContext, PageContextProvider } from "./types";
+import type { HostPageContext, PageContextProvider, ServiceKind } from "./types";
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -9,9 +9,9 @@ export type PageContextRuntimeMode = "mock" | "extension";
 export type MichiPageContextRuntime = PageContextProvider & {
   mode: PageContextRuntimeMode;
   getInitialContext(): HostPageContext;
-  syncGuideStep(index: number): MaybePromise<HostPageContext>;
-  simulatePageDrift(index?: number): MaybePromise<HostPageContext>;
-  recoverToStep(index: number): MaybePromise<HostPageContext>;
+  syncGuideStep(index: number, kind?: ServiceKind): MaybePromise<HostPageContext>;
+  simulatePageDrift(index?: number, kind?: ServiceKind): MaybePromise<HostPageContext>;
+  recoverToStep(index: number, kind?: ServiceKind): MaybePromise<HostPageContext>;
 };
 
 const readConfiguredMode = (): PageContextRuntimeMode => {
@@ -42,7 +42,7 @@ export const createExtensionPageContextRuntime = (): MichiPageContextRuntime => 
     getInitialContext: () =>
       unsupportedPageContext("Run Check to read the current Cloudflare page from the extension."),
     syncGuideStep: readCurrentContext,
-    simulatePageDrift: (index = 0) => pageDriftContextForStep(index),
+    simulatePageDrift: (index = 0, kind = "backend-api") => pageDriftContextForStep(index, kind),
     recoverToStep: readCurrentContext
   };
 };

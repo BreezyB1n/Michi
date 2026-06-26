@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  canCompleteGuide,
   canCompleteWorkersGuide,
+  guideStepIndexForContext,
   preferredTargetForContext,
+  preferredTargetForContextAndServiceKind,
   workersGuideStepForRouteId,
   workersGuideStepIndexForRouteId
 } from "../src/domain/workersGuideFlow";
+import type { ServiceKind } from "../src/domain/types";
 import type { HostPageContext, PageTarget } from "../src/domain/types";
 
 const target = (overrides: Partial<PageTarget>): PageTarget => ({
@@ -34,6 +38,31 @@ const context = (overrides: Partial<HostPageContext> = {}): HostPageContext => (
   ],
   ...overrides
 });
+
+const pagesDeployResultContext = (): HostPageContext =>
+  context({
+    url: "https://dash.cloudflare.com/example-account/pages/deploy-result",
+    title: "Deployment complete",
+    locationLabel: "Pages / Deployment result",
+    routeId: "cloudflare.pages.deploy-result",
+    targets: [
+      target({
+        id: "pages-url",
+        label: "Pages URL",
+        role: "status",
+        text: "https://michi-static.pages.dev",
+        confidence: "high"
+      })
+    ],
+    signals: [
+      {
+        id: "pages-url-detected",
+        label: "Pages URL detected",
+        value: "Pages URL returned HTTP 200 with the starter website.",
+        severity: "success"
+      }
+    ]
+  });
 
 describe("Workers guide flow helpers", () => {
   it("maps supported Cloudflare route IDs to Workers guide steps", () => {
@@ -100,5 +129,32 @@ describe("Workers guide flow helpers", () => {
         4
       )
     ).toBe(false);
+  });
+
+  it("maps Pages route IDs and target selection for static-site guides", () => {
+    const serviceKind: ServiceKind = "static-site";
+    const pagesContext = context({
+      routeId: "cloudflare.pages.overview",
+      targets: [
+        target({
+          id: "create-pages-button",
+          label: "Create Pages project button",
+          role: "button",
+          text: "Create Pages project",
+          confidence: "high"
+        })
+      ]
+    });
+
+    expect(guideStepIndexForContext(pagesContext, serviceKind)).toBe(1);
+    expect(preferredTargetForContextAndServiceKind(pagesContext, serviceKind)?.id).toBe(
+      "create-pages-button"
+    );
+  });
+
+  it("only completes the Pages guide with Pages URL success evidence on the final step", () => {
+    expect(canCompleteGuide(pagesDeployResultContext(), 4, "static-site")).toBe(true);
+    expect(canCompleteGuide(pagesDeployResultContext(), 3, "static-site")).toBe(false);
+    expect(canCompleteGuide(pagesDeployResultContext(), 4, "backend-api")).toBe(false);
   });
 });

@@ -21,6 +21,19 @@ const startBackendGuide = async () => {
   return user;
 };
 
+const startStaticGuide = async () => {
+  const user = userEvent.setup();
+  render(<App />);
+
+  await user.click(screen.getByRole("button", { name: /text guide/i }));
+  await user.clear(screen.getByLabelText(/user intent/i));
+  await user.type(screen.getByLabelText(/user intent/i), "Publish a static website.");
+  await user.click(screen.getByRole("button", { name: /start guide/i }));
+  await user.click(screen.getByRole("button", { name: /static website/i }));
+
+  return user;
+};
+
 const extensionFailureRuntime = (): MichiPageContextRuntime => {
   const failedContext = unsupportedPageContext("No receiving end", "error");
 
@@ -152,6 +165,17 @@ describe("Michi app", () => {
     expect(screen.getByText(/Provider synced/i)).toBeInTheDocument();
   });
 
+  it("routes static website work through the Pages guide path", async () => {
+    await startStaticGuide();
+
+    expect(screen.getByText(/Cloudflare Pages/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Hosting/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: /Find the Pages entry/i })).toBeInTheDocument();
+    expect(screen.getByText(/Pages can be opened/i)).toBeInTheDocument();
+    expect(screen.getByText(/Create and deploy a Pages site/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Acknowledge Pages and keep this demo on Workers/i)).not.toBeInTheDocument();
+  });
+
   it("requires explicit confirmation for a critical write action", async () => {
     const user = await startBackendGuide();
 
@@ -253,6 +277,26 @@ describe("Michi app", () => {
 
     expect(screen.getByRole("heading", { name: /Worker URL verified/i })).toBeInTheDocument();
     expect(screen.getByText(/Worker URL returned HTTP 200/i)).toBeInTheDocument();
+    expect(screen.getByText(/Cloudflare DNS/i)).toBeInTheDocument();
+    expect(screen.getByText(/Domain routing/i)).toBeInTheDocument();
+  });
+
+  it("reaches Pages completion with DNS as the follow-up route", async () => {
+    const user = await startStaticGuide();
+
+    await user.click(screen.getByRole("button", { name: /advance guide/i }));
+    await user.click(screen.getByRole("button", { name: /advance guide/i }));
+    await user.click(screen.getByRole("button", { name: /advance guide/i }));
+    await user.click(screen.getByRole("button", { name: /advance guide/i }));
+
+    expect(screen.getByRole("heading", { name: /Confirm Deploy Pages project/i })).toBeInTheDocument();
+    expect(screen.getByText(/Publishes the Pages project/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /confirm action/i }));
+    await user.click(screen.getByRole("button", { name: /advance guide/i }));
+
+    expect(screen.getByRole("heading", { name: /Pages URL verified/i })).toBeInTheDocument();
+    expect(screen.getByText(/Pages URL returned HTTP 200/i)).toBeInTheDocument();
     expect(screen.getByText(/Cloudflare DNS/i)).toBeInTheDocument();
     expect(screen.getByText(/Domain routing/i)).toBeInTheDocument();
   });

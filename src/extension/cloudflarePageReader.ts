@@ -113,6 +113,12 @@ const findWorkerUrlElement = (elements: Element[]) =>
     return /https:\/\/[^\s]+\.workers\.dev/i.test(`${elementText(element)} ${href}`);
   });
 
+const findPagesUrlElement = (elements: Element[]) =>
+  elements.find((element) => {
+    const href = element instanceof HTMLAnchorElement ? element.href : "";
+    return /https:\/\/[^\s]+\.pages\.dev/i.test(`${elementText(element)} ${href}`);
+  });
+
 const detectRoute = (url: URL, pageText: string): RouteDefinition => {
   if (url.hostname !== "dash.cloudflare.com") {
     return {
@@ -122,10 +128,10 @@ const detectRoute = (url: URL, pageText: string): RouteDefinition => {
     };
   }
 
-  if (/workers\.dev/i.test(pageText) || /deployment complete/i.test(pageText)) {
+  if (/deploy pages project|deploy pages/i.test(pageText) || /\/pages\/deploy-review/i.test(url.pathname)) {
     return {
-      routeId: "cloudflare.workers.deploy-result",
-      locationLabel: "Workers / Deployment result"
+      routeId: "cloudflare.pages.deploy-review",
+      locationLabel: "Pages / Deployment review"
     };
   }
 
@@ -136,10 +142,49 @@ const detectRoute = (url: URL, pageText: string): RouteDefinition => {
     };
   }
 
+  if (/static assets/i.test(pageText) || /\/pages\/new\/static-assets/i.test(url.pathname)) {
+    return {
+      routeId: "cloudflare.pages.static-assets",
+      locationLabel: "Pages / Static assets setup"
+    };
+  }
+
+  if (/\/pages$/i.test(url.pathname) || /create pages project|pages projects/i.test(pageText)) {
+    return {
+      routeId: "cloudflare.pages.overview",
+      locationLabel: "Pages / Overview"
+    };
+  }
+
+  if (
+    /\/pages\/deploy-result/i.test(url.pathname) ||
+    (/\/pages\b/i.test(url.pathname) && /deployment complete/i.test(pageText)) ||
+    (/pages\.dev/i.test(pageText) && /deployment complete/i.test(pageText))
+  ) {
+    return {
+      routeId: "cloudflare.pages.deploy-result",
+      locationLabel: "Pages / Deployment result"
+    };
+  }
+
+  if (/workers\.dev/i.test(pageText) || /deployment complete/i.test(pageText)) {
+    return {
+      routeId: "cloudflare.workers.deploy-result",
+      locationLabel: "Workers / Deployment result"
+    };
+  }
+
   if (/export default|fetch\s*\(/i.test(pageText)) {
     return {
       routeId: "cloudflare.workers.starter-editor",
       locationLabel: "Workers / Starter editor"
+    };
+  }
+
+  if (/\/pages/i.test(url.pathname)) {
+    return {
+      routeId: "cloudflare.pages.overview",
+      locationLabel: "Pages / Overview"
     };
   }
 
@@ -169,9 +214,13 @@ const extractTargets = (doc: Document): PageTarget[] => {
   const targets: PageTarget[] = [];
   const workersNav = findByText(elements, /workers\s*&\s*pages/i);
   const createWorker = findByText(elements, /create(?:\s+a)?\s+worker/i);
+  const createPages = findByText(elements, /create pages project|create pages/i);
+  const staticAssets = findByText(elements, /static assets/i);
   const starterHandler = findByText(elements, /export default|fetch\s*\(/i);
-  const deployWorker = findByText(elements, /^deploy\b|deploy worker/i);
+  const deployWorker = findByText(elements, /^(deploy|deploy worker)$/i);
+  const deployPages = findByText(elements, /deploy pages project|deploy pages/i);
   const workerUrl = findWorkerUrlElement(elements);
+  const pagesUrl = findPagesUrlElement(elements);
 
   if (workersNav) {
     targets.push(targetFromElement("workers-pages-nav", "Workers & Pages sidebar item", "navigation", workersNav));
@@ -179,6 +228,14 @@ const extractTargets = (doc: Document): PageTarget[] => {
 
   if (createWorker) {
     targets.push(targetFromElement("create-worker-button", "Create Worker button", "button", createWorker));
+  }
+
+  if (createPages) {
+    targets.push(targetFromElement("create-pages-button", "Create Pages project button", "button", createPages));
+  }
+
+  if (staticAssets) {
+    targets.push(targetFromElement("static-assets-option", "Static assets option", "button", staticAssets));
   }
 
   if (starterHandler) {
@@ -189,8 +246,16 @@ const extractTargets = (doc: Document): PageTarget[] => {
     targets.push(targetFromElement("deploy-worker-button", "Deploy button", "button", deployWorker));
   }
 
+  if (deployPages) {
+    targets.push(targetFromElement("deploy-pages-button", "Deploy Pages button", "button", deployPages));
+  }
+
   if (workerUrl) {
     targets.push(targetFromElement("worker-url", "Worker URL", "status", workerUrl));
+  }
+
+  if (pagesUrl) {
+    targets.push(targetFromElement("pages-url", "Pages URL", "status", pagesUrl));
   }
 
   return targets;
@@ -199,8 +264,18 @@ const extractTargets = (doc: Document): PageTarget[] => {
 const signalForRoute = (route: RouteDefinition, targets: PageTarget[]): PageSignal => {
   const { routeId } = route;
   const workerUrl = targets.find((target) => target.id === "worker-url");
+  const pagesUrl = targets.find((target) => target.id === "pages-url");
 
-  if (workerUrl) {
+  if (routeId === "cloudflare.pages.deploy-result" && pagesUrl) {
+    return {
+      id: "pages-url-detected",
+      label: "Pages URL detected",
+      value: `${pagesUrl.text} is visible on the page.`,
+      severity: "success"
+    };
+  }
+
+  if (routeId === "cloudflare.workers.deploy-result" && workerUrl) {
     return {
       id: "worker-url-detected",
       label: "Worker URL detected",

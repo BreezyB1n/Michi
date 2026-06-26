@@ -1,25 +1,39 @@
-import { blockingStates, pageStatesByStep, workersGuideSteps } from "./siteSkillPack";
+import {
+  blockingStates,
+  guideStepsByServiceKind,
+  pageStatesByServiceKind
+} from "./siteSkillPack";
 import type {
   HostPageContext,
   PageContextProvider,
   PageSignal,
-  PageTarget
+  PageTarget,
+  ServiceKind
 } from "./types";
 
 export type CloudflareMockPageContextProvider = PageContextProvider & {
   getCurrentContextSync(): HostPageContext;
-  setStepIndex(index: number): HostPageContext;
-  simulatePageDrift(index?: number): HostPageContext;
-  recoverToStep(index: number): HostPageContext;
+  setStepIndex(index: number, kind?: ServiceKind): HostPageContext;
+  simulatePageDrift(index?: number, kind?: ServiceKind): HostPageContext;
+  recoverToStep(index: number, kind?: ServiceKind): HostPageContext;
 };
 
-const routeIds = [
-  "cloudflare.dashboard.home",
-  "cloudflare.workers.overview",
-  "cloudflare.workers.starter-editor",
-  "cloudflare.workers.deploy-review",
-  "cloudflare.workers.deploy-result"
-] as const;
+const routeIdsByServiceKind: Record<ServiceKind, string[]> = {
+  "backend-api": [
+    "cloudflare.dashboard.home",
+    "cloudflare.workers.overview",
+    "cloudflare.workers.starter-editor",
+    "cloudflare.workers.deploy-review",
+    "cloudflare.workers.deploy-result"
+  ],
+  "static-site": [
+    "cloudflare.dashboard.home",
+    "cloudflare.pages.overview",
+    "cloudflare.pages.static-assets",
+    "cloudflare.pages.deploy-review",
+    "cloudflare.pages.deploy-result"
+  ]
+};
 
 const pageTargets: PageTarget[] = [
   {
@@ -61,46 +75,89 @@ const pageTargets: PageTarget[] = [
     text: "https://michi-guide-demo.workers.dev",
     confidence: "high",
     boundingBox: { x: 270, y: 428, width: 344, height: 36 }
+  },
+  {
+    id: "create-pages-button",
+    label: "Create Pages project button",
+    role: "button",
+    text: "Create Pages project",
+    confidence: "high",
+    boundingBox: { x: 824, y: 136, width: 142, height: 40 }
+  },
+  {
+    id: "static-assets-option",
+    label: "Static assets option",
+    role: "button",
+    text: "Static assets",
+    confidence: "high",
+    boundingBox: { x: 270, y: 314, width: 220, height: 72 }
+  },
+  {
+    id: "deploy-pages-button",
+    label: "Deploy Pages button",
+    role: "button",
+    text: "Deploy Pages project",
+    confidence: "high",
+    boundingBox: { x: 748, y: 580, width: 158, height: 42 }
+  },
+  {
+    id: "pages-url",
+    label: "Pages URL",
+    role: "status",
+    text: "https://michi-static.pages.dev",
+    confidence: "high",
+    boundingBox: { x: 270, y: 428, width: 304, height: 36 }
   }
 ];
 
-const clampedStepIndex = (index: number) =>
-  Math.min(Math.max(index, 0), workersGuideSteps.length - 1);
+const guideStepsForKind = (kind: ServiceKind) => guideStepsByServiceKind[kind];
+const pageStatesForKind = (kind: ServiceKind) => pageStatesByServiceKind[kind];
 
-const detectedAtForStep = (index: number) =>
-  new Date(Date.UTC(2026, 5, 24, 0, 0, clampedStepIndex(index))).toISOString();
+const clampedStepIndex = (index: number, kind: ServiceKind = "backend-api") =>
+  Math.min(Math.max(index, 0), guideStepsForKind(kind).length - 1);
 
-const signalForStep = (index: number): PageSignal => {
-  const pageState = pageStatesByStep[clampedStepIndex(index)];
+const detectedAtForStep = (index: number, kind: ServiceKind = "backend-api") =>
+  new Date(Date.UTC(2026, 5, 24, 0, 0, clampedStepIndex(index, kind))).toISOString();
+
+const signalForStep = (index: number, kind: ServiceKind = "backend-api"): PageSignal => {
+  const stepIndex = clampedStepIndex(index, kind);
+  const pageState = pageStatesForKind(kind)[stepIndex];
+  const step = guideStepsForKind(kind)[stepIndex];
   return {
-    id: `completion-${workersGuideSteps[clampedStepIndex(index)].id}`,
+    id: `completion-${step.id}`,
     label: "Completion evidence",
     value: pageState.evidence,
     severity: pageState.completionSatisfied ? "success" : "info"
   };
 };
 
-export const hostPageContextForStep = (index: number): HostPageContext => {
-  const stepIndex = clampedStepIndex(index);
-  const pageState = pageStatesByStep[stepIndex];
-  const step = workersGuideSteps[stepIndex];
+export const hostPageContextForStep = (
+  index: number,
+  kind: ServiceKind = "backend-api"
+): HostPageContext => {
+  const stepIndex = clampedStepIndex(index, kind);
+  const pageState = pageStatesForKind(kind)[stepIndex];
+  const step = guideStepsForKind(kind)[stepIndex];
   const target = pageTargets.find((candidate) => candidate.id === step.targetId);
 
   return {
-    url: `https://dash.cloudflare.com/mock/${routeIds[stepIndex]}`,
+    url: `https://dash.cloudflare.com/mock/${routeIdsByServiceKind[kind][stepIndex]}`,
     title: pageState.location,
     product: "cloudflare",
     locationLabel: pageState.location,
-    routeId: routeIds[stepIndex],
-    detectedAt: detectedAtForStep(stepIndex),
+    routeId: routeIdsByServiceKind[kind][stepIndex],
+    detectedAt: detectedAtForStep(stepIndex, kind),
     targets: target ? [target] : [],
-    signals: [signalForStep(stepIndex)]
+    signals: [signalForStep(stepIndex, kind)]
   };
 };
 
-export const pageDriftContextForStep = (index: number): HostPageContext => {
-  const stepIndex = clampedStepIndex(index);
-  const step = workersGuideSteps[stepIndex];
+export const pageDriftContextForStep = (
+  index: number,
+  kind: ServiceKind = "backend-api"
+): HostPageContext => {
+  const stepIndex = clampedStepIndex(index, kind);
+  const step = guideStepsForKind(kind)[stepIndex];
 
   return {
     url: "https://dash.cloudflare.com/mock/unexpected-page",
@@ -108,7 +165,7 @@ export const pageDriftContextForStep = (index: number): HostPageContext => {
     product: "cloudflare",
     locationLabel: "Cloudflare dashboard / Unexpected page",
     routeId: "cloudflare.unexpected-page",
-    detectedAt: detectedAtForStep(stepIndex),
+    detectedAt: detectedAtForStep(stepIndex, kind),
     targets: [],
     signals: [
       {
@@ -125,8 +182,9 @@ export const pageDriftContextForStep = (index: number): HostPageContext => {
 export const createCloudflareMockPageContextProvider = (
   initialStepIndex = 0
 ): CloudflareMockPageContextProvider => {
-  let currentStepIndex = clampedStepIndex(initialStepIndex);
-  let currentContext = hostPageContextForStep(currentStepIndex);
+  let currentServiceKind: ServiceKind = "backend-api";
+  let currentStepIndex = clampedStepIndex(initialStepIndex, currentServiceKind);
+  let currentContext = hostPageContextForStep(currentStepIndex, currentServiceKind);
   const listeners = new Set<(context: HostPageContext) => void>();
 
   const publish = (context: HostPageContext) => {
@@ -144,17 +202,20 @@ export const createCloudflareMockPageContextProvider = (
         listeners.delete(listener);
       };
     },
-    setStepIndex: (index) => {
-      currentStepIndex = clampedStepIndex(index);
-      return publish(hostPageContextForStep(currentStepIndex));
+    setStepIndex: (index, kind = currentServiceKind) => {
+      currentServiceKind = kind;
+      currentStepIndex = clampedStepIndex(index, currentServiceKind);
+      return publish(hostPageContextForStep(currentStepIndex, currentServiceKind));
     },
-    simulatePageDrift: (index = currentStepIndex) => {
-      currentStepIndex = clampedStepIndex(index);
-      return publish(pageDriftContextForStep(currentStepIndex));
+    simulatePageDrift: (index = currentStepIndex, kind = currentServiceKind) => {
+      currentServiceKind = kind;
+      currentStepIndex = clampedStepIndex(index, currentServiceKind);
+      return publish(pageDriftContextForStep(currentStepIndex, currentServiceKind));
     },
-    recoverToStep: (index) => {
-      currentStepIndex = clampedStepIndex(index);
-      return publish(hostPageContextForStep(currentStepIndex));
+    recoverToStep: (index, kind = currentServiceKind) => {
+      currentServiceKind = kind;
+      currentStepIndex = clampedStepIndex(index, currentServiceKind);
+      return publish(hostPageContextForStep(currentStepIndex, currentServiceKind));
     }
   };
 };

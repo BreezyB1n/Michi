@@ -36,6 +36,17 @@ describe("Guide Agent Core", () => {
     expect(session.selectedCapability?.concept).toContain("Compute");
   });
 
+  it("maps static website intent to Cloudflare Pages guide steps", () => {
+    const session = chooseServiceKind(startSession("Publish a static site."), "static-site");
+
+    expect(session.phase).toBe("guide");
+    expect(session.serviceKind).toBe("static-site");
+    expect(session.selectedCapability?.id).toBe("cloudflare-pages");
+    expect(session.selectedCapability?.concept).toContain("Hosting");
+    expect(session.steps).toHaveLength(5);
+    expect(session.steps[1].title).toBe("Create a Pages project");
+  });
+
   it("generates Workers guide steps with action, purpose, and completion checks", () => {
     const session = chooseServiceKind(startSession(sampleIntent), "backend-api");
 
