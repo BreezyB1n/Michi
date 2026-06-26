@@ -1,4 +1,5 @@
 import { readCloudflarePageContext } from "./cloudflarePageReader";
+import { capabilities, workersGuideSteps } from "../domain/siteSkillPack";
 import type { HostPageContext, PageTarget } from "../domain/types";
 
 const rootId = "michi-extension-root";
@@ -147,6 +148,36 @@ const shellStyles = `
     margin-top: 6px;
   }
 
+  .guide-summary {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(23, 23, 23, 0.1);
+  }
+
+  .capability {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    color: #171717;
+  }
+
+  .capability strong {
+    font: 750 13px/1.2 inherit;
+  }
+
+  .capability span {
+    font: 700 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: #737373;
+    text-transform: uppercase;
+  }
+
+  .step-title {
+    font: 750 15px/1.25 inherit;
+    color: #171717;
+  }
+
   .target-highlight {
     position: fixed;
     z-index: 2147483646;
@@ -190,6 +221,9 @@ const primaryTargetForContext = (context: HostPageContext) =>
   preferredTargetByRoute[context.routeId]
     ? context.targets.find((target) => target.id === preferredTargetByRoute[context.routeId])
     : context.targets[0];
+
+export const guideStepForContext = (context: HostPageContext) =>
+  workersGuideSteps.find((step) => step.expectedRouteId === context.routeId);
 
 export const recoveryGuidanceForContext = (
   context: HostPageContext
@@ -249,8 +283,41 @@ const contextCopy = (context: HostPageContext) => {
   const target = primaryTargetForContext(context);
   const signal = context.signals[0];
   const guidance = recoveryGuidanceForContext(context);
+  const step = guideStepForContext(context);
+  const workersCapability = capabilities["cloudflare-workers"];
 
   return `
+    ${
+      step
+        ? `<section class="guide-summary" aria-label="Current guide step">
+            <div>
+              <p class="eyebrow">Capability</p>
+              <p class="capability">
+                <strong>${escapeHtml(workersCapability.name)}</strong>
+                <span>${escapeHtml(workersCapability.concept)}</span>
+              </p>
+            </div>
+            <div>
+              <p class="eyebrow">Guide step</p>
+              <p class="step-title">${escapeHtml(step.title)}</p>
+            </div>
+            <dl>
+              <div>
+                <dt>Action</dt>
+                <dd>${escapeHtml(step.action)}</dd>
+              </div>
+              <div>
+                <dt>Step purpose</dt>
+                <dd>${escapeHtml(step.purpose)}</dd>
+              </div>
+              <div>
+                <dt>Completion check</dt>
+                <dd>${escapeHtml(step.completionCheck)}</dd>
+              </div>
+            </dl>
+          </section>`
+        : ""
+    }
     ${
       guidance
         ? `<div class="recovery" role="status" aria-label="${escapeHtml(guidance.title)}">

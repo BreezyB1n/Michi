@@ -80,6 +80,10 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).toContain("cloudflare.workers.overview");
     expect(shadow?.textContent).toContain("Create Worker button");
     expect(shadow?.textContent).toContain("Cloudflare route detected");
+    expect(shadow?.textContent).toContain("Cloudflare Workers");
+    expect(shadow?.textContent).toContain("Create a Worker");
+    expect(shadow?.textContent).toContain("Choose Create Worker and keep the generated starter service.");
+    expect(shadow?.textContent).toContain("A Worker draft exists and the editor or setup view is visible.");
 
     click(shadow?.querySelector("[data-action='minimize']") ?? null);
     expect(shadow?.querySelector("[data-panel]")).toBeNull();
