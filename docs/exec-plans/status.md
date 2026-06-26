@@ -28,6 +28,7 @@ Michi has a verified local React workbench and a Cloudflare-only unpacked extens
 | Extension reducer reset bridge | `completed/extension-reducer-reset-bridge.md` | Injected-shell Reset now projects through the shared guide-session reducer, clears shell-only page evidence, and keeps the rail compact. |
 | Cloudflare Pages guide path | `completed/cloudflare-pages-guide-path.md` | Static-site intent now routes to a deterministic Pages guide path across the React workbench and injected extension shell, including Pages page anchoring, confirmation, completion evidence, and DNS follow-up. |
 | Extension route-state guard | `completed/extension-route-state-guard.md` | Injected-shell Check page now preserves the selected Workers/Pages guide path, sends cross-path checks to recovery, suppresses wrong-path highlights, and reads SPA-style URL changes dynamically. |
+| Extension runtime fixture boundary | `completed/extension-runtime-fixture-boundary.md` | Cloudflare dashboard fixture generation now lives in test support, keeping the unpacked extension runtime smoke focused on browser and guide-shell behavior. |
 
 ## Active Work
 

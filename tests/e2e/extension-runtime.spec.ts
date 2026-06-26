@@ -1,6 +1,7 @@
 import { chromium, expect, test } from "@playwright/test";
 import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { fulfillCloudflareDashboardRoute } from "../support/cloudflareDashboardFixture";
 
 const extensionPath = path.resolve(process.cwd(), "dist-extension");
 
@@ -76,85 +77,7 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     }
 
     const page = await context.newPage();
-    await page.route("https://dash.cloudflare.com/**", async (route) => {
-      const requestUrl = route.request().url();
-      const requestPath = new URL(requestUrl).pathname;
-      const isMissingTargetFixture = requestUrl.includes("/missing-target");
-      const isUnsupportedAreaFixture = requestUrl.includes("/analytics");
-      const isStarterEditorFixture = requestUrl.includes("/workers/starter-editor");
-      const isDeployReviewFixture = requestUrl.includes("/workers/deploy-review");
-      const isDeployResultFixture = requestUrl.includes("/workers/deploy-result");
-      const isPagesOverviewFixture = /\/pages\/?$/.test(requestPath);
-      const isPagesDeployReviewFixture = requestUrl.includes("/pages/deploy-review");
-      const isPagesDeployResultFixture = requestUrl.includes("/pages/deploy-result");
-      const isNestedScrollFixture = requestUrl.includes("/nested-scroll");
-
-      await route.fulfill({
-        contentType: "text/html",
-        body: `
-          <!doctype html>
-          <html>
-            <head>
-              <title>Workers & Pages</title>
-              <style>
-                body { min-height: 1800px; }
-                main { padding-top: 360px; }
-                [data-scroll-container] {
-                  height: 260px;
-                  overflow: auto;
-                  border: 1px solid #ddd;
-                }
-                [data-scroll-spacer] {
-                  height: 520px;
-                  padding-top: 360px;
-                }
-              </style>
-            </head>
-            <body>
-              ${isMissingTargetFixture ? "" : '<nav><a href="/workers-and-pages">Workers & Pages</a></nav>'}
-              <main>
-                ${
-                  isPagesDeployResultFixture
-                    ? `<h1>Deployment complete</h1>
-                       <p>Your Pages site is available at:</p>
-                       <a href="https://michi-static.pages.dev">https://michi-static.pages.dev</a>`
-                    : isPagesDeployReviewFixture
-                      ? `<h1>Deploy Pages project</h1>
-                         <p>Review the Pages deployment before publishing.</p>
-                         <button>Deploy Pages project</button>`
-                    : isPagesOverviewFixture
-                      ? `<h1>Pages projects</h1>
-                         <button>Create Pages project</button>`
-                    : isDeployResultFixture
-                    ? `<h1>Deployment complete</h1>
-                       <p>Your Worker is available at:</p>
-                       <a href="https://michi-starter.example.workers.dev">https://michi-starter.example.workers.dev</a>`
-                    : isDeployReviewFixture
-                      ? `<h1>Deploy Worker</h1>
-                         <p>Review the Worker deployment before publishing.</p>
-                         <button>Deploy Worker</button>`
-                      : isStarterEditorFixture
-                        ? `<h1>Worker starter editor</h1>
-                           <pre><code>export default { async fetch(request) { return new Response("Hello from Michi"); } }</code></pre>`
-                      : isUnsupportedAreaFixture
-                        ? `<h1>Analytics</h1>
-                           <p>Traffic insights for this account.</p>`
-                    : isNestedScrollFixture
-                      ? `<section data-scroll-container>
-                           <div data-scroll-spacer>
-                             <h1>Workers & Pages</h1>
-                             <button>Create Worker</button>
-                           </div>
-                         </section>`
-                    : `<h1>Workers & Pages</h1>
-                       ${isMissingTargetFixture ? "<p>Loading actions...</p>" : "<button>Create Worker</button>"}`
-                }
-              </main>
-            </body>
-          </html>
-        `
-      });
-    });
+    await page.route("https://dash.cloudflare.com/**", fulfillCloudflareDashboardRoute);
 
     await page.goto("https://dash.cloudflare.com/example-account/workers-and-pages");
     await expect(page.getByRole("button", { name: "Create Worker" })).toBeVisible();
