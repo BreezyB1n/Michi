@@ -41,6 +41,8 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await page.route("https://dash.cloudflare.com/**", async (route) => {
       const requestUrl = route.request().url();
       const isMissingTargetFixture = requestUrl.includes("/missing-target");
+      const isStarterEditorFixture = requestUrl.includes("/starter-editor");
+      const isDeployReviewFixture = requestUrl.includes("/deploy-review");
       const isDeployResultFixture = requestUrl.includes("/deploy-result");
 
       await route.fulfill({
@@ -57,6 +59,13 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
                     ? `<h1>Deployment complete</h1>
                        <p>Your Worker is available at:</p>
                        <a href="https://michi-starter.example.workers.dev">https://michi-starter.example.workers.dev</a>`
+                    : isDeployReviewFixture
+                      ? `<h1>Deploy Worker</h1>
+                         <p>Review the Worker deployment before publishing.</p>
+                         <button>Deploy Worker</button>`
+                      : isStarterEditorFixture
+                        ? `<h1>Worker starter editor</h1>
+                           <pre><code>export default { async fetch(request) { return new Response("Hello from Michi"); } }</code></pre>`
                     : `<h1>Workers & Pages</h1>
                        ${isMissingTargetFixture ? "<p>Loading actions...</p>" : "<button>Create Worker</button>"}`
                 }
@@ -133,6 +142,30 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
         })
       })
     );
+
+    await page.goto("https://dash.cloudflare.com/example-account/workers/starter-editor");
+    await expect(page.getByLabel("Michi rail")).toBeVisible();
+    await page.getByRole("button", { name: "Guide" }).click();
+    await page.getByRole("button", { name: "Check page" }).click();
+    await expect(page.getByText("cloudflare.workers.starter-editor")).toBeVisible();
+    await expect(page.getByText("Step 3 / 5")).toBeVisible();
+    await expect(page.getByText("Review the starter response")).toBeVisible();
+    await expect(page.getByText("Starter request handler")).toBeVisible();
+    await expect(page.getByLabel("Highlighted target: Starter request handler")).toBeVisible();
+
+    await page.goto("https://dash.cloudflare.com/example-account/workers/deploy-review");
+    await expect(page.getByLabel("Michi rail")).toBeVisible();
+    await page.getByRole("button", { name: "Guide" }).click();
+    await page.getByRole("button", { name: "Check page" }).click();
+    await expect(page.getByText("cloudflare.workers.deploy-review")).toBeVisible();
+    await expect(page.getByText("Step 4 / 5")).toBeVisible();
+    await expect(page.getByText("Deploy the Worker")).toBeVisible();
+    await expect(page.getByText("Deploy button")).toBeVisible();
+    await expect(page.getByLabel("Highlighted target: Deploy button")).toBeVisible();
+    await page.getByRole("button", { name: "Next step" }).click();
+    await expect(page.getByText("Critical write action")).toBeVisible();
+    await expect(page.getByText("Confirm Deploy Worker")).toBeVisible();
+    await expect(page.getByText(/Publishes the Worker to a reachable URL/)).toBeVisible();
 
     await page.goto("https://dash.cloudflare.com/example-account/workers/deploy-result");
     await expect(page.getByLabel("Michi rail")).toBeVisible();
