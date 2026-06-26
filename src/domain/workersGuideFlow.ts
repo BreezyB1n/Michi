@@ -104,16 +104,6 @@ export const nextWorkersGuideState = (
   };
 };
 
-export const chooseBackendWorkersGuideState = (): WorkersGuideShellState => ({
-  phase: "guide",
-  activeStepIndex: 0
-});
-
-export const chooseStaticWorkersGuideState = (): WorkersGuideShellState => ({
-  phase: "static-complete",
-  activeStepIndex: undefined
-});
-
 export const confirmWorkersGuideActionState = (
   state: WorkersGuideShellState
 ): WorkersGuideShellState => ({

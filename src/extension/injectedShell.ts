@@ -3,8 +3,6 @@ import { capabilities, workersGuideSteps } from "../domain/siteSkillPack";
 import {
   canCompleteWorkersGuide,
   checkedContextWorkersGuideState,
-  chooseBackendWorkersGuideState,
-  chooseStaticWorkersGuideState,
   completeWorkersGuideState,
   confirmWorkersGuideActionState,
   finalWorkersGuideStepIndex,
@@ -16,6 +14,11 @@ import {
 } from "../domain/workersGuideFlow";
 import type { WorkersGuideShellPhase } from "../domain/workersGuideFlow";
 import type { HostPageContext, PageTarget } from "../domain/types";
+import {
+  chooseBackendApiFromReducer,
+  chooseStaticSiteFromReducer,
+  startGuideFromReducer
+} from "./extensionGuideSessionBridge";
 
 export { workersGuideStepForContext as guideStepForContext } from "../domain/workersGuideFlow";
 
@@ -637,21 +640,26 @@ export const mountMichiInjectedShell = (
     });
 
     shadow.querySelector("[data-action='start-guide']")?.addEventListener("click", () => {
-      state.phase = "clarify";
+      const nextGuideState = startGuideFromReducer(state);
+      state.phase = nextGuideState.phase;
+      state.activeStepIndex = nextGuideState.activeStepIndex;
+      state.intent = nextGuideState.intent;
       render();
     });
 
     shadow.querySelector("[data-action='choose-backend-api']")?.addEventListener("click", () => {
-      const nextGuideState = chooseBackendWorkersGuideState();
+      const nextGuideState = chooseBackendApiFromReducer(state);
       state.phase = nextGuideState.phase;
       state.activeStepIndex = nextGuideState.activeStepIndex;
+      state.intent = nextGuideState.intent;
       render();
     });
 
     shadow.querySelector("[data-action='choose-static-site']")?.addEventListener("click", () => {
-      const nextGuideState = chooseStaticWorkersGuideState();
+      const nextGuideState = chooseStaticSiteFromReducer(state);
       state.phase = nextGuideState.phase;
       state.activeStepIndex = nextGuideState.activeStepIndex;
+      state.intent = nextGuideState.intent;
       render();
     });
 
