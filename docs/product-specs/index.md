@@ -30,3 +30,4 @@ Product specs are the source of truth for what Michi should build.
 - `extension-reducer-reset-bridge.md`
 - `cloudflare-pages-guide-path.md`
 - `extension-route-state-guard.md`
+- `branch-freshness-checklist.md`

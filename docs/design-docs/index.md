@@ -13,3 +13,4 @@ Design docs explain why Michi behaves the way it does. Product behavior should b
 - `extension-reducer-reset-bridge-decision.md`
 - `cloudflare-pages-guide-path-decision.md`
 - `extension-route-state-guard-decision.md`
+- `branch-freshness-checklist-decision.md`
