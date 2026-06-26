@@ -10,3 +10,4 @@ Design docs explain why Michi behaves the way it does. Product behavior should b
 - `extension-reducer-intent-bridge-decision.md`
 - `extension-reducer-flow-bridge-decision.md`
 - `extension-reducer-page-check-bridge-decision.md`
+- `extension-reducer-reset-bridge-decision.md`

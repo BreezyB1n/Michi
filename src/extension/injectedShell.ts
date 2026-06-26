@@ -17,6 +17,7 @@ import {
   confirmCriticalActionFromReducer,
   nextStepFromReducer,
   previousStepFromReducer,
+  resetGuideFromReducer,
   startGuideFromReducer
 } from "./extensionGuideSessionBridge";
 
@@ -124,6 +125,12 @@ const shellStyles = `
     align-items: center;
     justify-content: space-between;
     border-bottom: 1px solid rgba(23, 23, 23, 0.1);
+  }
+
+  .panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
   h2,
@@ -589,7 +596,10 @@ export const mountMichiInjectedShell = (
                     <p class="eyebrow">Guide Agent</p>
                     <h2>Michi guide</h2>
                   </div>
-                  <button type="button" data-action="minimize" aria-label="Minimize panel">Min</button>
+                  <div class="panel-actions" aria-label="Panel actions">
+                    <button type="button" data-action="reset-guide" aria-label="Reset guide">Reset</button>
+                    <button type="button" data-action="minimize" aria-label="Minimize panel">Min</button>
+                  </div>
                 </div>
                 <div class="panel-body">
                   ${panelBodyCopy(state)}
@@ -618,6 +628,17 @@ export const mountMichiInjectedShell = (
     shadow.querySelector("[data-action='minimize']")?.addEventListener("click", () => {
       state.open = false;
       render();
+    });
+
+    shadow.querySelector("[data-action='reset-guide']")?.addEventListener("click", () => {
+      const nextGuideState = resetGuideFromReducer(state);
+      state.open = true;
+      state.context = undefined;
+      state.phase = nextGuideState.phase;
+      state.activeStepIndex = nextGuideState.activeStepIndex;
+      state.intent = nextGuideState.intent;
+      render();
+      shadow.querySelector<HTMLTextAreaElement>("[data-intent]")?.focus();
     });
 
     shadow.querySelector("[data-action='previous-step']")?.addEventListener("click", () => {

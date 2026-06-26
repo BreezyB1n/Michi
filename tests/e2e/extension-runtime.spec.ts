@@ -255,6 +255,13 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByText("Primary path complete")).toBeVisible();
     await expect(page.getByText("Worker URL verified")).toBeVisible();
     await expect(page.getByText("Cloudflare DNS")).toBeVisible();
+    await expect(page.locator("[aria-label='Michi rail']").getByRole("button", { name: "Reset guide" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Reset guide" }).click();
+    await expect(page.getByText("User intent")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Start guide" })).toBeVisible();
+    await expect(page.getByText("Primary path complete")).toHaveCount(0);
+    await expect(page.getByText("Cloudflare DNS")).toHaveCount(0);
+    await expect(page.getByLabel(/Highlighted target/)).toHaveCount(0);
 
     await page.goto("https://dash.cloudflare.com/example-account/workers-and-pages/nested-scroll");
     await expect(page.getByLabel("Michi rail")).toBeVisible();

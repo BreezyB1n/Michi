@@ -299,3 +299,16 @@ export const checkedContextFromReducer = (
 
   return projectWorkersSessionToShellState(state, checkedSession);
 };
+
+export const resetGuideFromReducer = (
+  state: ExtensionGuideSessionBridgeState
+): ExtensionGuideSessionBridgeState => {
+  const session = guideSessionReducer(createGuideSession(), { type: "reset" });
+
+  return {
+    ...state,
+    intent: session.intent,
+    phase: "intent",
+    activeStepIndex: undefined
+  };
+};

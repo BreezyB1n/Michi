@@ -27,3 +27,4 @@ Product specs are the source of truth for what Michi should build.
 - `extension-reducer-intent-bridge.md`
 - `extension-reducer-flow-bridge.md`
 - `extension-reducer-page-check-bridge.md`
+- `extension-reducer-reset-bridge.md`

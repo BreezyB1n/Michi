@@ -7,6 +7,7 @@ import {
   confirmCriticalActionFromReducer,
   nextStepFromReducer,
   previousStepFromReducer,
+  resetGuideFromReducer,
   startGuideFromReducer
 } from "../src/extension/extensionGuideSessionBridge";
 import type { HostPageContext, PageTarget } from "../src/domain/types";
@@ -350,6 +351,22 @@ describe("Extension guide session bridge", () => {
       open: true,
       intent: "Build a JSON API for customers.",
       phase: "recovery",
+      activeStepIndex: undefined
+    });
+  });
+
+  it("projects reset through the shared reducer while keeping the shell open", () => {
+    expect(
+      resetGuideFromReducer({
+        open: true,
+        intent: "Build a JSON API for customers.",
+        phase: "complete",
+        activeStepIndex: 4
+      })
+    ).toEqual({
+      open: true,
+      intent: "",
+      phase: "intent",
       activeStepIndex: undefined
     });
   });

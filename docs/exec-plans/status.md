@@ -25,6 +25,7 @@ Michi has a verified local React workbench and a Cloudflare-only unpacked extens
 | Extension reducer intent bridge | `completed/extension-reducer-intent-bridge.md` | Injected-shell intent start and service-kind choices now project through the shared guide-session reducer. |
 | Extension reducer flow bridge | `completed/extension-reducer-flow-bridge.md` | Injected-shell previous, next, critical confirmation, and completion actions now project through the shared guide-session reducer. |
 | Extension reducer page-check bridge | `completed/extension-reducer-page-check-bridge.md` | Injected-shell page checks now project through the shared guide-session reducer while preserving page anchoring and critical confirmation safety. |
+| Extension reducer reset bridge | `completed/extension-reducer-reset-bridge.md` | Injected-shell Reset now projects through the shared guide-session reducer, clears shell-only page evidence, and keeps the rail compact. |
 
 ## Active Work
 
@@ -36,7 +37,7 @@ Michi has a verified local React workbench and a Cloudflare-only unpacked extens
 
 ## Recommended Next Direction
 
-The next product slice should decide whether the injected shell is ready to store a full `GuideSession`, or whether reset/static routing should remain compact projections.
+The next product slice should decide whether static-route acknowledgement should be promoted into a richer Cloudflare Pages guide path or remain a terminal lightweight acknowledgement while Workers stays the primary guided path.
 
 ## Verification Baseline
 
