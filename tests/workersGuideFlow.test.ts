@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   canCompleteWorkersGuide,
-  checkedContextWorkersGuideState,
   preferredTargetForContext,
   workersGuideStepForRouteId,
   workersGuideStepIndexForRouteId
@@ -62,15 +61,6 @@ describe("Workers guide flow helpers", () => {
     );
 
     expect(selected?.id).toBe("create-worker-button");
-  });
-
-  it("checks page context into the matching guide step state", () => {
-    expect(
-      checkedContextWorkersGuideState(context(), { phase: "confirm", activeStepIndex: 0 })
-    ).toEqual({
-      phase: "guide",
-      activeStepIndex: 1
-    });
   });
 
   it("only completes the Workers guide with Worker URL success evidence on the final step", () => {

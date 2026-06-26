@@ -24,6 +24,7 @@ Michi has a verified local React workbench and a Cloudflare-only unpacked extens
 | Shared guide session reducer | `completed/shared-guide-session-reducer.md` | React workbench guide-session transitions now run through a pure reducer behind the existing `GuideCore` facade. |
 | Extension reducer intent bridge | `completed/extension-reducer-intent-bridge.md` | Injected-shell intent start and service-kind choices now project through the shared guide-session reducer. |
 | Extension reducer flow bridge | `completed/extension-reducer-flow-bridge.md` | Injected-shell previous, next, critical confirmation, and completion actions now project through the shared guide-session reducer. |
+| Extension reducer page-check bridge | `completed/extension-reducer-page-check-bridge.md` | Injected-shell page checks now project through the shared guide-session reducer while preserving page anchoring and critical confirmation safety. |
 
 ## Active Work
 
@@ -35,7 +36,7 @@ Michi has a verified local React workbench and a Cloudflare-only unpacked extens
 
 ## Recommended Next Direction
 
-The next product slice should bridge page-check recovery transitions through the shared reducer while keeping page anchoring in `workersGuideFlow`.
+The next product slice should decide whether the injected shell is ready to store a full `GuideSession`, or whether reset/static routing should remain compact projections.
 
 ## Verification Baseline
 

@@ -28,6 +28,26 @@ const renderDeploymentResultFixture = () => {
   `;
 };
 
+const renderStarterEditorFixture = () => {
+  document.body.innerHTML = `
+    <nav><a href="/workers-and-pages">Workers & Pages</a></nav>
+    <main>
+      <h1>Worker editor</h1>
+      <pre>export default { fetch() { return new Response("ok") } }</pre>
+    </main>
+  `;
+};
+
+const renderWorkersOverviewMissingTargetFixture = () => {
+  document.body.innerHTML = `
+    <nav><a href="/workers-and-pages">Workers & Pages</a></nav>
+    <main>
+      <h1>Workers & Pages</h1>
+      <p>The create action is still loading.</p>
+    </main>
+  `;
+};
+
 const renderUnsupportedAreaFixture = () => {
   document.body.innerHTML = `
     <nav><a href="/workers-and-pages">Workers & Pages</a></nav>
@@ -251,6 +271,52 @@ describe("Injected Michi extension shell", () => {
     click(shadow?.querySelector("[data-action='confirm-action']") ?? null);
     expect(shadow?.textContent).toContain("Step 3 / 5");
     expect(shadow?.textContent).toContain("Review the starter response");
+  });
+
+  it("does not re-anchor pending confirmation when checking a later route", () => {
+    renderCloudflareFixture();
+    const location = {
+      href: "https://dash.cloudflare.com/example-account/workers-and-pages",
+      title: "Workers & Pages"
+    };
+    const root = mountMichiInjectedShell(document, location);
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    expect(shadow?.textContent).toContain("Confirm Create Worker");
+
+    renderStarterEditorFixture();
+    location.href = "https://dash.cloudflare.com/example-account/workers/services/edit/michi-starter";
+    location.title = "Worker editor";
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+
+    expect(shadow?.textContent).toContain("Confirm Create Worker");
+    expect(shadow?.textContent).toContain("Creates a new Cloudflare Worker resource");
+    expect(shadow?.textContent).not.toContain("Step 3 / 5");
+    expect(shadow?.textContent).not.toContain("Review the starter response");
+  });
+
+  it("shows target-missing recovery over stale confirmation copy", () => {
+    renderCloudflareFixture();
+    const location = {
+      href: "https://dash.cloudflare.com/example-account/workers-and-pages",
+      title: "Workers & Pages"
+    };
+    const root = mountMichiInjectedShell(document, location);
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    expect(shadow?.textContent).toContain("Confirm Create Worker");
+
+    renderWorkersOverviewMissingTargetFixture();
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+
+    expect(shadow?.textContent).toContain("Target missing");
+    expect(shadow?.textContent).toContain("Create Worker button");
+    expect(shadow?.textContent).not.toContain("Confirm Create Worker");
+    expect(shadow?.textContent).not.toContain("Creates a new Cloudflare Worker resource");
   });
 
   it("completes the Workers guide with DNS follow-up after Worker URL evidence", () => {

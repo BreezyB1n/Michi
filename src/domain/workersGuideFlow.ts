@@ -6,6 +6,7 @@ export type WorkersGuideShellPhase =
   | "clarify"
   | "guide"
   | "confirm"
+  | "recovery"
   | "complete"
   | "static-complete";
 
@@ -55,23 +56,6 @@ export const preferredTargetForContext = (
   return expectedTargetId
     ? context.targets.find((target) => target.id === expectedTargetId)
     : context.targets[0];
-};
-
-export const checkedContextWorkersGuideState = (
-  context: HostPageContext,
-  state: WorkersGuideShellState
-): WorkersGuideShellState => {
-  const activeStepIndex = workersGuideStepIndexForContext(context);
-
-  if (activeStepIndex !== undefined || context.routeId === "cloudflare.unsupported") {
-    return {
-      ...state,
-      phase: "guide",
-      activeStepIndex
-    };
-  }
-
-  return state;
 };
 
 export const canCompleteWorkersGuide = (

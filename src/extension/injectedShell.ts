@@ -2,7 +2,6 @@ import { readCloudflarePageContext } from "./cloudflarePageReader";
 import { capabilities, workersGuideSteps } from "../domain/siteSkillPack";
 import {
   canCompleteWorkersGuide,
-  checkedContextWorkersGuideState,
   finalWorkersGuideStepIndex,
   preferredTargetForContext,
   preferredTargetIdForRouteId,
@@ -11,6 +10,7 @@ import {
 import type { WorkersGuideShellPhase } from "../domain/workersGuideFlow";
 import type { HostPageContext, PageTarget } from "../domain/types";
 import {
+  checkedContextFromReducer,
   chooseBackendApiFromReducer,
   chooseStaticSiteFromReducer,
   completeGuideFromReducer,
@@ -608,9 +608,10 @@ export const mountMichiInjectedShell = (
     shadow.querySelector("[data-action='check']")?.addEventListener("click", () => {
       state.open = true;
       state.context = readCloudflarePageContext(doc, location);
-      const nextGuideState = checkedContextWorkersGuideState(state.context, state);
+      const nextGuideState = checkedContextFromReducer(state, state.context);
       state.phase = nextGuideState.phase;
       state.activeStepIndex = nextGuideState.activeStepIndex;
+      state.intent = nextGuideState.intent;
       render();
     });
 

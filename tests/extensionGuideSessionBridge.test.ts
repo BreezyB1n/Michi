@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  checkedContextFromReducer,
   chooseBackendApiFromReducer,
   chooseStaticSiteFromReducer,
   completeGuideFromReducer,
@@ -8,6 +9,43 @@ import {
   previousStepFromReducer,
   startGuideFromReducer
 } from "../src/extension/extensionGuideSessionBridge";
+import type { HostPageContext, PageTarget } from "../src/domain/types";
+
+const target = (overrides: Partial<PageTarget>): PageTarget => ({
+  id: "fallback-target",
+  label: "Fallback target",
+  role: "content",
+  text: "Fallback",
+  confidence: "medium",
+  ...overrides
+});
+
+const context = (overrides: Partial<HostPageContext> = {}): HostPageContext => ({
+  url: "https://dash.cloudflare.com/example-account/workers-and-pages",
+  title: "Workers & Pages",
+  product: "cloudflare",
+  locationLabel: "Workers & Pages / Overview",
+  routeId: "cloudflare.workers.overview",
+  detectedAt: "2026-06-25T00:00:00.000Z",
+  targets: [
+    target({
+      id: "create-worker-button",
+      label: "Create Worker button",
+      role: "button",
+      text: "Create Worker",
+      confidence: "high"
+    })
+  ],
+  signals: [
+    {
+      id: "cloudflare.workers.overview-detected",
+      label: "Cloudflare route detected",
+      value: "cloudflare.workers.overview detected with 1 target.",
+      severity: "info"
+    }
+  ],
+  ...overrides
+});
 
 describe("Extension guide session bridge", () => {
   it("starts the injected shell guide through the shared reducer", () => {
@@ -144,6 +182,175 @@ describe("Extension guide session bridge", () => {
       intent: "Build a JSON API for customers.",
       phase: "complete",
       activeStepIndex: 4
+    });
+  });
+
+  it("projects checked supported page context through the shared reducer", () => {
+    expect(
+      checkedContextFromReducer(
+        {
+          open: true,
+          intent: "Build a JSON API for customers.",
+          phase: "intent"
+        },
+        context()
+      )
+    ).toEqual({
+      open: true,
+      intent: "Build a JSON API for customers.",
+      phase: "guide",
+      activeStepIndex: 1
+    });
+  });
+
+  it("does not re-anchor a pending critical confirmation to a later checked route", () => {
+    expect(
+      checkedContextFromReducer(
+        {
+          open: true,
+          intent: "Build a JSON API for customers.",
+          phase: "confirm",
+          activeStepIndex: 1
+        },
+        context({
+          url: "https://dash.cloudflare.com/example-account/workers/services/edit/michi-starter",
+          title: "Worker editor",
+          locationLabel: "Workers / Starter editor",
+          routeId: "cloudflare.workers.starter-editor",
+          targets: [
+            target({
+              id: "starter-handler",
+              label: "Starter request handler",
+              role: "content",
+              text: "export default { fetch() {} }",
+              confidence: "medium"
+            })
+          ],
+          signals: [
+            {
+              id: "cloudflare.workers.starter-editor-detected",
+              label: "Cloudflare route detected",
+              value: "cloudflare.workers.starter-editor detected with 1 target.",
+              severity: "info"
+            }
+          ]
+        })
+      )
+    ).toEqual({
+      open: true,
+      intent: "Build a JSON API for customers.",
+      phase: "confirm",
+      activeStepIndex: 1
+    });
+  });
+
+  it("projects missing target during pending confirmation into recovery", () => {
+    expect(
+      checkedContextFromReducer(
+        {
+          open: true,
+          intent: "Build a JSON API for customers.",
+          phase: "confirm",
+          activeStepIndex: 1
+        },
+        context({
+          targets: [],
+          signals: [
+            {
+              id: "cloudflare.workers.overview-detected",
+              label: "Cloudflare route detected",
+              value: "cloudflare.workers.overview detected with 0 targets.",
+              severity: "warning"
+            }
+          ]
+        })
+      )
+    ).toEqual({
+      open: true,
+      intent: "Build a JSON API for customers.",
+      phase: "recovery",
+      activeStepIndex: 1
+    });
+  });
+
+  it("projects missing expected targets into reducer recovery", () => {
+    expect(
+      checkedContextFromReducer(
+        {
+          open: true,
+          intent: "Build a JSON API for customers.",
+          phase: "guide",
+          activeStepIndex: 1
+        },
+        context({
+          targets: [],
+          signals: [
+            {
+              id: "cloudflare.workers.overview-detected",
+              label: "Cloudflare route detected",
+              value: "cloudflare.workers.overview detected with 0 targets.",
+              severity: "warning"
+            }
+          ]
+        })
+      )
+    ).toEqual({
+      open: true,
+      intent: "Build a JSON API for customers.",
+      phase: "recovery",
+      activeStepIndex: 1
+    });
+  });
+
+  it("projects recovered page context back to guide", () => {
+    expect(
+      checkedContextFromReducer(
+        {
+          open: true,
+          intent: "Build a JSON API for customers.",
+          phase: "recovery",
+          activeStepIndex: 1
+        },
+        context()
+      )
+    ).toEqual({
+      open: true,
+      intent: "Build a JSON API for customers.",
+      phase: "guide",
+      activeStepIndex: 1
+    });
+  });
+
+  it("projects unsupported checked context to recovery without stale active step", () => {
+    expect(
+      checkedContextFromReducer(
+        {
+          open: true,
+          intent: "Build a JSON API for customers.",
+          phase: "complete",
+          activeStepIndex: 4
+        },
+        context({
+          url: "https://dash.cloudflare.com/example-account/analytics",
+          title: "Analytics",
+          locationLabel: "Unsupported Cloudflare dashboard area",
+          routeId: "cloudflare.unsupported",
+          targets: [],
+          signals: [
+            {
+              id: "unsupported-cloudflare-area",
+              label: "Unsupported Cloudflare area",
+              value: "This Cloudflare dashboard area is outside Michi's Workers guide path.",
+              severity: "info"
+            }
+          ]
+        })
+      )
+    ).toEqual({
+      open: true,
+      intent: "Build a JSON API for customers.",
+      phase: "recovery",
+      activeStepIndex: undefined
     });
   });
 });
