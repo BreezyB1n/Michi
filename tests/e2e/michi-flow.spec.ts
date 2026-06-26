@@ -50,3 +50,38 @@ test("runs the Workers guide path with recovery and critical confirmations", asy
   await expect(page.getByText("Cloudflare DNS")).toBeVisible();
   await expect(page.getByText("Domain routing")).toBeVisible();
 });
+
+test("runs the Pages guide path with critical deploy confirmation", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Text guide" }).click();
+  await page.getByLabel("User intent").fill("Publish a static website.");
+  await page.getByRole("button", { name: "Start guide" }).click();
+  await page.getByRole("button", { name: "Static website" }).click();
+
+  await expect(page.getByText("Cloudflare Pages")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Find the Pages entry" })).toBeVisible();
+  await expect(page.getByText("Create and deploy a Pages site")).toBeVisible();
+
+  await page.getByRole("button", { name: "Simulate page drift" }).click();
+  await expect(page.getByRole("heading", { name: "Page layout changed" })).toBeVisible();
+  await page.getByRole("button", { name: "Recover and re-check" }).click();
+  await expect(page.getByText(/Provider synced/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Advance guide" }).click();
+  await expect(page.getByRole("heading", { name: "Create a Pages project" })).toBeVisible();
+  await page.getByRole("button", { name: "Advance guide" }).click();
+  await expect(page.getByRole("heading", { name: "Choose static assets" })).toBeVisible();
+  await page.getByRole("button", { name: "Advance guide" }).click();
+  await expect(page.getByRole("heading", { name: "Deploy the Pages project" })).toBeVisible();
+  await page.getByRole("button", { name: "Advance guide" }).click();
+  await expect(page.getByRole("heading", { name: "Confirm Deploy Pages project" })).toBeVisible();
+  await page.getByRole("button", { name: "Confirm action" }).click();
+  await expect(page.getByRole("heading", { name: "Verify the Pages URL" })).toBeVisible();
+  await page.getByRole("button", { name: "Advance guide" }).click();
+
+  await expect(page.getByRole("heading", { name: "Pages URL verified" })).toBeVisible();
+  await expect(page.getByText("Pages URL returned HTTP 200")).toBeVisible();
+  await expect(page.getByText("Cloudflare DNS")).toBeVisible();
+  await expect(page.getByText("Domain routing")).toBeVisible();
+});

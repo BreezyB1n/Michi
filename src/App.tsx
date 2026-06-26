@@ -168,16 +168,10 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
   const handleServiceKind = (kind: ServiceKind) => {
     const nextSession = chooseServiceKind(session, kind);
 
-    if (kind === "backend-api") {
-      updateFromContext(
-        nextSession,
-        () => pageContextRuntime.syncGuideStep(nextSession.activeStepIndex)
-      );
-      return;
-    }
-
-    nextContextRequestId();
-    updateSession(nextSession);
+    updateFromContext(
+      nextSession,
+      () => pageContextRuntime.syncGuideStep(nextSession.activeStepIndex, nextSession.serviceKind)
+    );
   };
 
   const handleAdvance = () => {
@@ -191,7 +185,7 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
 
     updateFromContext(
       nextSession,
-      () => pageContextRuntime.syncGuideStep(nextSession.activeStepIndex)
+      () => pageContextRuntime.syncGuideStep(nextSession.activeStepIndex, nextSession.serviceKind)
     );
   };
 
@@ -200,12 +194,14 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
 
     updateFromContext(
       nextSession,
-      () => pageContextRuntime.syncGuideStep(nextSession.activeStepIndex)
+      () => pageContextRuntime.syncGuideStep(nextSession.activeStepIndex, nextSession.serviceKind)
     );
   };
 
   const handleRecovery = () => {
-    updateFromContext(session, () => pageContextRuntime.recoverToStep(session.activeStepIndex));
+    updateFromContext(session, () =>
+      pageContextRuntime.recoverToStep(session.activeStepIndex, session.serviceKind)
+    );
   };
 
   const handleCheck = () => {
@@ -213,7 +209,9 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
   };
 
   const handlePageDrift = () => {
-    updateFromContext(session, () => pageContextRuntime.simulatePageDrift(session.activeStepIndex));
+    updateFromContext(session, () =>
+      pageContextRuntime.simulatePageDrift(session.activeStepIndex, session.serviceKind)
+    );
   };
 
   const handleReset = () => {
@@ -356,12 +354,22 @@ const HostWebsite = ({ session, hostPageContext }: HostWebsiteProps) => (
       className="min-w-0 bg-shell p-7 max-[980px]:p-4"
       aria-label="Cloudflare page content"
     >
+      <HostWebsiteContent session={session} hostPageContext={hostPageContext} />
+    </section>
+  </section>
+);
+
+const HostWebsiteContent = ({ session, hostPageContext }: HostWebsiteProps) => {
+  const isStaticSite = session.serviceKind === "static-site";
+
+  return (
+    <>
       <div className="mb-5 flex min-h-10 flex-wrap items-center gap-2.5">
         <Badge variant="outline" className="bg-card text-foreground">
           Account home
         </Badge>
-        <Badge variant="neutral">Workers</Badge>
-        <Badge variant="neutral">Production</Badge>
+        <Badge variant="neutral">{isStaticSite ? "Pages" : "Workers"}</Badge>
+        <Badge variant="neutral">{isStaticSite ? "Preview deploy" : "Production"}</Badge>
       </div>
 
       <div className="mb-6 flex items-start justify-between gap-5">
@@ -387,18 +395,19 @@ const HostWebsite = ({ session, hostPageContext }: HostWebsiteProps) => (
             <span className="text-xs font-medium text-muted-foreground">HTTP services</span>
           </div>
           <h3 className="mb-4 max-w-[13ch] text-balance text-5xl font-semibold leading-[0.98] tracking-[-0.045em] text-foreground max-[1120px]:text-[2.7rem] max-[980px]:text-[2.2rem]">
-            Create and deploy a Worker
+            {isStaticSite ? "Create and deploy a Pages site" : "Create and deploy a Worker"}
           </h3>
           <p className="mb-6 max-w-[54ch] text-pretty text-sm leading-6 text-muted-foreground">
-            Build a lightweight service, publish it to a Worker URL, then decide
-            whether to connect a custom domain.
+            {isStaticSite
+              ? "Host a static website, publish it to a Pages URL, then decide whether to connect a custom domain."
+              : "Build a lightweight service, publish it to a Worker URL, then decide whether to connect a custom domain."}
           </p>
           <div
             className="mb-6 grid grid-cols-3 gap-2.5 max-[980px]:grid-cols-1"
-            aria-label="Workers runtime signals"
+            aria-label={isStaticSite ? "Pages hosting signals" : "Workers runtime signals"}
           >
-            <MetricTile label="Edge" value="Global runtime" icon={<Cloud />} />
-            <MetricTile label="API" value="Backend route" icon={<Code />} />
+            <MetricTile label="Edge" value={isStaticSite ? "Global CDN" : "Global runtime"} icon={<Cloud />} />
+            <MetricTile label={isStaticSite ? "Site" : "API"} value={isStaticSite ? "Static route" : "Backend route"} icon={<Code />} />
             <MetricTile label="DNS" value="Follow-up path" icon={<Globe />} />
           </div>
           <div className="flex max-w-xl items-center gap-2.5 rounded-lg border border-accent/35 bg-accent/10 px-3.5 py-3 text-sm font-semibold text-accent-foreground">
@@ -448,9 +457,9 @@ const HostWebsite = ({ session, hostPageContext }: HostWebsiteProps) => (
           </CardContent>
         </Card>
       </div>
-    </section>
-  </section>
-);
+    </>
+  );
+};
 
 type HostNavItemProps = {
   icon: React.ReactNode;
@@ -554,7 +563,7 @@ const ClarificationPanel = ({ intent, onChoose }: ClarificationPanelProps) => (
         Route to Workers / Compute
       </ChoiceButton>
       <ChoiceButton onClick={() => onChoose("static-site")} title="Static website">
-        Acknowledge Pages and keep this demo on Workers
+        Route to Pages / Hosting
       </ChoiceButton>
     </div>
   </SectionCard>
@@ -601,13 +610,18 @@ const GuidePanel = ({
   }
 
   if (session.phase === "complete") {
+    const isStaticSite = session.serviceKind === "static-site";
+
     return (
       <SectionCard>
         <SectionLabel>Primary path complete</SectionLabel>
-        <h2 className="mb-2 text-xl font-semibold tracking-[-0.025em]">Worker URL verified</h2>
+        <h2 className="mb-2 text-xl font-semibold tracking-[-0.025em]">
+          {isStaticSite ? "Pages URL verified" : "Worker URL verified"}
+        </h2>
         <p className="mb-4 text-sm leading-6 text-muted-foreground">
-          The simulated Worker URL is reachable, so the primary guide path has
-          reached the user's goal.
+          {isStaticSite
+            ? "The simulated Pages URL is reachable, so the primary guide path has reached the user's goal."
+            : "The simulated Worker URL is reachable, so the primary guide path has reached the user's goal."}
         </p>
         {session.followUpCapability ? (
           <div className="rounded-lg border border-border bg-muted p-3.5">

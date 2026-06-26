@@ -60,6 +60,164 @@ describe("Cloudflare page reader", () => {
     expect(textWithinLimit(longLabel).length).toBeLessThanOrEqual(120);
   });
 
+  it("detects Pages overview and setup targets", () => {
+    const overview = readCloudflarePageContext(
+      renderDocument(`
+        <main>
+          <h1>Pages projects</h1>
+          <button>Create Pages project</button>
+        </main>
+      `),
+      {
+        href: "https://dash.cloudflare.com/example-account/pages",
+        title: "Pages"
+      }
+    );
+
+    expect(overview.routeId).toBe("cloudflare.pages.overview");
+    expect(overview.locationLabel).toBe("Pages / Overview");
+    expect(overview.targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "create-pages-button",
+          label: "Create Pages project button",
+          role: "button"
+        })
+      ])
+    );
+
+    const staticAssets = readCloudflarePageContext(
+      renderDocument(`
+        <main>
+          <h1>Create a Pages project</h1>
+          <button>Static assets</button>
+        </main>
+      `),
+      {
+        href: "https://dash.cloudflare.com/example-account/pages/new/static-assets",
+        title: "Create Pages project"
+      }
+    );
+
+    expect(staticAssets.routeId).toBe("cloudflare.pages.static-assets");
+    expect(staticAssets.targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "static-assets-option",
+          label: "Static assets option"
+        })
+      ])
+    );
+  });
+
+  it("detects Pages deploy review and Pages URL success evidence", () => {
+    const deployReview = readCloudflarePageContext(
+      renderDocument(`
+        <main>
+          <h1>Deploy Pages project</h1>
+          <button>Deploy Pages project</button>
+        </main>
+      `),
+      {
+        href: "https://dash.cloudflare.com/example-account/pages/deploy-review",
+        title: "Deploy Pages project"
+      }
+    );
+
+    expect(deployReview.routeId).toBe("cloudflare.pages.deploy-review");
+    expect(deployReview.targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "deploy-pages-button",
+          label: "Deploy Pages button"
+        })
+      ])
+    );
+
+    const deployResult = readCloudflarePageContext(
+      renderDocument(`
+        <main>
+          <h1>Deployment complete</h1>
+          <a href="https://michi-static.pages.dev">https://michi-static.pages.dev</a>
+        </main>
+      `),
+      {
+        href: "https://dash.cloudflare.com/example-account/pages/deploy-result",
+        title: "Deployment complete"
+      }
+    );
+
+    expect(deployResult.routeId).toBe("cloudflare.pages.deploy-result");
+    expect(deployResult.targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "pages-url",
+          label: "Pages URL"
+        })
+      ])
+    );
+    expect(deployResult.signals[0]).toEqual(
+      expect.objectContaining({
+        id: "pages-url-detected",
+        severity: "success"
+      })
+    );
+  });
+
+  it("keeps Pages deploy review non-final even when a Pages URL is visible", () => {
+    const context = readCloudflarePageContext(
+      renderDocument(`
+        <main>
+          <h1>Deploy Pages project</h1>
+          <a href="https://preview-michi.pages.dev">https://preview-michi.pages.dev</a>
+          <button>Deploy Pages project</button>
+        </main>
+      `),
+      {
+        href: "https://dash.cloudflare.com/example-account/pages/deploy-review",
+        title: "Deploy Pages project"
+      }
+    );
+
+    expect(context.routeId).toBe("cloudflare.pages.deploy-review");
+    expect(context.targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "deploy-pages-button" }),
+        expect.objectContaining({ id: "pages-url" })
+      ])
+    );
+    expect(context.signals[0]).toEqual(
+      expect.objectContaining({
+        id: "cloudflare.pages.deploy-review-detected",
+        severity: "info"
+      })
+    );
+  });
+
+  it("keeps Pages deploy result identity when the Pages URL has not loaded", () => {
+    const context = readCloudflarePageContext(
+      renderDocument(`
+        <main>
+          <h1>Deployment complete</h1>
+          <p>The Pages URL is still loading.</p>
+        </main>
+      `),
+      {
+        href: "https://dash.cloudflare.com/example-account/pages/deploy-result",
+        title: "Deployment complete"
+      }
+    );
+
+    expect(context.routeId).toBe("cloudflare.pages.deploy-result");
+    expect(context.targets.some((target) => target.id === "pages-url")).toBe(false);
+    expect(context.signals[0]).toEqual(
+      expect.objectContaining({
+        id: "cloudflare.pages.deploy-result-detected",
+        severity: "warning"
+      })
+    );
+  });
+
   it("detects deploy result evidence and unsupported pages", () => {
     const deployResult = readCloudflarePageContext(
       renderDocument(`

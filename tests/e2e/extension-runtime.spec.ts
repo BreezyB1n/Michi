@@ -78,11 +78,15 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     const page = await context.newPage();
     await page.route("https://dash.cloudflare.com/**", async (route) => {
       const requestUrl = route.request().url();
+      const requestPath = new URL(requestUrl).pathname;
       const isMissingTargetFixture = requestUrl.includes("/missing-target");
       const isUnsupportedAreaFixture = requestUrl.includes("/analytics");
-      const isStarterEditorFixture = requestUrl.includes("/starter-editor");
-      const isDeployReviewFixture = requestUrl.includes("/deploy-review");
-      const isDeployResultFixture = requestUrl.includes("/deploy-result");
+      const isStarterEditorFixture = requestUrl.includes("/workers/starter-editor");
+      const isDeployReviewFixture = requestUrl.includes("/workers/deploy-review");
+      const isDeployResultFixture = requestUrl.includes("/workers/deploy-result");
+      const isPagesOverviewFixture = /\/pages\/?$/.test(requestPath);
+      const isPagesDeployReviewFixture = requestUrl.includes("/pages/deploy-review");
+      const isPagesDeployResultFixture = requestUrl.includes("/pages/deploy-result");
       const isNestedScrollFixture = requestUrl.includes("/nested-scroll");
 
       await route.fulfill({
@@ -110,7 +114,18 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
               ${isMissingTargetFixture ? "" : '<nav><a href="/workers-and-pages">Workers & Pages</a></nav>'}
               <main>
                 ${
-                  isDeployResultFixture
+                  isPagesDeployResultFixture
+                    ? `<h1>Deployment complete</h1>
+                       <p>Your Pages site is available at:</p>
+                       <a href="https://michi-static.pages.dev">https://michi-static.pages.dev</a>`
+                    : isPagesDeployReviewFixture
+                      ? `<h1>Deploy Pages project</h1>
+                         <p>Review the Pages deployment before publishing.</p>
+                         <button>Deploy Pages project</button>`
+                    : isPagesOverviewFixture
+                      ? `<h1>Pages projects</h1>
+                         <button>Create Pages project</button>`
+                    : isDeployResultFixture
                     ? `<h1>Deployment complete</h1>
                        <p>Your Worker is available at:</p>
                        <a href="https://michi-starter.example.workers.dev">https://michi-starter.example.workers.dev</a>`
@@ -262,6 +277,49 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByText("Primary path complete")).toHaveCount(0);
     await expect(page.getByText("Cloudflare DNS")).toHaveCount(0);
     await expect(page.getByLabel(/Highlighted target/)).toHaveCount(0);
+
+    await page.goto("https://dash.cloudflare.com/example-account/pages");
+    await expect(page.getByLabel("Michi rail")).toBeVisible();
+    await page.getByRole("button", { name: "Guide" }).click();
+    await expect(page.getByText("User intent")).toBeVisible();
+    await page.getByRole("button", { name: "Start guide" }).click();
+    await page.getByRole("button", { name: "Static website" }).click();
+    await expect(page.getByText("Cloudflare Pages")).toBeVisible();
+    await expect(page.getByText("Step 1 / 5")).toBeVisible();
+    await expect(page.getByText("Find the Pages entry")).toBeVisible();
+    await page.getByRole("button", { name: "Check page" }).click();
+    await expect(page.getByText("cloudflare.pages.overview")).toBeVisible();
+    await expect(page.getByText("Step 2 / 5")).toBeVisible();
+    await expect(page.getByText("Create a Pages project")).toBeVisible();
+    await expect(page.getByText("Create Pages project button")).toBeVisible();
+    await expect(page.getByLabel("Highlighted target: Create Pages project button")).toBeVisible();
+
+    await page.goto("https://dash.cloudflare.com/example-account/pages/deploy-review");
+    await expect(page.getByLabel("Michi rail")).toBeVisible();
+    await page.getByRole("button", { name: "Guide" }).click();
+    await page.getByRole("button", { name: "Check page" }).click();
+    await expect(page.getByText("cloudflare.pages.deploy-review")).toBeVisible();
+    await expect(page.getByText("Step 4 / 5")).toBeVisible();
+    await expect(page.getByText("Deploy the Pages project", { exact: true })).toBeVisible();
+    await expect(page.getByText("Deploy Pages button")).toBeVisible();
+    await expect(page.getByLabel("Highlighted target: Deploy Pages button")).toBeVisible();
+    await page.getByRole("button", { name: "Next step" }).click();
+    await expect(page.getByText("Critical write action")).toBeVisible();
+    await expect(page.getByText("Confirm Deploy Pages project")).toBeVisible();
+    await expect(page.getByText(/Publishes the Pages project to a reachable URL/)).toBeVisible();
+
+    await page.goto("https://dash.cloudflare.com/example-account/pages/deploy-result");
+    await expect(page.getByLabel("Michi rail")).toBeVisible();
+    await page.getByRole("button", { name: "Guide" }).click();
+    await page.getByRole("button", { name: "Check page" }).click();
+    await expect(page.getByText("Step 5 / 5")).toBeVisible();
+    await expect(page.getByText("Verify the Pages URL")).toBeVisible();
+    await expect(page.getByText("Pages URL detected")).toBeVisible();
+    await expect(page.getByLabel("Highlighted target: Pages URL")).toBeVisible();
+    await page.getByRole("button", { name: "Complete guide" }).click();
+    await expect(page.getByText("Primary path complete")).toBeVisible();
+    await expect(page.getByText("Pages URL verified")).toBeVisible();
+    await expect(page.getByText("Cloudflare DNS")).toBeVisible();
 
     await page.goto("https://dash.cloudflare.com/example-account/workers-and-pages/nested-scroll");
     await expect(page.getByLabel("Michi rail")).toBeVisible();

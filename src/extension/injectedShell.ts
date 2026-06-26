@@ -1,14 +1,16 @@
 import { readCloudflarePageContext } from "./cloudflarePageReader";
-import { capabilities, workersGuideSteps } from "../domain/siteSkillPack";
+import { capabilities } from "../domain/siteSkillPack";
 import {
-  canCompleteWorkersGuide,
-  finalWorkersGuideStepIndex,
-  preferredTargetForContext,
+  canCompleteGuide,
+  finalGuideStepIndexForServiceKind,
+  guideStepsForServiceKind,
+  preferredTargetForContextAndServiceKind,
   preferredTargetIdForRouteId,
+  serviceKindForRouteId,
   targetLabelForWorkersGuideTarget
 } from "../domain/workersGuideFlow";
 import type { WorkersGuideShellPhase } from "../domain/workersGuideFlow";
-import type { HostPageContext, PageTarget } from "../domain/types";
+import type { HostPageContext, PageTarget, ServiceKind } from "../domain/types";
 import {
   checkedContextFromReducer,
   chooseBackendApiFromReducer,
@@ -37,6 +39,7 @@ type ShellState = {
   activeStepIndex?: number;
   intent: string;
   phase: WorkersGuideShellPhase;
+  serviceKind?: ServiceKind;
 };
 
 type RecoveryGuidance = {
@@ -267,7 +270,8 @@ const escapeHtml = (value: string) =>
     .replace(/'/g, "&#039;");
 
 export const recoveryGuidanceForContext = (
-  context: HostPageContext
+  context: HostPageContext,
+  serviceKind: ServiceKind = serviceKindForRouteId(context.routeId) ?? "backend-api"
 ): RecoveryGuidance | undefined => {
   if (context.routeId === "cloudflare.unsupported") {
     return {
@@ -277,7 +281,7 @@ export const recoveryGuidanceForContext = (
     };
   }
 
-  const expectedTargetId = preferredTargetIdForRouteId(context.routeId);
+  const expectedTargetId = preferredTargetIdForRouteId(context.routeId, serviceKind);
 
   if (!expectedTargetId || context.targets.some((target) => target.id === expectedTargetId)) {
     return undefined;
@@ -310,7 +314,10 @@ export const highlightStyleForTarget = (target: PageTarget | undefined) => {
 };
 
 const highlightCopy = (context: HostPageContext) => {
-  const target = preferredTargetForContext(context);
+  const target = preferredTargetForContextAndServiceKind(
+    context,
+    serviceKindForRouteId(context.routeId) ?? "backend-api"
+  );
   const style = highlightStyleForTarget(target);
 
   if (!target || !style) {
@@ -365,11 +372,14 @@ const staticSiteCopy = () => `
   </section>
 `;
 
-const confirmationCopy = (activeStepIndex: number | undefined) => {
+const confirmationCopy = (
+  activeStepIndex: number | undefined,
+  serviceKind: ServiceKind | undefined
+) => {
   const step =
     activeStepIndex === undefined || activeStepIndex < 0
       ? undefined
-      : workersGuideSteps[activeStepIndex];
+      : guideStepsForServiceKind(serviceKind ?? "backend-api")[activeStepIndex];
   const criticalAction = step?.criticalAction;
 
   if (!step || !criticalAction) {
@@ -386,13 +396,19 @@ const confirmationCopy = (activeStepIndex: number | undefined) => {
   </section>`;
 };
 
-const completionCopy = (context: HostPageContext | undefined) => {
+const completionTitleForServiceKind = (serviceKind: ServiceKind | undefined) =>
+  serviceKind === "static-site" ? "Pages URL verified" : "Worker URL verified";
+
+const completionCopy = (
+  context: HostPageContext | undefined,
+  serviceKind: ServiceKind | undefined
+) => {
   const dnsCapability = capabilities["cloudflare-dns"];
 
   return `<section class="guide-summary" aria-label="Guide completion">
     <div>
       <p class="eyebrow">Primary path complete</p>
-      <p class="step-title">Worker URL verified</p>
+      <p class="step-title">${completionTitleForServiceKind(serviceKind)}</p>
     </div>
     <p>${escapeHtml(completionEvidence(context))}</p>
     <div>
@@ -408,22 +424,27 @@ const completionCopy = (context: HostPageContext | undefined) => {
 
 const guideSummaryCopy = (
   activeStepIndex: number | undefined,
-  options: { canComplete?: boolean } = {}
+  options: { canComplete?: boolean; serviceKind?: ServiceKind } = {}
 ) => {
   if (activeStepIndex === undefined || activeStepIndex < 0) {
     return "";
   }
 
-  const step = workersGuideSteps[activeStepIndex];
+  const serviceKind = options.serviceKind ?? "backend-api";
+  const guideSteps = guideStepsForServiceKind(serviceKind);
+  const step = guideSteps[activeStepIndex];
 
   if (!step) {
     return "";
   }
 
-  const workersCapability = capabilities["cloudflare-workers"];
+  const capability =
+    serviceKind === "static-site"
+      ? capabilities["cloudflare-pages"]
+      : capabilities["cloudflare-workers"];
   const canGoPrevious = activeStepIndex > 0;
-  const canGoNext = activeStepIndex < workersGuideSteps.length - 1;
-  const isFinalStep = activeStepIndex === finalWorkersGuideStepIndex;
+  const canGoNext = activeStepIndex < guideSteps.length - 1;
+  const isFinalStep = activeStepIndex === finalGuideStepIndexForServiceKind(serviceKind);
   const forwardAction = isFinalStep ? "complete-guide" : "next-step";
   const forwardLabel = isFinalStep ? "Complete guide" : "Next step";
   const forwardDisabled = isFinalStep ? !options.canComplete : !canGoNext;
@@ -432,12 +453,12 @@ const guideSummaryCopy = (
     <div>
       <p class="eyebrow">Capability</p>
       <p class="capability">
-        <strong>${escapeHtml(workersCapability.name)}</strong>
-        <span>${escapeHtml(workersCapability.concept)}</span>
+        <strong>${escapeHtml(capability.name)}</strong>
+        <span>${escapeHtml(capability.concept)}</span>
       </p>
     </div>
     <div>
-      <p class="eyebrow">Step ${activeStepIndex + 1} / ${workersGuideSteps.length}</p>
+      <p class="eyebrow">Step ${activeStepIndex + 1} / ${guideSteps.length}</p>
       <p class="step-title">${escapeHtml(step.title)}</p>
     </div>
     <dl>
@@ -461,14 +482,20 @@ const guideSummaryCopy = (
   </section>`;
 };
 
-const contextCopy = (context: HostPageContext, activeStepIndex: number | undefined) => {
-  const target = preferredTargetForContext(context);
+const contextCopy = (
+  context: HostPageContext,
+  activeStepIndex: number | undefined,
+  serviceKind: ServiceKind | undefined
+) => {
+  const resolvedServiceKind = serviceKind ?? serviceKindForRouteId(context.routeId) ?? "backend-api";
+  const target = preferredTargetForContextAndServiceKind(context, resolvedServiceKind);
   const signal = context.signals[0];
-  const guidance = recoveryGuidanceForContext(context);
+  const guidance = recoveryGuidanceForContext(context, resolvedServiceKind);
 
   return `
     ${guideSummaryCopy(activeStepIndex, {
-      canComplete: canCompleteWorkersGuide(context, activeStepIndex)
+      canComplete: canCompleteGuide(context, activeStepIndex, resolvedServiceKind),
+      serviceKind: resolvedServiceKind
     })}
     ${
       guidance
@@ -506,7 +533,7 @@ const panelBodyCopy = (state: ShellState) => {
   }
 
   if (state.context?.routeId === "cloudflare.unsupported") {
-    return contextCopy(state.context, undefined);
+    return contextCopy(state.context, undefined, state.serviceKind);
   }
 
   if (state.phase === "clarify") {
@@ -518,19 +545,19 @@ const panelBodyCopy = (state: ShellState) => {
   }
 
   if (state.phase === "complete") {
-    return completionCopy(state.context);
+    return completionCopy(state.context, state.serviceKind);
   }
 
   if (state.phase === "confirm") {
-    return confirmationCopy(state.activeStepIndex);
+    return confirmationCopy(state.activeStepIndex, state.serviceKind);
   }
 
   if (state.context) {
-    return contextCopy(state.context, state.activeStepIndex);
+    return contextCopy(state.context, state.activeStepIndex, state.serviceKind);
   }
 
   if (state.activeStepIndex !== undefined) {
-    return guideSummaryCopy(state.activeStepIndex);
+    return guideSummaryCopy(state.activeStepIndex, { serviceKind: state.serviceKind });
   }
 
   return emptyContextCopy;
@@ -560,6 +587,17 @@ export const mountMichiInjectedShell = (
     phase: "intent"
   };
   const ownerWindow = doc.defaultView ?? window;
+  const applyGuideState = (nextGuideState: {
+    activeStepIndex?: number;
+    intent: string;
+    phase: WorkersGuideShellPhase;
+    serviceKind?: ServiceKind;
+  }) => {
+    state.phase = nextGuideState.phase;
+    state.activeStepIndex = nextGuideState.activeStepIndex;
+    state.intent = nextGuideState.intent;
+    state.serviceKind = nextGuideState.serviceKind;
+  };
 
   const handleKeyDown = (event: KeyboardEvent) => {
     if (event.key !== "Escape" || !state.open) {
@@ -619,9 +657,7 @@ export const mountMichiInjectedShell = (
       state.open = true;
       state.context = readCloudflarePageContext(doc, location);
       const nextGuideState = checkedContextFromReducer(state, state.context);
-      state.phase = nextGuideState.phase;
-      state.activeStepIndex = nextGuideState.activeStepIndex;
-      state.intent = nextGuideState.intent;
+      applyGuideState(nextGuideState);
       render();
     });
 
@@ -634,26 +670,20 @@ export const mountMichiInjectedShell = (
       const nextGuideState = resetGuideFromReducer(state);
       state.open = true;
       state.context = undefined;
-      state.phase = nextGuideState.phase;
-      state.activeStepIndex = nextGuideState.activeStepIndex;
-      state.intent = nextGuideState.intent;
+      applyGuideState(nextGuideState);
       render();
       shadow.querySelector<HTMLTextAreaElement>("[data-intent]")?.focus();
     });
 
     shadow.querySelector("[data-action='previous-step']")?.addEventListener("click", () => {
       const nextGuideState = previousStepFromReducer(state);
-      state.phase = nextGuideState.phase;
-      state.activeStepIndex = nextGuideState.activeStepIndex;
-      state.intent = nextGuideState.intent;
+      applyGuideState(nextGuideState);
       render();
     });
 
     shadow.querySelector("[data-action='next-step']")?.addEventListener("click", () => {
       const nextGuideState = nextStepFromReducer(state);
-      state.phase = nextGuideState.phase;
-      state.activeStepIndex = nextGuideState.activeStepIndex;
-      state.intent = nextGuideState.intent;
+      applyGuideState(nextGuideState);
       render();
     });
 
@@ -665,44 +695,34 @@ export const mountMichiInjectedShell = (
 
     shadow.querySelector("[data-action='start-guide']")?.addEventListener("click", () => {
       const nextGuideState = startGuideFromReducer(state);
-      state.phase = nextGuideState.phase;
-      state.activeStepIndex = nextGuideState.activeStepIndex;
-      state.intent = nextGuideState.intent;
+      applyGuideState(nextGuideState);
       render();
     });
 
     shadow.querySelector("[data-action='choose-backend-api']")?.addEventListener("click", () => {
       const nextGuideState = chooseBackendApiFromReducer(state);
-      state.phase = nextGuideState.phase;
-      state.activeStepIndex = nextGuideState.activeStepIndex;
-      state.intent = nextGuideState.intent;
+      applyGuideState(nextGuideState);
       render();
     });
 
     shadow.querySelector("[data-action='choose-static-site']")?.addEventListener("click", () => {
       const nextGuideState = chooseStaticSiteFromReducer(state);
-      state.phase = nextGuideState.phase;
-      state.activeStepIndex = nextGuideState.activeStepIndex;
-      state.intent = nextGuideState.intent;
+      applyGuideState(nextGuideState);
       render();
     });
 
     shadow.querySelector("[data-action='confirm-action']")?.addEventListener("click", () => {
       const nextGuideState = confirmCriticalActionFromReducer(state);
-      state.phase = nextGuideState.phase;
-      state.activeStepIndex = nextGuideState.activeStepIndex;
-      state.intent = nextGuideState.intent;
+      applyGuideState(nextGuideState);
       render();
     });
 
     shadow.querySelector("[data-action='complete-guide']")?.addEventListener("click", () => {
       const nextGuideState = completeGuideFromReducer(
         state,
-        canCompleteWorkersGuide(state.context, state.activeStepIndex)
+        canCompleteGuide(state.context, state.activeStepIndex, state.serviceKind ?? "backend-api")
       );
-      state.phase = nextGuideState.phase;
-      state.activeStepIndex = nextGuideState.activeStepIndex;
-      state.intent = nextGuideState.intent;
+      applyGuideState(nextGuideState);
       render();
     });
   };

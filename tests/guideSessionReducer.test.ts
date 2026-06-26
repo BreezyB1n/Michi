@@ -18,6 +18,15 @@ const backendSession = () =>
     { type: "choose-service-kind", kind: "backend-api" }
   );
 
+const staticSiteSession = () =>
+  guideSessionReducer(
+    guideSessionReducer(createGuideSession(), {
+      type: "start",
+      intent: "I want to publish a static marketing site."
+    }),
+    { type: "choose-service-kind", kind: "static-site" }
+  );
+
 describe("Guide session reducer", () => {
   it("starts from intent and routes backend API to Workers", () => {
     const clarified = guideSessionReducer(createGuideSession(), {
@@ -38,23 +47,52 @@ describe("Guide session reducer", () => {
     expect(session.pageState.location).toBe("Cloudflare dashboard / Home");
   });
 
-  it("routes static-site intent to Pages completion without Workers steps", () => {
-    const clarified = guideSessionReducer(createGuideSession(), {
-      type: "start",
-      intent: "I want to publish a static marketing site."
-    });
-    const session = guideSessionReducer(clarified, {
-      type: "choose-service-kind",
-      kind: "static-site"
-    });
+  it("routes static-site intent to a Pages guide path", () => {
+    const session = staticSiteSession();
 
-    expect(session.phase).toBe("complete");
+    expect(session.phase).toBe("guide");
     expect(session.serviceKind).toBe("static-site");
     expect(session.selectedCapability?.id).toBe("cloudflare-pages");
-    expect(session.followUpCapability?.id).toBe("cloudflare-workers");
-    expect(session.steps).toHaveLength(0);
-    expect(session.pageState.evidence).toContain("Static website intent maps to Pages");
+    expect(session.followUpCapability?.id).toBe("cloudflare-dns");
+    expect(session.steps).toHaveLength(5);
+    expect(session.steps[0].title).toBe("Find the Pages entry");
+    expect(session.pageState.location).toBe("Cloudflare dashboard / Home");
+    expect(session.pageState.targetElement).toBe("Workers & Pages sidebar item");
+    expect(session.pageState.evidence).toContain("Pages can be opened");
     expect(session.pageState.completionSatisfied).toBe(true);
+  });
+
+  it("requires explicit confirmation before deploying a Pages project", () => {
+    let session = staticSiteSession();
+
+    session = guideSessionReducer(session, { type: "advance" });
+    session = guideSessionReducer(session, { type: "advance" });
+    session = guideSessionReducer(session, { type: "advance" });
+    expect(session.steps[session.activeStepIndex].criticalAction?.label).toBe("Deploy Pages project");
+
+    const confirmation = guideSessionReducer(session, { type: "advance" });
+    expect(confirmation.phase).toBe("confirm");
+    expect(confirmation.activeStepIndex).toBe(3);
+
+    const confirmed = guideSessionReducer(confirmation, { type: "confirm-critical-action" });
+    expect(confirmed.phase).toBe("guide");
+    expect(confirmed.activeStepIndex).toBe(4);
+    expect(confirmed.pageState.evidence).toContain("Pages deployment generated");
+  });
+
+  it("completes the Pages guide with DNS follow-up", () => {
+    let session = staticSiteSession();
+
+    session = guideSessionReducer(session, { type: "advance" });
+    session = guideSessionReducer(session, { type: "advance" });
+    session = guideSessionReducer(session, { type: "advance" });
+    session = guideSessionReducer(session, { type: "advance" });
+    session = guideSessionReducer(session, { type: "confirm-critical-action" });
+    session = guideSessionReducer(session, { type: "advance" });
+
+    expect(session.phase).toBe("complete");
+    expect(session.followUpCapability?.id).toBe("cloudflare-dns");
+    expect(session.pageState.evidence).toContain("Pages URL returned HTTP 200");
   });
 
   it("does not mutate the input session when reducing actions", () => {

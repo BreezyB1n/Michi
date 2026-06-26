@@ -75,11 +75,12 @@ describe("Extension guide session bridge", () => {
       open: true,
       intent: "Build a JSON API for customers.",
       phase: "guide",
-      activeStepIndex: 0
+      activeStepIndex: 0,
+      serviceKind: "backend-api"
     });
   });
 
-  it("projects static-site choice from reducer output into shell static completion state", () => {
+  it("projects static-site choice from reducer output into shell Pages guide state", () => {
     const state = chooseStaticSiteFromReducer({
       open: true,
       intent: "Publish a static site.",
@@ -90,8 +91,9 @@ describe("Extension guide session bridge", () => {
     expect(state).toEqual({
       open: true,
       intent: "Publish a static site.",
-      phase: "static-complete",
-      activeStepIndex: undefined
+      phase: "guide",
+      activeStepIndex: 0,
+      serviceKind: "static-site"
     });
   });
 
@@ -119,7 +121,8 @@ describe("Extension guide session bridge", () => {
       open: true,
       intent: "Build a JSON API for customers.",
       phase: "guide",
-      activeStepIndex: 1
+      activeStepIndex: 1,
+      serviceKind: "backend-api"
     });
   });
 
@@ -135,7 +138,8 @@ describe("Extension guide session bridge", () => {
       open: true,
       intent: "Build a JSON API for customers.",
       phase: "guide",
-      activeStepIndex: 1
+      activeStepIndex: 1,
+      serviceKind: "backend-api"
     });
 
     expect(
@@ -149,7 +153,8 @@ describe("Extension guide session bridge", () => {
       open: true,
       intent: "Build a JSON API for customers.",
       phase: "confirm",
-      activeStepIndex: 1
+      activeStepIndex: 1,
+      serviceKind: "backend-api"
     });
   });
 
@@ -165,7 +170,8 @@ describe("Extension guide session bridge", () => {
       open: true,
       intent: "Build a JSON API for customers.",
       phase: "guide",
-      activeStepIndex: 2
+      activeStepIndex: 2,
+      serviceKind: "backend-api"
     });
   });
 
@@ -182,7 +188,8 @@ describe("Extension guide session bridge", () => {
       open: true,
       intent: "Build a JSON API for customers.",
       phase: "complete",
-      activeStepIndex: 4
+      activeStepIndex: 4,
+      serviceKind: "backend-api"
     });
   });
 
@@ -200,7 +207,43 @@ describe("Extension guide session bridge", () => {
       open: true,
       intent: "Build a JSON API for customers.",
       phase: "guide",
-      activeStepIndex: 1
+      activeStepIndex: 1,
+      serviceKind: "backend-api"
+    });
+  });
+
+  it("projects checked Pages page context through the shared reducer", () => {
+    expect(
+      checkedContextFromReducer(
+        {
+          open: true,
+          intent: "Publish a static site.",
+          phase: "guide",
+          serviceKind: "static-site",
+          activeStepIndex: 0
+        },
+        context({
+          url: "https://dash.cloudflare.com/example-account/pages",
+          title: "Pages",
+          locationLabel: "Pages / Overview",
+          routeId: "cloudflare.pages.overview",
+          targets: [
+            target({
+              id: "create-pages-button",
+              label: "Create Pages project button",
+              role: "button",
+              text: "Create Pages project",
+              confidence: "high"
+            })
+          ]
+        })
+      )
+    ).toEqual({
+      open: true,
+      intent: "Publish a static site.",
+      phase: "guide",
+      activeStepIndex: 1,
+      serviceKind: "static-site"
     });
   });
 
@@ -241,7 +284,8 @@ describe("Extension guide session bridge", () => {
       open: true,
       intent: "Build a JSON API for customers.",
       phase: "confirm",
-      activeStepIndex: 1
+      activeStepIndex: 1,
+      serviceKind: "backend-api"
     });
   });
 
@@ -270,7 +314,8 @@ describe("Extension guide session bridge", () => {
       open: true,
       intent: "Build a JSON API for customers.",
       phase: "recovery",
-      activeStepIndex: 1
+      activeStepIndex: 1,
+      serviceKind: "backend-api"
     });
   });
 
@@ -299,7 +344,8 @@ describe("Extension guide session bridge", () => {
       open: true,
       intent: "Build a JSON API for customers.",
       phase: "recovery",
-      activeStepIndex: 1
+      activeStepIndex: 1,
+      serviceKind: "backend-api"
     });
   });
 
@@ -318,7 +364,8 @@ describe("Extension guide session bridge", () => {
       open: true,
       intent: "Build a JSON API for customers.",
       phase: "guide",
-      activeStepIndex: 1
+      activeStepIndex: 1,
+      serviceKind: "backend-api"
     });
   });
 
@@ -351,7 +398,8 @@ describe("Extension guide session bridge", () => {
       open: true,
       intent: "Build a JSON API for customers.",
       phase: "recovery",
-      activeStepIndex: undefined
+      activeStepIndex: undefined,
+      serviceKind: "backend-api"
     });
   });
 

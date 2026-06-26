@@ -1,4 +1,4 @@
-import type { BlockingState, Capability, GuideStep, PageState } from "./types";
+import type { BlockingState, Capability, GuideStep, PageState, ServiceKind } from "./types";
 
 export const capabilities: Record<Capability["id"], Capability> = {
   "cloudflare-workers": {
@@ -87,6 +87,64 @@ export const workersGuideSteps: GuideStep[] = [
   }
 ];
 
+export const pagesGuideSteps: GuideStep[] = [
+  {
+    id: "locate-pages",
+    title: "Find the Pages entry",
+    action: "Open the Workers & Pages area from the Cloudflare account sidebar.",
+    purpose:
+      "Pages projects live beside Workers in Cloudflare, so this gets you into the right product area for hosting.",
+    completionCheck: "The page shows Workers & Pages with Pages project actions available.",
+    targetId: "workers-pages-nav",
+    expectedRouteId: "cloudflare.dashboard.home"
+  },
+  {
+    id: "create-pages-project",
+    title: "Create a Pages project",
+    action: "Choose Create Pages project and start a static assets project.",
+    purpose:
+      "This creates the hosting container that will serve the static website.",
+    completionCheck: "A Pages setup flow is visible and asks how the site will be deployed.",
+    targetId: "create-pages-button",
+    expectedRouteId: "cloudflare.pages.overview"
+  },
+  {
+    id: "choose-static-assets",
+    title: "Choose static assets",
+    action: "Select the static assets path and keep the generated project setup.",
+    purpose:
+      "A static assets path is the smallest local proof for a website that does not need backend logic.",
+    completionCheck: "The Pages setup view shows static assets selected with no blocking validation errors.",
+    targetId: "static-assets-option",
+    expectedRouteId: "cloudflare.pages.static-assets"
+  },
+  {
+    id: "deploy-pages-project",
+    title: "Deploy the Pages project",
+    action: "Deploy the Pages project so Cloudflare can serve it from a Pages URL.",
+    purpose:
+      "Deployment turns the static project into a reachable website that other people can access.",
+    completionCheck: "The deployment result includes a Pages URL.",
+    targetId: "deploy-pages-button",
+    expectedRouteId: "cloudflare.pages.deploy-review",
+    criticalAction: {
+      label: "Deploy Pages project",
+      impact:
+        "Publishes the Pages project to a reachable URL. Michi simulates this publish action in the MVP."
+    }
+  },
+  {
+    id: "verify-pages-url",
+    title: "Verify the Pages URL",
+    action: "Open the generated Pages URL and confirm the static website loads.",
+    purpose:
+      "This proves the guide path reached the user's goal: a static website that other people can access.",
+    completionCheck: "The Pages URL returns HTTP 200 with the starter website.",
+    targetId: "pages-url",
+    expectedRouteId: "cloudflare.pages.deploy-result"
+  }
+];
+
 export const pageStatesByStep: PageState[] = [
   {
     location: "Cloudflare dashboard / Home",
@@ -119,6 +177,49 @@ export const pageStatesByStep: PageState[] = [
     completionSatisfied: true
   }
 ];
+
+export const pagesPageStatesByStep: PageState[] = [
+  {
+    location: "Cloudflare dashboard / Home",
+    targetElement: "Workers & Pages sidebar item",
+    evidence: "Account navigation is available and Pages can be opened.",
+    completionSatisfied: true
+  },
+  {
+    location: "Pages / Overview",
+    targetElement: "Create Pages project button",
+    evidence: "Create Pages project is visible but no Pages project exists yet.",
+    completionSatisfied: false
+  },
+  {
+    location: "Pages / Static assets setup",
+    targetElement: "Static assets option",
+    evidence: "Static assets flow is selected and the project setup is visible.",
+    completionSatisfied: true
+  },
+  {
+    location: "Pages / Deployment review",
+    targetElement: "Deploy Pages button",
+    evidence: "Pages deployment is ready but has not been published.",
+    completionSatisfied: false
+  },
+  {
+    location: "Pages / Deployment result",
+    targetElement: "Pages URL",
+    evidence: "Pages deployment generated a URL. Pages URL returned HTTP 200 with the starter website.",
+    completionSatisfied: true
+  }
+];
+
+export const guideStepsByServiceKind: Record<ServiceKind, GuideStep[]> = {
+  "backend-api": workersGuideSteps,
+  "static-site": pagesGuideSteps
+};
+
+export const pageStatesByServiceKind: Record<ServiceKind, PageState[]> = {
+  "backend-api": pageStatesByStep,
+  "static-site": pagesPageStatesByStep
+};
 
 export const blockingStates: Record<BlockingState["id"], BlockingState> = {
   "not-signed-in": {

@@ -38,6 +38,37 @@ const renderStarterEditorFixture = () => {
   `;
 };
 
+const renderPagesOverviewFixture = () => {
+  document.body.innerHTML = `
+    <nav><a href="/workers-and-pages">Workers & Pages</a></nav>
+    <main>
+      <h1>Pages projects</h1>
+      <button>Create Pages project</button>
+    </main>
+  `;
+};
+
+const renderPagesDeployReviewFixture = () => {
+  document.body.innerHTML = `
+    <nav><a href="/workers-and-pages">Workers & Pages</a></nav>
+    <main>
+      <h1>Deploy Pages project</h1>
+      <button>Deploy Pages project</button>
+    </main>
+  `;
+};
+
+const renderPagesDeployResultFixture = () => {
+  document.body.innerHTML = `
+    <nav><a href="/workers-and-pages">Workers & Pages</a></nav>
+    <main>
+      <h1>Deployment complete</h1>
+      <p>Your Pages site is available at:</p>
+      <a href="https://michi-static.pages.dev">https://michi-static.pages.dev</a>
+    </main>
+  `;
+};
+
 const renderWorkersOverviewMissingTargetFixture = () => {
   document.body.innerHTML = `
     <nav><a href="/workers-and-pages">Workers & Pages</a></nav>
@@ -178,7 +209,7 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).toContain("Open the Workers & Pages area from the Cloudflare account sidebar.");
   });
 
-  it("routes static website clarification to Cloudflare Pages copy", () => {
+  it("routes static website clarification to the Cloudflare Pages guide", () => {
     renderCloudflareFixture();
 
     const root = mountMichiInjectedShell(document);
@@ -191,9 +222,71 @@ describe("Injected Michi extension shell", () => {
 
     expect(shadow?.textContent).toContain("Cloudflare Pages");
     expect(shadow?.textContent).toContain("Hosting");
-    expect(shadow?.textContent).toContain("static websites and frontend projects");
-    expect(shadow?.textContent).not.toContain("Step 1 / 5");
+    expect(shadow?.textContent).toContain("Step 1 / 5");
+    expect(shadow?.textContent).toContain("Find the Pages entry");
+    expect(shadow?.textContent).toContain("Open the Workers & Pages area from the Cloudflare account sidebar.");
     expect(shadow?.textContent).not.toContain("Find the Workers entry");
+  });
+
+  it("checks and advances through Pages deploy confirmation", () => {
+    renderPagesOverviewFixture();
+
+    const location = {
+      href: "https://dash.cloudflare.com/example-account/pages",
+      title: "Pages"
+    };
+    const root = mountMichiInjectedShell(document, location);
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='guide']") ?? null);
+    click(shadow?.querySelector("[data-action='start-guide']") ?? null);
+    click(shadow?.querySelector("[data-action='choose-static-site']") ?? null);
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+
+    expect(shadow?.textContent).toContain("cloudflare.pages.overview");
+    expect(shadow?.textContent).toContain("Step 2 / 5");
+    expect(shadow?.textContent).toContain("Create a Pages project");
+    expect(shadow?.textContent).toContain("Create Pages project button");
+
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+
+    renderPagesDeployReviewFixture();
+    location.href = "https://dash.cloudflare.com/example-account/pages/deploy-review";
+    location.title = "Deploy Pages project";
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    expect(shadow?.textContent).toContain("Step 4 / 5");
+    expect(shadow?.textContent).toContain("Deploy the Pages project");
+    expect(shadow?.textContent).toContain("Deploy Pages button");
+
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    expect(shadow?.textContent).toContain("Confirm Deploy Pages project");
+    expect(shadow?.textContent).toContain("Publishes the Pages project to a reachable URL");
+  });
+
+  it("completes the Pages guide with DNS follow-up after Pages URL evidence", () => {
+    renderPagesDeployResultFixture();
+
+    const root = mountMichiInjectedShell(document, {
+      href: "https://dash.cloudflare.com/example-account/pages/deploy-result",
+      title: "Deployment complete"
+    });
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='guide']") ?? null);
+    click(shadow?.querySelector("[data-action='start-guide']") ?? null);
+    click(shadow?.querySelector("[data-action='choose-static-site']") ?? null);
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    expect(shadow?.textContent).toContain("Step 5 / 5");
+    expect(shadow?.textContent).toContain("Verify the Pages URL");
+    expect(shadow?.textContent).toContain("Pages URL detected");
+
+    click(shadow?.querySelector("[data-action='complete-guide']") ?? null);
+
+    expect(shadow?.textContent).toContain("Primary path complete");
+    expect(shadow?.textContent).toContain("Pages URL verified");
+    expect(shadow?.textContent).toContain("https://michi-static.pages.dev");
+    expect(shadow?.textContent).toContain("Cloudflare DNS");
   });
 
   it("opens, checks page context, and minimizes", () => {
@@ -414,7 +507,7 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).not.toContain("Critical write action");
   });
 
-  it("resets a static-site acknowledgement back to the intent entry", () => {
+  it("resets a static-site guide back to the intent entry", () => {
     renderCloudflareFixture();
 
     const root = mountMichiInjectedShell(document);
@@ -430,7 +523,7 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).toContain("User intent");
     expect(shadow?.textContent).toContain("Start guide");
     expect(shadow?.textContent).not.toContain("Cloudflare Pages");
-    expect(shadow?.textContent).not.toContain("static websites and frontend projects");
+    expect(shadow?.textContent).not.toContain("Find the Pages entry");
   });
 
   it("moves focus to the intent input after reset", () => {

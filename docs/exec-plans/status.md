@@ -26,10 +26,11 @@ Michi has a verified local React workbench and a Cloudflare-only unpacked extens
 | Extension reducer flow bridge | `completed/extension-reducer-flow-bridge.md` | Injected-shell previous, next, critical confirmation, and completion actions now project through the shared guide-session reducer. |
 | Extension reducer page-check bridge | `completed/extension-reducer-page-check-bridge.md` | Injected-shell page checks now project through the shared guide-session reducer while preserving page anchoring and critical confirmation safety. |
 | Extension reducer reset bridge | `completed/extension-reducer-reset-bridge.md` | Injected-shell Reset now projects through the shared guide-session reducer, clears shell-only page evidence, and keeps the rail compact. |
+| Cloudflare Pages guide path | `completed/cloudflare-pages-guide-path.md` | Static-site intent now routes to a deterministic Pages guide path across the React workbench and injected extension shell, including Pages page anchoring, confirmation, completion evidence, and DNS follow-up. |
 
 ## Active Work
 
-- No active execution plan is currently open.
+- None.
 
 ## Housekeeping
 
@@ -37,7 +38,7 @@ Michi has a verified local React workbench and a Cloudflare-only unpacked extens
 
 ## Recommended Next Direction
 
-The next product slice should decide whether static-route acknowledgement should be promoted into a richer Cloudflare Pages guide path or remain a terminal lightweight acknowledgement while Workers stays the primary guided path.
+The next product slice should introduce an extension-side route/state guard that preserves guide intent when users navigate between Pages and Workers contexts, then add a lightweight PR/branch freshness checklist to the execution workflow.
 
 ## Verification Baseline
 
