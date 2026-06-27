@@ -15,3 +15,4 @@ Design docs explain why Michi behaves the way it does. Product behavior should b
 - `extension-route-state-guard-decision.md`
 - `extension-runtime-fixture-boundary-decision.md`
 - `extension-runtime-probe-boundary-decision.md`
+- `extension-page-context-harness-decision.md`

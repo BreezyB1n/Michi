@@ -3,15 +3,9 @@ import { fulfillCloudflareDashboardRoute } from "../support/cloudflareDashboardF
 import {
   getRuntimeProbeUrl,
   hasExtensionBuild,
-  launchExtensionRuntime
+  launchExtensionRuntime,
+  readPageContextFromActiveTab
 } from "../support/extensionRuntimeHarness";
-
-declare const chrome: {
-  tabs: {
-    query(queryInfo: { active: boolean; currentWindow: boolean }): Promise<Array<{ id?: number }>>;
-    sendMessage(tabId: number, message: unknown): Promise<unknown>;
-  };
-};
 
 test("loads the unpacked extension and reads Cloudflare page context", async ({}, testInfo) => {
   test.skip(
@@ -83,17 +77,7 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await page.getByRole("button", { name: "Guide" }).click();
     await expect(page.getByText("cloudflare.workers.overview")).toBeVisible();
 
-    const response = await serviceWorker.evaluate(async () => {
-      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-      if (typeof activeTab.id !== "number") {
-        throw new Error("No active tab found for extension runtime smoke.");
-      }
-
-      return await chrome.tabs.sendMessage(activeTab.id, {
-        type: "MICHI_GET_PAGE_CONTEXT"
-      });
-    });
+    const response = await readPageContextFromActiveTab(serviceWorker);
 
     expect(response).toEqual(
       expect.objectContaining({

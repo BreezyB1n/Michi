@@ -1,10 +1,21 @@
-import { chromium, type BrowserContext, type TestInfo } from "@playwright/test";
+import { chromium, type BrowserContext, type TestInfo, type Worker } from "@playwright/test";
 import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 export type RuntimeProbeAssets = {
   html: string;
   script: string;
+};
+
+export type PageContextRequestMessage = {
+  type: "MICHI_GET_PAGE_CONTEXT";
+};
+
+declare const chrome: {
+  tabs: {
+    query(queryInfo: { active: boolean; currentWindow: boolean }): Promise<Array<{ id?: number }>>;
+    sendMessage(tabId: number, message: PageContextRequestMessage): Promise<unknown>;
+  };
 };
 
 export const extensionPath = path.resolve(process.cwd(), "dist-extension");
@@ -70,3 +81,25 @@ export const launchExtensionRuntime = async (
 
 export const getRuntimeProbeUrl = (extensionId: string) =>
   `chrome-extension://${extensionId}/runtime-probe.html`;
+
+export const buildPageContextRequestMessage = (): PageContextRequestMessage => ({
+  type: "MICHI_GET_PAGE_CONTEXT"
+});
+
+export const requestPageContextFromActiveTab = async (
+  message: PageContextRequestMessage
+): Promise<unknown> => {
+  const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+  if (typeof activeTab?.id !== "number") {
+    throw new Error("No active tab found for extension runtime smoke.");
+  }
+
+  return await chrome.tabs.sendMessage(activeTab.id, message);
+};
+
+export const readPageContextFromActiveTab = async (serviceWorker: Worker): Promise<unknown> =>
+  await serviceWorker.evaluate(
+    requestPageContextFromActiveTab,
+    buildPageContextRequestMessage()
+  );
