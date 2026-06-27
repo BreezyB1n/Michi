@@ -1,46 +1,10 @@
-import { chromium, expect, test } from "@playwright/test";
-import { existsSync, writeFileSync } from "node:fs";
-import path from "node:path";
+import { expect, test } from "@playwright/test";
 import { fulfillCloudflareDashboardRoute } from "../support/cloudflareDashboardFixture";
-
-const extensionPath = path.resolve(process.cwd(), "dist-extension");
-
-const installRuntimeProbe = () => {
-  writeFileSync(
-    path.join(extensionPath, "runtime-probe.html"),
-    `
-      <!doctype html>
-      <html>
-        <head><title>Michi runtime probe</title></head>
-        <body>
-          <main>
-            <h1>Michi runtime probe</h1>
-            <pre id="response">pending</pre>
-          </main>
-          <script src="runtime-probe.js"></script>
-        </body>
-      </html>
-    `
-  );
-  writeFileSync(
-    path.join(extensionPath, "runtime-probe.js"),
-    `
-      const responseElement = document.getElementById("response");
-      chrome.runtime.sendMessage({ type: "MICHI_GET_PAGE_CONTEXT" })
-        .then((response) => {
-          responseElement.textContent = JSON.stringify(response);
-          responseElement.dataset.ready = "true";
-        })
-        .catch((error) => {
-          responseElement.textContent = JSON.stringify({
-            type: "MICHI_PROBE_RUNTIME_ERROR",
-            reason: error instanceof Error ? error.message : "Probe could not reach runtime."
-          });
-          responseElement.dataset.ready = "true";
-        });
-    `
-  );
-};
+import {
+  getRuntimeProbeUrl,
+  hasExtensionBuild,
+  launchExtensionRuntime
+} from "../support/extensionRuntimeHarness";
 
 declare const chrome: {
   tabs: {
@@ -55,20 +19,10 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     "Extension runtime smoke only runs in the desktop Chromium project."
   );
   test.skip(
-    !existsSync(path.join(extensionPath, "manifest.json")),
+    !hasExtensionBuild(),
     "Run npm run build:extension before the extension runtime smoke."
   );
-  installRuntimeProbe();
-
-  const userDataDir = testInfo.outputPath("extension-user-data");
-  const context = await chromium.launchPersistentContext(userDataDir, {
-    channel: "chromium",
-    headless: true,
-    args: [
-      `--disable-extensions-except=${extensionPath}`,
-      `--load-extension=${extensionPath}`
-    ]
-  });
+  const context = await launchExtensionRuntime(testInfo);
 
   try {
     let serviceWorker = context.serviceWorkers()[0];
@@ -311,7 +265,7 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
 
     const extensionId = new URL(serviceWorker.url()).host;
     const probePage = await context.newPage();
-    await probePage.goto(`chrome-extension://${extensionId}/runtime-probe.html`);
+    await probePage.goto(getRuntimeProbeUrl(extensionId));
     await expect(probePage.getByRole("heading", { name: "Michi runtime probe" })).toBeVisible();
     const responseElement = probePage.locator("#response");
     await expect(responseElement).toHaveAttribute("data-ready", "true");
