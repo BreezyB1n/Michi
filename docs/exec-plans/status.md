@@ -28,6 +28,7 @@ Michi has a verified local React workbench and a Cloudflare-only unpacked extens
 | Extension reducer reset bridge | `completed/extension-reducer-reset-bridge.md` | Injected-shell Reset now projects through the shared guide-session reducer, clears shell-only page evidence, and keeps the rail compact. |
 | Cloudflare Pages guide path | `completed/cloudflare-pages-guide-path.md` | Static-site intent now routes to a deterministic Pages guide path across the React workbench and injected extension shell, including Pages page anchoring, confirmation, completion evidence, and DNS follow-up. |
 | Extension route-state guard | `completed/extension-route-state-guard.md` | Injected-shell Check page now preserves the selected Workers/Pages guide path, sends cross-path checks to recovery, suppresses wrong-path highlights, and reads SPA-style URL changes dynamically. |
+| Doc append merge guard | `completed/doc-append-merge-guard.md` | Append-only docs ledgers now use a narrow Git union merge guard with real-git regression coverage. |
 
 ## Active Work
 
@@ -39,7 +40,7 @@ Michi has a verified local React workbench and a Cloudflare-only unpacked extens
 
 ## Recommended Next Direction
 
-The next product slice should add a lightweight PR/branch freshness checklist to the execution workflow, then start separating extension runtime concerns from demo-only shell fixtures.
+The next product slice should first merge the doc append merge guard to reduce queued docs conflicts, then merge the fixture boundary. After that, start the runtime probe/setup boundary from latest `main`.
 
 ## Verification Baseline
 
