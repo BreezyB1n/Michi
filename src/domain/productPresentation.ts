@@ -211,6 +211,8 @@ export const sanitizeProviderText = (value: string | undefined): string => {
     .replace(/\bsimulated page state\b/gi, "page state")
     .replace(/\bsimulated URL\b/gi, "generated URL")
     .replace(/\bsimulates?\b/gi, "previews")
+    .replace(/\bpage context\b/gi, "page check")
+    .replace(/\bcontext status\b/gi, "check status")
     .replace(/\bMVP\b/g, "current guide");
 };
 
@@ -270,7 +272,7 @@ export const productPageStateCopy = (pageState: PageState): PageState => ({
   targetElement: productTargetLabel(pageState.targetElement),
   evidence: sanitizeProviderText(pageState.evidence).replace(
     /^Provider synced:/,
-    "Page context synced:"
+    "Page check synced:"
   ),
   blockingState: pageState.blockingState
     ? productBlockingStateCopy(pageState.blockingState)

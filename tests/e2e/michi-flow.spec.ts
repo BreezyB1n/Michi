@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 const sampleIntent = "I want to build a small service that other people can access.";
 const providerVisibleCopyPattern =
-  /\b(?:Cloudflare|Workers|Worker|DNS|Pages|MVP|demo)\b|cloudflare\.|workers\.dev|pages\.dev|dash\.cloudflare|current app|simulat/i;
+  /\b(?:Cloudflare|Workers|Worker|DNS|Pages|MVP|demo|page context|context status)\b|cloudflare\.|workers\.dev|pages\.dev|dash\.cloudflare|current app|simulat/i;
 
 const expectProductOnlyPageCopy = async (page: import("@playwright/test").Page) => {
   const copy = await page.evaluate(() => {
@@ -54,7 +54,7 @@ test("runs the Workers guide path with recovery and critical confirmations", asy
   await expect(page.getByRole("heading", { name: "Page layout changed" })).toBeVisible();
   await expectProductOnlyPageCopy(page);
   await page.getByRole("button", { name: "Recover and re-check" }).click();
-  await expect(page.getByText("Page context synced", { exact: true })).toBeVisible();
+  await expect(page.getByText("Page check synced", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Advance guide" }).click();
   await page.getByRole("button", { name: "Advance guide" }).click();
@@ -90,7 +90,7 @@ test("runs the Pages guide path with critical deploy confirmation", async ({ pag
   await expect(page.getByRole("heading", { name: "Page layout changed" })).toBeVisible();
   await expectProductOnlyPageCopy(page);
   await page.getByRole("button", { name: "Recover and re-check" }).click();
-  await expect(page.getByText("Page context synced", { exact: true })).toBeVisible();
+  await expect(page.getByText("Page check synced", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Advance guide" }).click();
   await expect(page.getByRole("heading", { name: "Create a site" })).toBeVisible();

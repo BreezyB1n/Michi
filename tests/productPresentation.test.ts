@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  productPageStateCopy,
   productRouteLabel,
   sanitizeProviderText
 } from "../src/domain/productPresentation";
@@ -47,5 +48,17 @@ describe("product presentation copy", () => {
     expect(sanitizeProviderText("https://michi-static.pages.dev is visible on the page.")).toBe(
       "generated site URL is visible on the page."
     );
+  });
+
+  it("rewrites provider evidence prefixes into page-check language", () => {
+    const copy = productPageStateCopy({
+      location: "Workers / Deployment result",
+      targetElement: "Worker URL",
+      evidence: "Provider synced: Worker URL returned HTTP 200 with the starter response.",
+      completionSatisfied: true
+    });
+
+    expect(copy.evidence).toBe("Page check synced: service URL returned HTTP 200 with the starter response.");
+    expect(copy.evidence).not.toMatch(providerVisibleCopyPattern);
   });
 });
