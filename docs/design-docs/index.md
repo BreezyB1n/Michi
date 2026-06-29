@@ -17,3 +17,7 @@ Design docs explain why Michi behaves the way it does. Product behavior should b
 - `extension-runtime-fixture-boundary-decision.md`
 - `branch-freshness-checklist-decision.md`
 - `sitegeist-style-side-panel-shell-decision.md`
+- `runtime-context-boundary-decision.md`
+- `runtime-context-permission-publishing-boundary-decision.md`
+- `product-only-ui-boundary-decision.md`
+- `product-surface-decision.md`

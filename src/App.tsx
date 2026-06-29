@@ -237,7 +237,7 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
       <main className="min-h-[100dvh] bg-background text-foreground">
         <section
           className="min-h-[100dvh] overflow-hidden bg-shell"
-          aria-label="Michi browser extension demo"
+          aria-label="Michi browser extension surface"
         >
           <header
             className="grid h-12 grid-cols-[112px_minmax(180px,1fr)_112px] items-center gap-3 border-b border-border bg-background px-3.5 max-[520px]:grid-cols-[minmax(0,1fr)_56px] max-[520px]:gap-2"
@@ -351,7 +351,7 @@ const CurrentPagePreview = ({ session, hostPageContext }: HostWebsiteProps) => (
   >
     <nav
       className="grid content-start gap-1.5 border-r border-border bg-sidebar px-2.5 py-7 max-[980px]:flex max-[980px]:items-center max-[980px]:gap-2 max-[980px]:overflow-x-auto max-[980px]:border-r-0 max-[980px]:border-b max-[980px]:p-3"
-      aria-label="Current app navigation"
+      aria-label="Workspace navigation"
     >
       <div className="mb-6 ml-2 grid size-11 place-items-center rounded-xl bg-primary text-sm font-extrabold tracking-tight text-primary-foreground shadow-sm max-[980px]:hidden">
         pg
@@ -652,7 +652,7 @@ const GuidePanel = ({
           {productCompletionTitle(session.serviceKind)}
         </h2>
         <p className="mb-4 text-sm leading-6 text-white/60">
-          The simulated URL is reachable, so the primary guide path has reached the user's goal.
+          The generated URL is reachable, so the primary guide path has reached the user's goal.
         </p>
         {session.followUpCapability ? (
           <div className="rounded-lg border border-white/10 bg-white/[0.06] p-3.5">
@@ -832,13 +832,13 @@ const PageStatePanel = ({ session, hostPageContext, pulseKey }: PageStatePanelPr
         value={productPageStateCopy(session.pageState).targetElement}
       />
       <StateRow
-        label="Context status"
+        label="Check status"
         value={
           session.pageState.blockingState?.id === "extension-runtime-unavailable"
             ? "Extension runtime error"
             : hostPageContext.blockingState
-              ? "Blocked by page context"
-              : "Page context synced"
+              ? "Check needs recovery"
+              : "Page check synced"
         }
       />
       <StateRow
@@ -897,7 +897,7 @@ const ActionBar = ({
           onClick={onDrift}
           className="border-white/12 bg-white/[0.06] text-primary-foreground hover:bg-white/[0.1]"
         >
-          Simulate page drift
+          Show page drift
         </Button>
         <Button
           type="button"

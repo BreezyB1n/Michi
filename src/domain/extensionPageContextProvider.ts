@@ -3,6 +3,7 @@ import {
   type MichiRuntimeMessage
 } from "../extension/runtimeMessages";
 import { extensionContextUnavailableSignalId } from "./pageContextSignals";
+import { sanitizeProviderText } from "./productPresentation";
 import type { HostPageContext, PageContextProvider } from "./types";
 
 type RuntimeLastError = {
@@ -30,21 +31,21 @@ declare const chrome:
   | undefined;
 
 export const unsupportedPageContext = (
-  reason = "Michi extension page context is unavailable.",
+  reason = "Michi extension page check is unavailable.",
   severity: "info" | "error" = "info"
 ): HostPageContext => ({
   url: "about:blank",
-  title: "Unsupported page context",
-  product: "cloudflare",
-  locationLabel: "Unsupported page context",
-  routeId: "cloudflare.unsupported",
+  title: "Unsupported page check",
+  product: "michi",
+  locationLabel: "Unsupported page check",
+  routeId: "michi.unsupported",
   detectedAt: new Date().toISOString(),
   targets: [],
   signals: [
     {
       id: extensionContextUnavailableSignalId,
       label: "Extension context unavailable",
-      value: reason,
+      value: sanitizeProviderText(reason),
       severity
     }
   ]
@@ -59,7 +60,7 @@ export const createExtensionPageContextProvider = (
 ): PageContextProvider => ({
   getCurrentContext: async () => {
     if (!runtime) {
-      return unsupportedPageContext("Chrome extension runtime is not available.", "error");
+      return unsupportedPageContext("Extension runtime is not available.", "error");
     }
 
     return new Promise<HostPageContext>((resolve) => {
@@ -81,7 +82,7 @@ export const createExtensionPageContextProvider = (
       timeoutId = setTimeout(() => {
         resolveOnce(
           unsupportedPageContext(
-            `Extension page context request timed out after ${timeoutMs}ms.`,
+            `Extension page check request timed out after ${timeoutMs}ms.`,
             "error"
           )
         );
@@ -106,7 +107,7 @@ export const createExtensionPageContextProvider = (
             return;
           }
 
-          resolveOnce(unsupportedPageContext("Extension returned no page context.", "error"));
+          resolveOnce(unsupportedPageContext("Extension returned no page check.", "error"));
         });
       } catch (error) {
         resolveOnce(

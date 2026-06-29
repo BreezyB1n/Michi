@@ -67,7 +67,8 @@ const routeLabelsById: Record<string, string> = {
   "cloudflare.pages.static-assets": "Static asset setup",
   "cloudflare.pages.deploy-review": "Site deployment review",
   "cloudflare.pages.deploy-result": "Site deployment result",
-  "cloudflare.unsupported": "Unsupported page"
+  "cloudflare.unsupported": "Unsupported page",
+  "michi.unsupported": "Unsupported runtime context"
 };
 
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -93,12 +94,12 @@ const stepCopyById: Record<
     criticalAction: {
       label: "Create service",
       impact:
-        "Creates a new service resource in the selected workspace. Michi simulates this action in the MVP."
+        "Prepares a new service resource in the selected workspace. Confirmation is required before continuing."
     }
   },
   "review-starter": {
     title: "Review the starter response",
-    action: "Read the starter handler and keep the default response for the demo.",
+    action: "Read the starter handler and keep the default response for this guide.",
     purpose:
       "A tiny response is enough to prove the service can run before binding a domain or adding business logic.",
     completionCheck: "The service editor shows a valid request handler and no blocking validation errors."
@@ -112,7 +113,7 @@ const stepCopyById: Record<
     criticalAction: {
       label: "Deploy service",
       impact:
-        "Publishes the service to a reachable URL. Michi simulates this publish action in the MVP."
+        "Publishes the service to a reachable URL. Confirmation is required before continuing."
     }
   },
   "verify-worker-url": {
@@ -151,7 +152,7 @@ const stepCopyById: Record<
     criticalAction: {
       label: "Deploy site",
       impact:
-        "Publishes the site project to a reachable URL. Michi simulates this publish action in the MVP."
+        "Publishes the site project to a reachable URL. Confirmation is required before continuing."
     }
   },
   "verify-pages-url": {
@@ -184,8 +185,10 @@ export const sanitizeProviderText = (value: string | undefined): string => {
     .replace(/Cloudflare dashboard tab/g, "supported browser tab")
     .replace(/Cloudflare dashboard/g, "current workspace")
     .replace(/Cloudflare account/g, "current workspace")
-    .replace(/Cloudflare's/g, "the current app's")
-    .replace(/Cloudflare/g, "current app")
+    .replace(/Cloudflare route/g, "Product route")
+    .replace(/Cloudflare page/g, "product page")
+    .replace(/Cloudflare's/g, "the product's")
+    .replace(/Cloudflare/g, "product workspace")
     .replace(/dashboard search/g, "page search")
     .replace(/dashboard/g, "workspace")
     .replace(/Pages project/g, "site project")
@@ -204,7 +207,13 @@ export const sanitizeProviderText = (value: string | undefined): string => {
     .replace(/Workers/g, "Services")
     .replace(/Worker/g, "service")
     .replace(/DNS/g, "custom domain")
-    .replace(/Domain routing/g, "Routing follow-up");
+    .replace(/Domain routing/g, "Routing follow-up")
+    .replace(/\bsimulated page state\b/gi, "page state")
+    .replace(/\bsimulated URL\b/gi, "generated URL")
+    .replace(/\bsimulates?\b/gi, "previews")
+    .replace(/\bpage context\b/gi, "page check")
+    .replace(/\bcontext status\b/gi, "check status")
+    .replace(/\bMVP\b/g, "current guide");
 };
 
 export const productCapabilityCopy = (
@@ -263,7 +272,7 @@ export const productPageStateCopy = (pageState: PageState): PageState => ({
   targetElement: productTargetLabel(pageState.targetElement),
   evidence: sanitizeProviderText(pageState.evidence).replace(
     /^Provider synced:/,
-    "Page context synced:"
+    "Page check synced:"
   ),
   blockingState: pageState.blockingState
     ? productBlockingStateCopy(pageState.blockingState)

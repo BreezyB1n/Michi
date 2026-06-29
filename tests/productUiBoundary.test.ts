@@ -1,0 +1,46 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+
+const repoRoot = join(__dirname, "..");
+
+const providerUiFramingPattern =
+  /\b(?:Cloudflare|Workers|Worker|DNS|Pages|MVP|demo|page context|context status)\b|cloudflare\.|workers\.dev|pages\.dev|dash\.cloudflare|current app|simulat/i;
+
+const visibleMarkdown = (path: string) =>
+  readFileSync(path, "utf8")
+    .replace(/`[^`]+`/g, "")
+    .replace(/\[[^\]]+\]\([^)]+\)/g, "");
+
+describe("product-only UI boundary", () => {
+  it("keeps current execution status in Michi product language", () => {
+    const statusCopy = visibleMarkdown(join(repoRoot, "docs/exec-plans/status.md"));
+
+    expect(statusCopy).not.toMatch(providerUiFramingPattern);
+  });
+
+  it("keeps current architecture and frontend docs in Michi product language", () => {
+    const currentDocCopy = [
+      "ARCHITECTURE.md",
+      "docs/FRONTEND.md",
+      "docs/design-docs/product-surface-decision.md",
+      "docs/product-specs/product-surface-prd.md"
+    ]
+      .map((path) => visibleMarkdown(join(repoRoot, path)))
+      .join("\n");
+
+    expect(currentDocCopy).not.toMatch(providerUiFramingPattern);
+  });
+
+  it("keeps current-facing execution plans from framing provider details as UI", () => {
+    const activePlanDir = join(repoRoot, "docs/exec-plans/active");
+    const currentPlanPaths = readdirSync(activePlanDir)
+      .filter((fileName) => fileName.endsWith(".md"))
+      .map((fileName) => join(activePlanDir, fileName));
+    currentPlanPaths.push(join(repoRoot, "docs/exec-plans/completed/product-only-ui-boundary.md"));
+
+    const currentPlanCopy = currentPlanPaths.map((path) => visibleMarkdown(path)).join("\n");
+
+    expect(currentPlanCopy).not.toMatch(providerUiFramingPattern);
+  });
+});
