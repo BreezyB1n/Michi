@@ -38,3 +38,5 @@ Product specs are the source of truth for what Michi should build.
 - `runtime-context-boundary-issues.md`
 - `product-only-ui-boundary-prd.md`
 - `product-only-ui-boundary-issues.md`
+- `product-surface-prd.md`
+- `product-surface-issues.md`

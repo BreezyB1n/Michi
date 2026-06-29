@@ -1,6 +1,13 @@
 # Frontend
 
-The first frontend target is a local browser UI for the Cloudflare Workers primary guide path. It should model the future In-page Guide Overlay while remaining independent from any real browser extension.
+The frontend target is a compact Michi product shell that can sit on top of a host workspace without turning that workspace into the product story.
+
+The shell should model the future in-page guide overlay:
+
+- collapsed rail by default
+- expanded guide panel only when requested
+- host page stays primary
+- Michi UI explains intent, next action, page check, evidence, recovery, and follow-up in product language
 
 The UI must make these states visible:
 
@@ -10,4 +17,5 @@ The UI must make these states visible:
 - critical action confirmation
 - completion check
 - recovery step
+- activity history
 - final follow-up route

@@ -20,3 +20,4 @@ Design docs explain why Michi behaves the way it does. Product behavior should b
 - `runtime-context-boundary-decision.md`
 - `runtime-context-permission-publishing-boundary-decision.md`
 - `product-only-ui-boundary-decision.md`
+- `product-surface-decision.md`

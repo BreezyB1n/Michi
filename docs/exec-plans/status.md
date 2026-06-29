@@ -2,7 +2,7 @@
 
 ## Current State
 
-Michi has a verified local React workbench and unpacked extension runtime for a compact page guide shell. The current extension surface is injected, collapsed by default, and supports deterministic service/site guide behavior, page checks, target highlights, recovery states, critical-action confirmation, completion follow-up, permission guards, runtime-error handling, route-state guards, and scroll/resize highlight refresh. Provider-specific page readers remain internal adapters; visible UI should stay in Michi product language.
+Michi has a verified local React workbench and unpacked extension runtime for a compact page guide shell. The current extension surface is injected, collapsed by default, and supports deterministic service/site guide behavior, page checks, target highlights, recovery states, critical-action confirmation, completion follow-up, permission guards, runtime-error handling, route-state guards, and scroll/resize highlight refresh. Runtime readers remain internal adapters; visible UI stays in Michi product language.
 
 ## Completed Milestones
 
@@ -37,7 +37,7 @@ Michi has a verified local React workbench and unpacked extension runtime for a 
 
 ## Active Work
 
-- No active execution plan is checked in. Product-only UI boundary implementation is complete and represented by draft PR #30.
+- `active/product-surface.md`: define the next product-owned UI slice around intent, guide step, page check, evidence, recovery, actions, and activity history.
 
 ## Housekeeping
 
@@ -45,7 +45,7 @@ Michi has a verified local React workbench and unpacked extension runtime for a 
 
 ## Recommended Next Direction
 
-Review and merge the stacked runtime-context-boundary and product-only UI boundary PR chain before adding new providers, broader permissions, or store-publishing work.
+Implement the product surface activity timeline after this planning slice lands. Do not add new adapters, broader permissions, or public listing work before the product-owned UI regions are stable.
 
 ## Verification Baseline
 

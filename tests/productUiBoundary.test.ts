@@ -19,6 +19,19 @@ describe("product-only UI boundary", () => {
     expect(statusCopy).not.toMatch(providerUiFramingPattern);
   });
 
+  it("keeps current architecture and frontend docs in Michi product language", () => {
+    const currentDocCopy = [
+      "ARCHITECTURE.md",
+      "docs/FRONTEND.md",
+      "docs/design-docs/product-surface-decision.md",
+      "docs/product-specs/product-surface-prd.md"
+    ]
+      .map((path) => visibleMarkdown(join(repoRoot, path)))
+      .join("\n");
+
+    expect(currentDocCopy).not.toMatch(providerUiFramingPattern);
+  });
+
   it("keeps current-facing execution plans from framing provider details as UI", () => {
     const activePlanDir = join(repoRoot, "docs/exec-plans/active");
     const currentPlanPaths = readdirSync(activePlanDir)
