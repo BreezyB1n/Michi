@@ -1,6 +1,7 @@
-import { readCloudflarePageContext } from "./cloudflarePageReader";
+import { createPageContextProviderFromAdapter } from "../domain/pageContextAdapter";
+import { createCloudflarePageContextAdapter } from "./cloudflarePageContextAdapter";
 import { mountMichiInjectedShell } from "./injectedShell";
-import type { MichiRuntimeMessage } from "./runtimeMessages";
+import { isGetPageContextMessage, type MichiRuntimeMessage } from "./runtimeMessages";
 
 type RuntimeMessageSender = unknown;
 
@@ -22,32 +23,31 @@ declare const chrome:
     }
   | undefined;
 
-mountMichiInjectedShell();
+const pageContextProvider = createPageContextProviderFromAdapter(
+  createCloudflarePageContextAdapter()
+);
 
-const isGetPageContextMessage = (
-  message: unknown
-): message is Extract<MichiRuntimeMessage, { type: "MICHI_GET_PAGE_CONTEXT" }> =>
-  typeof message === "object" &&
-  message !== null &&
-  "type" in message &&
-  message.type === "MICHI_GET_PAGE_CONTEXT";
+mountMichiInjectedShell();
 
 chrome?.runtime?.onMessage.addListener((message, _sender, sendResponse) => {
   if (!isGetPageContextMessage(message)) {
     return undefined;
   }
 
-  try {
-    sendResponse({
-      type: "MICHI_PAGE_CONTEXT",
-      context: readCloudflarePageContext()
+  void pageContextProvider
+    .getCurrentContext()
+    .then((context) => {
+      sendResponse({
+        type: "MICHI_PAGE_CONTEXT",
+        context
+      });
+    })
+    .catch((error: unknown) => {
+      sendResponse({
+        type: "MICHI_PAGE_CONTEXT_ERROR",
+        reason: error instanceof Error ? error.message : "Unable to read page context."
+      });
     });
-  } catch (error) {
-    sendResponse({
-      type: "MICHI_PAGE_CONTEXT_ERROR",
-      reason: error instanceof Error ? error.message : "Unable to read page context."
-    });
-  }
 
   return true;
 });
