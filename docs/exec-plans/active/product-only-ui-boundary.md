@@ -26,7 +26,7 @@ Lock Michi's visible UI to product language only. Provider-specific readers and 
 - [x] Update product-presentation copy for raw provider signals.
 - [x] Run focused tests.
 - [x] Run full verification baseline.
-- [ ] Commit, push, and open a stacked draft PR.
+- [x] Commit, push, and open a stacked draft PR.
 
 ## Evidence Ledger
 
@@ -38,3 +38,5 @@ Lock Michi's visible UI to product language only. Provider-specific readers and 
 | `npm run test:e2e` | Passed | Extension build passed; Playwright reported 5 passed, 1 skipped. |
 | `git diff --check` | Passed | No whitespace errors. |
 | `bash /Users/bytedance/.agents/skills/check/scripts/run-tests.sh` | Passed | Runs `npm test`; 16 files / 144 tests passed. |
+| `npm run check:branch -- --strict-clean` | Passed | Branch `codex/michi-product-only-ui-boundary` is clean, ahead 4, behind 0, ready. |
+| Draft PR | Opened | `https://github.com/BreezyB1n/Michi/pull/23`, stacked on `codex/michi-page-context-adapter-contract`. |
