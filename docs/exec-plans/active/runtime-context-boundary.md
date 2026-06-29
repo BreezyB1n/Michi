@@ -67,6 +67,7 @@ This plan is active and should be split into small branches after the PRD issue 
 | `npm run test:e2e` | Passed | Extension build passed; Playwright reported 5 passed, 1 skipped. Existing unpacked extension smoke remains end-to-end. |
 | `git diff --check` | Passed | No whitespace errors after Slice 4 test changes. |
 | `bash /Users/bytedance/.agents/skills/check/scripts/run-tests.sh` | Passed | Runs `npm test`; 19 files / 152 tests passed after Slice 4. |
+| Draft PR | Opened | `https://github.com/BreezyB1n/Michi/pull/26`, stacked on `codex/michi-product-neutral-failure-context`. |
 
 ## Review Notes
 
