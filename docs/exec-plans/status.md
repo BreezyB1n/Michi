@@ -34,10 +34,11 @@ Michi has a verified local React workbench and unpacked extension runtime for a 
 | Sitegeist-style side panel shell | `completed/sitegeist-style-side-panel-shell.md` | React workbench and injected shell now use a product-only Michi side-panel form with ampcode-inspired visual direction, provider-neutral visible copy, and desktop/mobile overflow proof. |
 | Runtime context boundary | `completed/runtime-context-boundary.md` | Provider-specific page readers now sit behind an adapter boundary; unsupported/failure context is product-neutral; test fixtures stay in test support; visible runtime copy is product-only; permission and publishing boundaries are documented and guarded. |
 | Product-only UI boundary | `completed/product-only-ui-boundary.md` | React workbench, injected shell, runtime failure states, current status docs, and browser smoke now reject provider-facing UI language. |
+| Product surface activity history | `completed/product-surface.md` | React workbench and injected shell now show deterministic Michi-owned activity history for intent start, path choice, page checks, recovery, confirmation, completion, and reset. |
 
 ## Active Work
 
-- `active/product-surface.md`: define the next product-owned UI slice around intent, guide step, page check, evidence, recovery, actions, and activity history.
+- No active execution plan is checked in. Product surface activity history is complete in the current branch.
 
 ## Housekeeping
 
@@ -45,7 +46,7 @@ Michi has a verified local React workbench and unpacked extension runtime for a 
 
 ## Recommended Next Direction
 
-Implement the product surface activity timeline after this planning slice lands. Do not add new adapters, broader permissions, or public listing work before the product-owned UI regions are stable.
+Open a new spec for the next Michi-owned UI slice. A good candidate is a compact command palette or task handoff surface that works inside the existing side panel without adding new adapters, broader permissions, storage, account writes, or public listing work.
 
 ## Verification Baseline
 

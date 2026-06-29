@@ -22,6 +22,19 @@ import {
   sanitizeProviderText
 } from "../domain/productPresentation";
 import {
+  activityEventForConfirmation,
+  activityEventForCriticalConfirmation,
+  activityEventForIntentStart,
+  activityEventForReset,
+  activityEventForServiceKind,
+  appendActivityEvent,
+  createActivityTimeline,
+  resetActivityTimeline,
+  type ActivityEvent,
+  type ActivityEventInput,
+  type ActivityTimeline
+} from "../domain/activityTimeline";
+import {
   checkedContextFromReducer,
   chooseBackendApiFromReducer,
   chooseStaticSiteFromReducer,
@@ -50,6 +63,7 @@ type ShellState = {
   intent: string;
   phase: WorkersGuideShellPhase;
   serviceKind?: ServiceKind;
+  activityTimeline: ActivityTimeline;
 };
 
 type RecoveryGuidance = {
@@ -221,6 +235,74 @@ const shellStyles = `
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
 
+  .activity-summary {
+    display: grid;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .activity-empty,
+  .activity-item {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.055);
+  }
+
+  .activity-empty {
+    padding: 10px;
+    font: 550 12px/1.45 inherit;
+    color: rgba(241, 240, 223, 0.64);
+  }
+
+  .activity-list {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .activity-item {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr);
+    gap: 9px;
+    padding: 9px;
+  }
+
+  .activity-item[data-tone="success"] {
+    border-color: rgba(16, 185, 129, 0.36);
+    background: rgba(16, 185, 129, 0.12);
+  }
+
+  .activity-item[data-tone="warning"],
+  .activity-item[data-tone="error"] {
+    border-color: rgba(245, 158, 11, 0.42);
+    background: rgba(245, 158, 11, 0.13);
+  }
+
+  .activity-sequence {
+    display: grid;
+    width: 26px;
+    height: 26px;
+    place-items: center;
+    border: 1px solid rgba(241, 240, 223, 0.18);
+    border-radius: 50%;
+    font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: rgba(241, 240, 223, 0.72);
+  }
+
+  .activity-title {
+    margin-bottom: 3px;
+    font: 750 12px/1.25 inherit;
+    color: #f1f0df;
+  }
+
+  .activity-detail {
+    font: 550 11px/1.45 inherit;
+    color: rgba(241, 240, 223, 0.66);
+    overflow-wrap: anywhere;
+  }
+
   .capability {
     display: flex;
     align-items: baseline;
@@ -377,6 +459,72 @@ const completionEvidence = (context: HostPageContext | undefined) =>
   context?.signals.find((signal) => signal.severity === "success")?.value ??
   context?.signals[0]?.value ??
   "Service URL evidence is available.";
+
+const guideStepForShellState = (state: ShellState) =>
+  state.activeStepIndex === undefined || state.activeStepIndex < 0
+    ? undefined
+    : guideStepsForServiceKind(state.serviceKind ?? "backend-api")[state.activeStepIndex];
+
+const activityEventForShellContext = (state: ShellState): ActivityEventInput | undefined => {
+  if (!state.context) {
+    return undefined;
+  }
+
+  const resolvedServiceKind =
+    state.serviceKind ?? serviceKindForRouteId(state.context.routeId) ?? "backend-api";
+  const guidance = recoveryGuidanceForContext(state.context, resolvedServiceKind);
+
+  if (guidance) {
+    return {
+      kind: "recovery",
+      title: "Check needs recovery",
+      detail: "Michi paused this guide and surfaced a recovery step for the current page.",
+      tone: "warning"
+    };
+  }
+
+  if (state.phase === "complete" || state.phase === "static-complete") {
+    return {
+      kind: "completion",
+      title: "Completion evidence passed",
+      detail: "Michi confirmed the evidence needed to finish this guide.",
+      tone: "success"
+    };
+  }
+
+  return {
+    kind: "page-check",
+    title: "Page check synced",
+    detail: "Michi synced the checked page with the active guide step.",
+    tone: "info"
+  };
+};
+
+const activityEventCopy = (event: ActivityEvent) => `
+  <li class="activity-item" data-tone="${escapeHtml(event.tone)}">
+    <span class="activity-sequence">${event.sequence}</span>
+    <div>
+      <p class="activity-title">${escapeHtml(event.title)}</p>
+      <p class="activity-detail">${escapeHtml(event.detail)}</p>
+    </div>
+  </li>
+`;
+
+const activityTimelineCopy = (timeline: ActivityTimeline) => {
+  const visibleEvents = timeline.events.slice(-6).reverse();
+
+  return `<section class="activity-summary" aria-label="Activity history">
+    <div>
+      <p class="eyebrow">Activity</p>
+      <p class="step-title">Activity history</p>
+    </div>
+    ${
+      visibleEvents.length
+        ? `<ol class="activity-list" aria-label="Recent activity events">${visibleEvents.map(activityEventCopy).join("")}</ol>`
+        : `<p class="activity-empty">No activity yet. Start a guide to see Michi's checks and decisions.</p>`
+    }
+  </section>`;
+};
 
 const intentCopy = (intent: string) => `
   <section class="guide-summary" aria-label="Intent entry">
@@ -625,7 +773,8 @@ export const mountMichiInjectedShell = (
   const state: ShellState = {
     open: false,
     intent: sampleIntent,
-    phase: "intent"
+    phase: "intent",
+    activityTimeline: createActivityTimeline()
   };
   const ownerWindow = doc.defaultView ?? window;
   const currentLocation = (): ShellLocation =>
@@ -643,6 +792,17 @@ export const mountMichiInjectedShell = (
     state.activeStepIndex = nextGuideState.activeStepIndex;
     state.intent = nextGuideState.intent;
     state.serviceKind = nextGuideState.serviceKind;
+  };
+  const recordActivity = (events: ActivityEventInput | ActivityEventInput[] | undefined) => {
+    if (!events) {
+      return;
+    }
+
+    const nextEvents = Array.isArray(events) ? events : [events];
+    state.activityTimeline = nextEvents.reduce(
+      (timeline, event) => appendActivityEvent(timeline, event),
+      state.activityTimeline
+    );
   };
 
   const handleKeyDown = (event: KeyboardEvent) => {
@@ -687,6 +847,7 @@ export const mountMichiInjectedShell = (
                 </div>
                 <div class="panel-body">
                   ${panelBodyCopy(state)}
+                  ${activityTimelineCopy(state.activityTimeline)}
                 </div>
               </section>`
             : ""
@@ -704,6 +865,7 @@ export const mountMichiInjectedShell = (
       state.context = readCloudflarePageContext(doc, currentLocation());
       const nextGuideState = checkedContextFromReducer(state, state.context);
       applyGuideState(nextGuideState);
+      recordActivity(activityEventForShellContext(state));
       render();
     });
 
@@ -717,6 +879,7 @@ export const mountMichiInjectedShell = (
       state.open = true;
       state.context = undefined;
       applyGuideState(nextGuideState);
+      state.activityTimeline = resetActivityTimeline(activityEventForReset());
       render();
       shadow.querySelector<HTMLTextAreaElement>("[data-intent]")?.focus();
     });
@@ -728,8 +891,12 @@ export const mountMichiInjectedShell = (
     });
 
     shadow.querySelector("[data-action='next-step']")?.addEventListener("click", () => {
+      const previousStep = guideStepForShellState(state);
       const nextGuideState = nextStepFromReducer(state);
       applyGuideState(nextGuideState);
+      if (nextGuideState.phase === "confirm") {
+        recordActivity(activityEventForCriticalConfirmation(previousStep));
+      }
       render();
     });
 
@@ -742,24 +909,29 @@ export const mountMichiInjectedShell = (
     shadow.querySelector("[data-action='start-guide']")?.addEventListener("click", () => {
       const nextGuideState = startGuideFromReducer(state);
       applyGuideState(nextGuideState);
+      recordActivity(activityEventForIntentStart(state.intent));
       render();
     });
 
     shadow.querySelector("[data-action='choose-backend-api']")?.addEventListener("click", () => {
       const nextGuideState = chooseBackendApiFromReducer(state);
       applyGuideState(nextGuideState);
+      recordActivity(activityEventForServiceKind("backend-api"));
       render();
     });
 
     shadow.querySelector("[data-action='choose-static-site']")?.addEventListener("click", () => {
       const nextGuideState = chooseStaticSiteFromReducer(state);
       applyGuideState(nextGuideState);
+      recordActivity(activityEventForServiceKind("static-site"));
       render();
     });
 
     shadow.querySelector("[data-action='confirm-action']")?.addEventListener("click", () => {
+      const previousStep = guideStepForShellState(state);
       const nextGuideState = confirmCriticalActionFromReducer(state);
       applyGuideState(nextGuideState);
+      recordActivity(activityEventForConfirmation(previousStep));
       render();
     });
 
@@ -769,6 +941,7 @@ export const mountMichiInjectedShell = (
         canCompleteGuide(state.context, state.activeStepIndex, state.serviceKind ?? "backend-api")
       );
       applyGuideState(nextGuideState);
+      recordActivity(activityEventForShellContext(state));
       render();
     });
   };

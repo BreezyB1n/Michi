@@ -38,6 +38,7 @@ describe("product-only UI boundary", () => {
       .filter((fileName) => fileName.endsWith(".md"))
       .map((fileName) => join(activePlanDir, fileName));
     currentPlanPaths.push(join(repoRoot, "docs/exec-plans/completed/product-only-ui-boundary.md"));
+    currentPlanPaths.push(join(repoRoot, "docs/exec-plans/completed/product-surface.md"));
 
     const currentPlanCopy = currentPlanPaths.map((path) => visibleMarkdown(path)).join("\n");
 

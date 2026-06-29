@@ -175,15 +175,89 @@ describe("Michi app", () => {
     expect(screen.getByLabelText(/current page preview/i)).toBeInTheDocument();
     const sidePanel = screen.getByLabelText(/michi side panel/i);
     expect(sidePanel).toBeInTheDocument();
-    expect(within(sidePanel).getByText(/Service runtime/i)).toBeInTheDocument();
+    expect(within(sidePanel).getAllByText(/Service runtime/i).length).toBeGreaterThan(0);
     expect(within(sidePanel).getByText(/Deployable endpoint/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /Find the build area/i })).toBeInTheDocument();
     expect(screen.getByText(/Step purpose/i)).toBeInTheDocument();
     expect(screen.getByText(/Completion check/i)).toBeInTheDocument();
-    expect(screen.getByText(/Workspace \/ Home/i)).toBeInTheDocument();
-    expect(screen.getByText(/Build area navigation item/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Workspace \/ Home/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Build area navigation item/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Page check synced/i).length).toBeGreaterThan(0);
     expect(within(sidePanel).queryByText(/cloudflare|workers|pages|dns/i)).not.toBeInTheDocument();
+  });
+
+  it("records guide actions in a compact activity timeline", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /^guide$/i }));
+
+    let activity = screen.getByLabelText(/activity history/i);
+    expect(within(activity).getByText(/No activity yet/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /start guide/i }));
+
+    activity = screen.getByLabelText(/activity history/i);
+    expect(within(activity).getByText(/Intent captured/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /backend logic or api/i }));
+
+    activity = screen.getByLabelText(/activity history/i);
+    expect(await within(activity).findByText(/Service path selected/i)).toBeInTheDocument();
+    expect(within(activity).getByText(/Page check synced/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /advance guide/i }));
+    await user.click(screen.getByRole("button", { name: /advance guide/i }));
+
+    activity = screen.getByLabelText(/activity history/i);
+    expect(within(activity).getByText(/Confirmation needed/i)).toBeInTheDocument();
+    expect(within(activity).queryByText(/Action confirmed/i)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /confirm action/i }));
+
+    activity = screen.getByLabelText(/activity history/i);
+    expect(await within(activity).findByText(/Action confirmed/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /show page drift/i }));
+
+    activity = screen.getByLabelText(/activity history/i);
+    expect(await within(activity).findByText(/Check needs recovery/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /recover and re-check/i }));
+
+    activity = screen.getByLabelText(/activity history/i);
+    expect(await within(activity).findByText(/Recovery completed/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /advance guide/i }));
+    await user.click(screen.getByRole("button", { name: /advance guide/i }));
+    await user.click(screen.getByRole("button", { name: /confirm action/i }));
+    await user.click(screen.getByRole("button", { name: /advance guide/i }));
+
+    activity = screen.getByLabelText(/activity history/i);
+    expect(await within(activity).findByText(/Completion evidence passed/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /reset/i }));
+
+    activity = screen.getByLabelText(/activity history/i);
+    expect(within(activity).getByText(/Session reset/i)).toBeInTheDocument();
+    expect(within(activity).queryByText(/Intent captured/i)).not.toBeInTheDocument();
+  });
+
+  it("allows long activity details to wrap inside the panel", async () => {
+    const user = userEvent.setup();
+    const longIntent = `Publish ${"a".repeat(160)} https://example.com/${"b".repeat(160)}`;
+
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /^guide$/i }));
+    await user.clear(screen.getByLabelText(/user intent/i));
+    await user.type(screen.getByLabelText(/user intent/i), longIntent);
+    await user.click(screen.getByRole("button", { name: /start guide/i }));
+
+    const detail = screen.getByText(new RegExp(`Michi started from: Publish ${"a".repeat(20)}`));
+
+    expect(detail).toHaveClass("break-words");
+    expect(detail).toHaveClass("[overflow-wrap:anywhere]");
   });
 
   it("keeps the visible Michi shell in product language through provider-backed backend flow", async () => {
@@ -206,7 +280,7 @@ describe("Michi app", () => {
   it("routes static website work through the Pages guide path", async () => {
     await startStaticGuide();
 
-    expect(screen.getByText(/Site publishing/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Site publishing/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Static web path/i).length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: /Find the build area/i })).toBeInTheDocument();
     expect(screen.getByText(/Sites can be opened/i)).toBeInTheDocument();
@@ -236,7 +310,7 @@ describe("Michi app", () => {
     expect(screen.getByRole("heading", { name: /Page layout changed/i })).toBeInTheDocument();
     expect(screen.getByText(/Recovery step/i)).toBeInTheDocument();
     expect(screen.getByText(/current step cannot be anchored/i)).toBeInTheDocument();
-    expect(screen.getByText(/page search for Build area/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/page search for Build area/i).length).toBeGreaterThan(0);
     expect(screen.getByLabelText(/michi side panel/i)).not.toHaveTextContent(/cloudflare/i);
     expectProductOnlyVisibleCopy();
 
@@ -256,7 +330,7 @@ describe("Michi app", () => {
 
     expect(await screen.findByRole("heading", { name: /Extension runtime unavailable/i })).toBeInTheDocument();
     expect(screen.getByText(/No receiving end/i)).toBeInTheDocument();
-    expect(screen.getByText(/open or refresh a supported browser tab/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/open or refresh a supported browser tab/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Check status/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Extension runtime error/i).length).toBeGreaterThanOrEqual(1);
     expectProductOnlyVisibleCopy();
@@ -317,7 +391,7 @@ describe("Michi app", () => {
     await user.click(screen.getByRole("button", { name: /advance guide/i }));
 
     expect(screen.getByRole("heading", { name: /Service URL verified/i })).toBeInTheDocument();
-    expect(screen.getByText(/service URL returned HTTP 200/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/service URL returned HTTP 200/i).length).toBeGreaterThan(0);
     const sidePanel = screen.getByLabelText(/michi side panel/i);
     expect(within(sidePanel).getByText(/^Custom domain$/i)).toBeInTheDocument();
     expect(within(sidePanel).getByText(/^Routing follow-up$/i)).toBeInTheDocument();
@@ -338,7 +412,7 @@ describe("Michi app", () => {
     await user.click(screen.getByRole("button", { name: /advance guide/i }));
 
     expect(screen.getByRole("heading", { name: /Site URL verified/i })).toBeInTheDocument();
-    expect(screen.getByText(/site URL returned HTTP 200/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/site URL returned HTTP 200/i).length).toBeGreaterThan(0);
     const sidePanel = screen.getByLabelText(/michi side panel/i);
     expect(within(sidePanel).getByText(/^Custom domain$/i)).toBeInTheDocument();
     expect(within(sidePanel).getByText(/^Routing follow-up$/i)).toBeInTheDocument();
