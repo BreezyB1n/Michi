@@ -49,6 +49,8 @@ This plan is active and should be split into small branches after the PRD issue 
 | `npm run test:e2e` | Passed | Extension build passed; Playwright reported 5 passed, 1 skipped. The Chromium extension runtime smoke still reads page context through the content script. |
 | `git diff --check` | Passed | No whitespace errors after Slice 2 code changes. |
 | `bash /Users/bytedance/.agents/skills/check/scripts/run-tests.sh` | Passed | Runs `npm test`; 18 files / 145 tests passed after Slice 2. |
+| `npm run check:branch -- --strict-clean` | Passed | Branch `codex/michi-provider-reader-adapter-boundary` is clean, ahead 4, behind 0, ready. |
+| Draft PR | Opened | `https://github.com/BreezyB1n/Michi/pull/24`, stacked on `codex/michi-page-context-adapter-contract`. |
 
 ## Review Notes
 
