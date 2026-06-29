@@ -32,10 +32,11 @@ Michi has a verified local React workbench and a Cloudflare-only unpacked extens
 | Extension runtime fixture boundary | `completed/extension-runtime-fixture-boundary.md` | Cloudflare dashboard fixture generation now lives in test support, keeping the unpacked extension runtime smoke focused on browser and guide-shell behavior. |
 | Branch freshness checklist | `completed/branch-freshness-checklist.md` | Local `check:branch` reports ahead/behind/superseded/main/dirty branch states and adds a strict-clean pre-PR gate. |
 | Sitegeist-style side panel shell | `completed/sitegeist-style-side-panel-shell.md` | React demo and injected shell now use a product-only Michi side-panel form with ampcode-inspired visual direction, provider-neutral visible copy, and desktop/mobile overflow proof. |
+| Runtime context boundary | `completed/runtime-context-boundary.md` | Provider-specific page readers now sit behind an adapter boundary; unsupported/failure context is product-neutral; demo fixtures stay in test support; visible runtime copy is product-only; permission and publishing boundaries are documented and guarded. |
 
 ## Active Work
 
-- `active/runtime-context-boundary.md`: PRD and issue breakdown for separating provider-specific page readers from Michi's product runtime context boundary.
+- No active execution plan is checked in. Runtime context boundary implementation is complete and represented by the stacked draft PRs.
 
 ## Housekeeping
 
@@ -43,7 +44,7 @@ Michi has a verified local React workbench and a Cloudflare-only unpacked extens
 
 ## Recommended Next Direction
 
-The next product slice is the runtime context boundary: separate provider-specific page readers and demo fixtures from Michi's product runtime vocabulary before adding new providers or broader extension permissions.
+Review and merge the stacked runtime-context-boundary PR chain, then choose the next PRD before adding new providers, broader permissions, or store-publishing work.
 
 ## Verification Baseline
 
