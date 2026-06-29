@@ -7,6 +7,11 @@ import type { MichiPageContextRuntime } from "../src/domain/pageContextRuntime";
 import type { HostPageContext } from "../src/domain/types";
 
 const sampleIntent = "I want to build a small service that other people can access.";
+const providerBrandPattern = /\b(?:Cloudflare|Workers|Pages|DNS)\b/;
+
+const expectProductOnlyVisibleCopy = () => {
+  expect(document.body).not.toHaveTextContent(providerBrandPattern);
+};
 
 const startBackendGuide = async () => {
   const user = userEvent.setup();
@@ -164,7 +169,7 @@ describe("Michi app", () => {
     expect(screen.getByText(/Workspace \/ Home/i)).toBeInTheDocument();
     expect(screen.getByText(/Build area navigation item/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Page context synced/i).length).toBeGreaterThan(0);
-    expect(within(sidePanel).queryByText(/cloudflare|workers|pages|dns/i)).not.toBeInTheDocument();
+    expectProductOnlyVisibleCopy();
   });
 
   it("routes static website work through the Pages guide path", async () => {
@@ -176,6 +181,7 @@ describe("Michi app", () => {
     expect(screen.getByText(/Sites can be opened/i)).toBeInTheDocument();
     expect(screen.getByText(/Create and publish a site/i)).toBeInTheDocument();
     expect(screen.queryByText(/Acknowledge Sites and keep this demo on Services/i)).not.toBeInTheDocument();
+    expectProductOnlyVisibleCopy();
   });
 
   it("requires explicit confirmation for a critical write action", async () => {
@@ -201,7 +207,7 @@ describe("Michi app", () => {
     expect(screen.getByText(/Recovery step/i)).toBeInTheDocument();
     expect(screen.getByText(/current step cannot be anchored/i)).toBeInTheDocument();
     expect(screen.getByText(/page search for Build area/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/michi side panel/i)).not.toHaveTextContent(/cloudflare/i);
+    expect(screen.getByLabelText(/michi side panel/i)).not.toHaveTextContent(providerBrandPattern);
 
     await user.click(screen.getByRole("button", { name: /recover and re-check/i }));
 

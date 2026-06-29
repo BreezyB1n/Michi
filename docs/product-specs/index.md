@@ -34,5 +34,6 @@ Product specs are the source of truth for what Michi should build.
 - `extension-runtime-fixture-boundary.md`
 - `branch-freshness-checklist.md`
 - `sitegeist-style-side-panel-shell.md`
+- `product-only-ui-boundary.md`
 - `runtime-context-boundary-prd.md`
 - `runtime-context-boundary-issues.md`

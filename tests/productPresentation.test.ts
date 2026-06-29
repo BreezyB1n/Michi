@@ -11,6 +11,10 @@ describe("product presentation copy", () => {
     );
   });
 
+  it("maps provider-branded signals into Michi product language", () => {
+    expect(sanitizeProviderText("Cloudflare route detected")).toBe("workspace route detected");
+  });
+
   it("hides unknown provider route ids from visible copy", () => {
     expect(productRouteLabel("cloudflare.unexpected-page")).toBe("unexpected page");
   });

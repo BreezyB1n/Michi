@@ -17,6 +17,18 @@ const renderCloudflareFixture = () => {
   `;
 };
 
+const providerBrandPattern = /\b(?:Cloudflare|Workers|Pages|DNS)\b/;
+
+const expectMichiShellProductOnly = (shadow: ShadowRoot | null | undefined) => {
+  const panel = shadow?.querySelector("[data-panel]");
+
+  if (!panel) {
+    throw new Error("Expected Michi side panel to be visible before checking copy.");
+  }
+
+  expect(panel.textContent).not.toMatch(providerBrandPattern);
+};
+
 const renderDeploymentResultFixture = () => {
   document.body.innerHTML = `
     <nav><a href="/workers-and-pages">Workers & Pages</a></nav>
@@ -207,7 +219,7 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).toContain("Step 1 / 5");
     expect(shadow?.textContent).toContain("Find the build area");
     expect(shadow?.textContent).toContain("Open the build area from the current page navigation.");
-    expect(shadow?.textContent).not.toMatch(/Cloudflare|Workers|Pages|DNS/);
+    expectMichiShellProductOnly(shadow);
   });
 
   it("routes static website clarification to the site publishing guide", () => {
@@ -226,7 +238,7 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).toContain("Step 1 / 5");
     expect(shadow?.textContent).toContain("Find the build area");
     expect(shadow?.textContent).toContain("Open the build area from the current page navigation.");
-    expect(shadow?.textContent).not.toMatch(/Cloudflare|Workers|Pages|DNS/);
+    expectMichiShellProductOnly(shadow);
   });
 
   it("checks and advances through Pages deploy confirmation", () => {
@@ -378,12 +390,13 @@ describe("Injected Michi extension shell", () => {
     click(shadow?.querySelector("[data-action='check']") ?? null);
     expect(shadow?.textContent).toContain("Service runtime overview");
     expect(shadow?.textContent).toContain("Create service button");
-    expect(shadow?.textContent).toContain("current app route detected");
+    expect(shadow?.textContent).toContain("workspace route detected");
     expect(shadow?.textContent).toContain("Service runtime");
     expect(shadow?.textContent).toContain("Step 2 / 5");
     expect(shadow?.textContent).toContain("Create a service");
     expect(shadow?.textContent).toContain("Choose the create action and keep the generated starter service.");
     expect(shadow?.textContent).toContain("A service draft exists and the editor or setup view is visible.");
+    expectMichiShellProductOnly(shadow);
 
     click(shadow?.querySelector("[data-action='minimize']") ?? null);
     expect(shadow?.querySelector("[data-panel]")).toBeNull();

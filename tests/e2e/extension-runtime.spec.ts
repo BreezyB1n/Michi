@@ -4,6 +4,7 @@ import path from "node:path";
 import { fulfillCloudflareDashboardRoute } from "../support/cloudflareDashboardFixture";
 
 const extensionPath = path.resolve(process.cwd(), "dist-extension");
+const providerBrandPattern = /\b(?:Cloudflare|Workers|Pages|DNS)\b/;
 
 const installRuntimeProbe = () => {
   writeFileSync(
@@ -99,6 +100,7 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByText("Service runtime overview")).toBeVisible();
     await expect(page.getByText("Create service button")).toBeVisible();
     await expect(page.getByText("Service runtime", { exact: true })).toBeVisible();
+    await expect(page.getByLabel("Michi side panel")).not.toContainText(providerBrandPattern);
     await expect(page.getByText("Step 2 / 5")).toBeVisible();
     await expect(page.getByText("Create a service")).toBeVisible();
     await expect(page.getByText("Choose the create action and keep the generated starter service.")).toBeVisible();

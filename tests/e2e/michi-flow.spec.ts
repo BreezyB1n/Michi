@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const sampleIntent = "I want to build a small service that other people can access.";
+const providerBrandPattern = /\b(?:Cloudflare|Workers|Pages|DNS)\b/;
 
 test("runs the Workers guide path with recovery and critical confirmations", async ({
   page
@@ -49,7 +50,8 @@ test("runs the Workers guide path with recovery and critical confirmations", asy
   await expect(page.getByRole("heading", { name: "Service URL verified" })).toBeVisible();
   await expect(page.getByText("Custom domain", { exact: true })).toBeVisible();
   await expect(page.getByText("Routing follow-up", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Michi side panel")).not.toContainText(/Cloudflare|Workers|Pages|DNS/);
+  await expect(page.getByLabel("Michi side panel")).not.toContainText(providerBrandPattern);
+  await expect(page.locator("body")).not.toContainText(providerBrandPattern);
 });
 
 test("runs the Pages guide path with critical deploy confirmation", async ({ page }) => {
@@ -85,5 +87,6 @@ test("runs the Pages guide path with critical deploy confirmation", async ({ pag
   await expect(page.getByText("site URL returned HTTP 200")).toBeVisible();
   await expect(page.getByText("Custom domain", { exact: true })).toBeVisible();
   await expect(page.getByText("Routing follow-up", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Michi side panel")).not.toContainText(/Cloudflare|Workers|Pages|DNS/);
+  await expect(page.getByLabel("Michi side panel")).not.toContainText(providerBrandPattern);
+  await expect(page.locator("body")).not.toContainText(providerBrandPattern);
 });
