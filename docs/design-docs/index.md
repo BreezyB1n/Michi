@@ -14,3 +14,4 @@ Design docs explain why Michi behaves the way it does. Product behavior should b
 - `cloudflare-pages-guide-path-decision.md`
 - `extension-route-state-guard-decision.md`
 - `extension-runtime-fixture-boundary-decision.md`
+- `branch-freshness-checklist-decision.md`
