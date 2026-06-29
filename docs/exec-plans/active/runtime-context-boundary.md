@@ -27,7 +27,7 @@ This plan is active and should be split into small branches after the PRD issue 
 - [x] Slice 1: Define provider-neutral page context adapter contract.
 - [x] Slice 2: Move the current provider reader behind the adapter boundary.
 - [x] Slice 3: Normalize unsupported and failure context through product language.
-- [ ] Slice 4: Separate demo fixtures from runtime adapter tests.
+- [x] Slice 4: Separate demo fixtures from runtime adapter tests.
 - [ ] Slice 5: Add product-only runtime copy regression coverage.
 - [ ] Slice 6: Confirm permission and publishing boundary.
 
@@ -60,11 +60,19 @@ This plan is active and should be split into small branches after the PRD issue 
 | `bash /Users/bytedance/.agents/skills/check/scripts/run-tests.sh` | Passed | Runs `npm test`; 18 files / 147 tests passed after Slice 3. |
 | `npm run check:branch -- --strict-clean` | Passed | Branch `codex/michi-product-neutral-failure-context` is clean, ahead 6, behind 0, ready. |
 | Draft PR | Opened | `https://github.com/BreezyB1n/Michi/pull/25`, stacked on `codex/michi-provider-reader-adapter-boundary`. |
+| `npm test -- tests/cloudflarePageContextAdapter.test.ts tests/runtimeFixtureBoundary.test.ts` | Passed | 2 files / 6 tests passed after moving adapter tests onto fixture-backed DOM and adding runtime fixture import guard. |
+| `npm test -- tests/cloudflarePageContextAdapter.test.ts tests/runtimeFixtureBoundary.test.ts tests/cloudflareDashboardFixture.test.ts tests/cloudflarePageReader.test.ts tests/extensionPermissionGuard.test.ts` | Passed | 5 files / 23 tests passed for fixture generation, adapter coverage, page reader behavior, and extension permission guard. |
+| `npm test` | Passed | 19 files / 152 tests passed after Slice 4. |
+| `npm run build` | Passed | TypeScript and Vite production build passed after making adapter tests async-safe for `MaybePromise<HostPageContext>`. |
+| `npm run test:e2e` | Passed | Extension build passed; Playwright reported 5 passed, 1 skipped. Existing unpacked extension smoke remains end-to-end. |
+| `git diff --check` | Passed | No whitespace errors after Slice 4 test changes. |
+| `bash /Users/bytedance/.agents/skills/check/scripts/run-tests.sh` | Passed | Runs `npm test`; 19 files / 152 tests passed after Slice 4. |
 
 ## Review Notes
 
 - Slice 1 intentionally adds only the provider-neutral adapter contract and provider wrapper.
 - Slice 2 migrates the content-script/runtime messaging path behind the adapter boundary. The injected Shadow DOM shell still reads the current provider directly and should be handled in a later shell-runtime consolidation slice.
 - Slice 3 converts extension runtime failure context to Michi-owned unsupported context (`michi.unsupported`) and sanitizes provider-branded failure reasons before they become page-context signals.
+- Slice 4 is test-boundary work only: adapter tests now consume the shared fixture helper for route, target, signal, missing-target, unsupported, and completion-evidence coverage, while a source guard keeps fixture helpers out of product runtime modules.
 - Initial e2e run failed because Playwright reused a stale dev server on port 5173 that predated the current `@` alias config. Restarting the server and rerunning `npm run test:e2e` passed.
 - GitHub issue publication is intentionally held until the user confirms issue granularity and the `ready-for-agent` label strategy.
