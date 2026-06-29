@@ -78,6 +78,8 @@ This plan is active and should be split into small branches after the PRD issue 
 | `git diff --check` | Passed | No whitespace errors after Slice 5. |
 | `bash /Users/bytedance/.agents/skills/check/scripts/run-tests.sh` | Passed | Runs `npm test`; 19 files / 155 tests passed after Slice 5. |
 | Browser product-copy proof | Passed | Playwright drove the local app to backend completion on desktop and mobile, verified no provider/demo/staging terms in visible text or common accessibility labels, and captured screenshots under ignored `test-results/product-copy-proof/`. |
+| `npm run check:branch -- --strict-clean` | Passed | Branch `codex/michi-product-only-runtime-copy` is clean, ahead 10, behind 0, ready. |
+| Draft PR | Opened | `https://github.com/BreezyB1n/Michi/pull/27`, stacked on `codex/michi-adapter-fixture-test-boundary`. |
 
 ## Review Notes
 
