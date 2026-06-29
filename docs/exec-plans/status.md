@@ -35,7 +35,7 @@ Michi has a verified local React workbench and a Cloudflare-only unpacked extens
 
 ## Active Work
 
-- None.
+- `active/runtime-context-boundary.md`: PRD and issue breakdown for separating provider-specific page readers from Michi's product runtime context boundary.
 
 ## Housekeeping
 
@@ -43,7 +43,7 @@ Michi has a verified local React workbench and a Cloudflare-only unpacked extens
 
 ## Recommended Next Direction
 
-The next product slice should start separating extension runtime concerns from demo-only shell fixtures.
+The next product slice is the runtime context boundary: separate provider-specific page readers and demo fixtures from Michi's product runtime vocabulary before adding new providers or broader extension permissions.
 
 ## Verification Baseline
 
