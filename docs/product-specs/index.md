@@ -40,3 +40,5 @@ Product specs are the source of truth for what Michi should build.
 - `product-only-ui-boundary-issues.md`
 - `product-surface-prd.md`
 - `product-surface-issues.md`
+- `command-handoff-prd.md`
+- `command-handoff-issues.md`

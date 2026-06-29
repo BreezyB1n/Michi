@@ -116,6 +116,8 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByLabel("Michi side panel")).toBeVisible();
     await expect(page.getByText("User intent")).toBeVisible();
     await expect(page.getByLabel("Activity history").getByText("No activity yet")).toBeVisible();
+    await expect(page.getByLabel("Command handoff").getByText("Ready for an intent")).toBeVisible();
+    await expect(page.getByLabel("Command handoff").getByRole("button", { name: "Start from intent" })).toBeVisible();
     await expectProductOnlyShadowCopy(page);
     await expect(page.getByRole("button", { name: "Start guide" })).toBeVisible();
     await page.getByRole("button", { name: "Start guide" }).click();
@@ -125,6 +127,7 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByLabel("Activity history").getByText("Service path selected")).toBeVisible();
     await expect(page.getByText("Step 1 / 5")).toBeVisible();
     await expect(page.getByText("Find the build area")).toBeVisible();
+    await expect(page.getByLabel("Command handoff").getByText("Next step is ready")).toBeVisible();
 
     await page.getByRole("button", { name: "Check page" }).click();
     await expect(page.getByLabel("Activity history").getByText("Page check synced").first()).toBeVisible();
@@ -151,6 +154,8 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByText("Critical write action")).toBeVisible();
     await expect(page.getByText("Confirm Create service")).toBeVisible();
     await expect(page.getByText(/Prepares a new service resource/)).toBeVisible();
+    await expect(page.getByLabel("Command handoff").getByText("User confirmation needed")).toBeVisible();
+    await expect(page.getByLabel("Command handoff").getByRole("button", { name: "Confirm now" })).toBeVisible();
     await expect(page.getByLabel("Activity history").getByText("Confirmation needed")).toBeVisible();
     await page.getByRole("button", { name: "Confirm action" }).click();
     await expect(page.getByLabel("Activity history").getByText("Action confirmed")).toBeVisible();
@@ -226,6 +231,7 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await page.getByRole("button", { name: "Complete guide" }).click();
     await expect(page.getByText("Primary path complete")).toBeVisible();
     await expect(page.getByText("Service URL verified")).toBeVisible();
+    await expect(page.getByLabel("Command handoff").getByText("Primary path is complete")).toBeVisible();
     await expect(page.getByLabel("Activity history").getByText("Completion evidence passed")).toBeVisible();
     await expect(page.getByText("Custom domain")).toBeVisible();
     await expectProductOnlyShadowCopy(page);
@@ -267,7 +273,8 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
       `;
     });
     await page.getByRole("button", { name: "Check page" }).click();
-    await expect(page.getByText("Route mismatch")).toBeVisible();
+    await expect(page.locator(".recovery").getByText("Route mismatch", { exact: true })).toBeVisible();
+    await expect(page.getByLabel("Command handoff").getByText("Recovery is required")).toBeVisible();
     await expect(page.getByText(/active guide is Site publishing/)).toBeVisible();
     await expect(page.getByText(/current page belongs to Service runtime/)).toBeVisible();
     await expect(page.getByLabel("Highlighted target: Create service button")).toHaveCount(0);
@@ -334,8 +341,8 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByLabel("Michi rail")).toBeVisible();
     await page.getByRole("button", { name: "Guide" }).click();
     await page.getByRole("button", { name: "Check page" }).click();
-    await expect(page.getByText("Target missing")).toBeVisible();
-    await expect(page.getByText(/Create service button/)).toBeVisible();
+    await expect(page.locator(".recovery").getByText("Target missing", { exact: true })).toBeVisible();
+    await expect(page.locator(".recovery").getByText(/Create service button/)).toBeVisible();
     await expect(page.getByLabel("Highlighted target: Create service button")).toHaveCount(0);
 
     await page.goto("https://dash.cloudflare.com/example-account/analytics");
@@ -345,7 +352,7 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     const unsupportedPanel = page.getByLabel("Michi side panel");
     await expect(unsupportedPanel.getByLabel("Unsupported page")).toBeVisible();
     await expect(unsupportedPanel.getByText(/supported product pages/)).toBeVisible();
-    await expect(unsupportedPanel.getByText(/build area/)).toBeVisible();
+    await expect(unsupportedPanel.getByLabel("Unsupported page").getByText(/build area/)).toBeVisible();
     await expect(page.getByText("Step 1 / 5")).toHaveCount(0);
     await expect(page.getByLabel(/Highlighted target/)).toHaveCount(0);
 
