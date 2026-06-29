@@ -87,6 +87,8 @@ This plan is active and should be split into small branches after the PRD issue 
 | `npm run test:e2e` | Passed | Extension build passed; Playwright reported 5 passed, 1 skipped. No browser UI changed in Slice 6; existing React and unpacked-extension proof remains green. |
 | `git diff --check` | Passed | No whitespace errors after Slice 6. |
 | `gh label list --limit 100 --json name,description,color` | Confirmed hold | Repo labels include `enhancement` but no `ready-for-agent`; GitHub issue publication remains held until the user confirms label strategy. |
+| `npm run check:branch -- --strict-clean` | Passed | Branch `codex/michi-permission-publishing-boundary` is clean, ahead 12, behind 0, ready. |
+| Draft PR | Opened | `https://github.com/BreezyB1n/Michi/pull/28`, stacked on `codex/michi-product-only-runtime-copy`. |
 
 ## Review Notes
 
