@@ -218,17 +218,21 @@ describe("Injected Michi extension shell", () => {
     click(shadow?.querySelector("[data-action='guide']") ?? null);
     expect(shadow?.textContent).toContain("User intent");
     expect(shadow?.textContent).toContain("Start guide");
+    expect(shadow?.textContent).toContain("Activity history");
+    expect(shadow?.textContent).toContain("No activity yet");
 
     input(shadow?.querySelector("[data-intent]") ?? null, "Build a JSON API for customers.");
     click(shadow?.querySelector("[data-action='start-guide']") ?? null);
     expect(shadow?.textContent).toContain("What kind of service are you building?");
     expect(shadow?.textContent).toContain("Backend logic or API");
+    expect(shadow?.textContent).toContain("Intent captured");
 
     click(shadow?.querySelector("[data-action='choose-backend-api']") ?? null);
     expect(shadow?.textContent).toContain("Service runtime");
     expect(shadow?.textContent).toContain("Step 1 / 5");
     expect(shadow?.textContent).toContain("Find the build area");
     expect(shadow?.textContent).toContain("Open the build area from the current page navigation.");
+    expect(shadow?.textContent).toContain("Service path selected");
     expectProductOnlyShadowCopy(shadow);
   });
 
@@ -327,7 +331,7 @@ describe("Injected Michi extension shell", () => {
 
     expect(shadow?.textContent).toContain("Step 4 / 5");
     expect(shadow?.textContent).toContain("Deploy the site");
-    expect(shadow?.textContent).not.toContain("Route mismatch");
+    expect(shadow?.querySelector(".recovery")?.textContent ?? "").not.toContain("Route mismatch");
   });
 
   it("shows route-mismatch recovery over stale Pages confirmation copy", () => {
@@ -450,17 +454,21 @@ describe("Injected Michi extension shell", () => {
     click(shadow?.querySelector("[data-action='check']") ?? null);
     expect(shadow?.textContent).toContain("Step 2 / 5");
     expect(shadow?.textContent).toContain("Create a service");
+    expect(shadow?.textContent).toContain("Page check synced");
 
     click(shadow?.querySelector("[data-action='next-step']") ?? null);
     expect(shadow?.textContent).toContain("Critical write action");
     expect(shadow?.textContent).toContain("Confirm Create service");
     expect(shadow?.textContent).toContain("Prepares a new service resource");
     expect(shadow?.textContent).not.toContain("Step 3 / 5");
+    expect(shadow?.textContent).toContain("Confirmation needed");
+    expect(shadow?.textContent).not.toContain("Action confirmed");
     expectProductOnlyShadowCopy(shadow);
 
     click(shadow?.querySelector("[data-action='confirm-action']") ?? null);
     expect(shadow?.textContent).toContain("Step 3 / 5");
     expect(shadow?.textContent).toContain("Review the starter response");
+    expect(shadow?.textContent).toContain("Action confirmed");
   });
 
   it("does not re-anchor pending confirmation when checking a later route", () => {
@@ -554,6 +562,7 @@ describe("Injected Michi extension shell", () => {
     click(shadow?.querySelector("[data-action='check']") ?? null);
     click(shadow?.querySelector("[data-action='complete-guide']") ?? null);
     expect(shadow?.textContent).toContain("Primary path complete");
+    expect(shadow?.textContent).toContain("Completion evidence passed");
     expect(shadow?.querySelector("[data-highlight]")).not.toBeNull();
     expect(shadow?.querySelector(".rail [data-action='reset-guide']")).toBeNull();
 
@@ -565,6 +574,8 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).not.toContain("Primary path complete");
     expect(shadow?.textContent).not.toContain("Custom domain");
     expect(shadow?.textContent).not.toContain("Deployment result");
+    expect(shadow?.textContent).toContain("Session reset");
+    expect(shadow?.textContent).not.toContain("Completion evidence passed");
     expect(shadow?.querySelector("[data-highlight]")).toBeNull();
   });
 

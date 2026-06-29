@@ -4,6 +4,33 @@ import path from "node:path";
 import { fulfillCloudflareDashboardRoute } from "../support/cloudflareDashboardFixture";
 
 const extensionPath = path.resolve(process.cwd(), "dist-extension");
+const providerVisibleCopyPattern =
+  /\b(?:Cloudflare|Workers|Worker|DNS|Pages|MVP|demo|page context|context status)\b|cloudflare\.|workers\.dev|pages\.dev|dash\.cloudflare|current app|simulat/i;
+
+const expectProductOnlyShadowCopy = async (page: import("@playwright/test").Page) => {
+  const copy = await page.evaluate(() => {
+    const shadow = document.querySelector("#michi-extension-root")?.shadowRoot;
+
+    if (!shadow) {
+      throw new Error("Expected Michi extension shadow root.");
+    }
+
+    const accessibleCopy = Array.from(
+      shadow.querySelectorAll("[aria-label], [title], [alt], [placeholder]")
+    )
+      .flatMap((element) =>
+        ["aria-label", "title", "alt", "placeholder"].map((attribute) =>
+          element.getAttribute(attribute)
+        )
+      )
+      .filter(Boolean)
+      .join(" ");
+
+    return `${shadow.textContent ?? ""} ${accessibleCopy}`;
+  });
+
+  expect(copy).not.toMatch(providerVisibleCopyPattern);
+};
 
 const installRuntimeProbe = () => {
   writeFileSync(
@@ -88,14 +115,19 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await page.getByRole("button", { name: "Guide" }).click();
     await expect(page.getByLabel("Michi side panel")).toBeVisible();
     await expect(page.getByText("User intent")).toBeVisible();
+    await expect(page.getByLabel("Activity history").getByText("No activity yet")).toBeVisible();
+    await expectProductOnlyShadowCopy(page);
     await expect(page.getByRole("button", { name: "Start guide" })).toBeVisible();
     await page.getByRole("button", { name: "Start guide" }).click();
+    await expect(page.getByLabel("Activity history").getByText("Intent captured")).toBeVisible();
     await expect(page.getByText("What kind of service are you building?")).toBeVisible();
     await page.getByRole("button", { name: "Backend logic or API" }).click();
+    await expect(page.getByLabel("Activity history").getByText("Service path selected")).toBeVisible();
     await expect(page.getByText("Step 1 / 5")).toBeVisible();
     await expect(page.getByText("Find the build area")).toBeVisible();
 
     await page.getByRole("button", { name: "Check page" }).click();
+    await expect(page.getByLabel("Activity history").getByText("Page check synced").first()).toBeVisible();
     await expect(page.getByText("Service runtime overview")).toBeVisible();
     await expect(page.getByText("Create service button")).toBeVisible();
     await expect(page.getByText("Service runtime", { exact: true })).toBeVisible();
@@ -119,7 +151,9 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByText("Critical write action")).toBeVisible();
     await expect(page.getByText("Confirm Create service")).toBeVisible();
     await expect(page.getByText(/Prepares a new service resource/)).toBeVisible();
+    await expect(page.getByLabel("Activity history").getByText("Confirmation needed")).toBeVisible();
     await page.getByRole("button", { name: "Confirm action" }).click();
+    await expect(page.getByLabel("Activity history").getByText("Action confirmed")).toBeVisible();
     await expect(page.getByText("Step 3 / 5")).toBeVisible();
     await expect(page.getByText("Review the starter response")).toBeVisible();
     await page.getByRole("button", { name: "Previous" }).click();
@@ -192,13 +226,17 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await page.getByRole("button", { name: "Complete guide" }).click();
     await expect(page.getByText("Primary path complete")).toBeVisible();
     await expect(page.getByText("Service URL verified")).toBeVisible();
+    await expect(page.getByLabel("Activity history").getByText("Completion evidence passed")).toBeVisible();
     await expect(page.getByText("Custom domain")).toBeVisible();
+    await expectProductOnlyShadowCopy(page);
     await expect(page.locator("[aria-label='Michi rail']").getByRole("button", { name: "Reset guide" })).toHaveCount(0);
     await page.getByRole("button", { name: "Reset guide" }).click();
     await expect(page.getByText("User intent")).toBeVisible();
     await expect(page.getByRole("button", { name: "Start guide" })).toBeVisible();
+    await expect(page.getByLabel("Activity history").getByText("Session reset")).toBeVisible();
     await expect(page.getByText("Primary path complete")).toHaveCount(0);
     await expect(page.getByText("Custom domain")).toHaveCount(0);
+    await expect(page.getByLabel("Activity history").getByText("Completion evidence passed")).toHaveCount(0);
     await expect(page.getByLabel(/Highlighted target/)).toHaveCount(0);
 
     await page.goto("https://dash.cloudflare.com/example-account/pages");
@@ -207,7 +245,8 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByText("User intent")).toBeVisible();
     await page.getByRole("button", { name: "Start guide" }).click();
     await page.getByRole("button", { name: "Static website" }).click();
-    await expect(page.getByText("Site publishing")).toBeVisible();
+    await expect(page.getByLabel("Activity history").getByText("Site path selected")).toBeVisible();
+    await expect(page.getByText("Site publishing", { exact: true })).toBeVisible();
     await expect(page.getByText("Step 1 / 5")).toBeVisible();
     await expect(page.getByText("Find the build area")).toBeVisible();
     await page.getByRole("button", { name: "Check page" }).click();
@@ -232,6 +271,7 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByText(/active guide is Site publishing/)).toBeVisible();
     await expect(page.getByText(/current page belongs to Service runtime/)).toBeVisible();
     await expect(page.getByLabel("Highlighted target: Create service button")).toHaveCount(0);
+    await expectProductOnlyShadowCopy(page);
 
     await page.evaluate(() => {
       window.history.pushState({}, "", "/example-account/pages/deploy-review");

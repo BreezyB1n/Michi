@@ -48,6 +48,21 @@ import { unsupportedPageContext } from "./domain/extensionPageContextProvider";
 import { createMichiPageContextRuntime } from "./domain/pageContextRuntime";
 import type { MichiPageContextRuntime } from "./domain/pageContextRuntime";
 import {
+  activityEventForConfirmation,
+  activityEventForCriticalConfirmation,
+  activityEventForIntentStart,
+  activityEventForPageCheck,
+  activityEventForRecovery,
+  activityEventForReset,
+  activityEventForServiceKind,
+  appendActivityEvent,
+  createActivityTimeline,
+  resetActivityTimeline,
+  type ActivityEvent,
+  type ActivityEventInput,
+  type ActivityTimeline
+} from "./domain/activityTimeline";
+import {
   productBlockingStateCopy,
   productCapabilityCopy,
   productCompletionTitle,
@@ -76,6 +91,11 @@ type AppProps = {
 };
 
 type ContextRequest = () => HostPageContext | PromiseLike<HostPageContext>;
+type ContextActivityFactory = (input: {
+  baseSession: GuideSession;
+  context: HostPageContext;
+  nextSession: GuideSession;
+}) => ActivityEventInput | ActivityEventInput[] | undefined;
 
 const isPromiseLike = <T,>(value: T | PromiseLike<T>): value is PromiseLike<T> =>
   typeof (value as PromiseLike<T>).then === "function";
@@ -90,6 +110,9 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
   );
   const [hostPageContext, setHostPageContext] = useState<HostPageContext>(() =>
     pageContextRuntime.getInitialContext()
+  );
+  const [activityTimeline, setActivityTimeline] = useState<ActivityTimeline>(() =>
+    createActivityTimeline()
   );
   const [pulseKey, setPulseKey] = useState(0);
 
@@ -109,6 +132,20 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
     setSession(nextSession);
   };
 
+  const recordActivity = (events: ActivityEventInput | ActivityEventInput[] | undefined) => {
+    if (!events) {
+      return;
+    }
+
+    const nextEvents = Array.isArray(events) ? events : [events];
+    setActivityTimeline((timeline) =>
+      nextEvents.reduce(
+        (nextTimeline, event) => appendActivityEvent(nextTimeline, event),
+        timeline
+      )
+    );
+  };
+
   const nextContextRequestId = () => {
     contextRequestIdRef.current += 1;
     return contextRequestIdRef.current;
@@ -122,7 +159,9 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
 
   const updateFromContext = (
     baseSession: GuideSession,
-    readContext: ContextRequest = () => pageContextRuntime.getCurrentContext()
+    readContext: ContextRequest = () => pageContextRuntime.getCurrentContext(),
+    createActivityEvent: ContextActivityFactory = ({ nextSession }) =>
+      activityEventForPageCheck(nextSession)
   ) => {
     const requestId = nextContextRequestId();
     const applyContext = (context: HostPageContext) => {
@@ -130,8 +169,10 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
         return;
       }
 
+      const nextSession = applyHostPageContext(baseSession, context);
       setHostPageContext(context);
-      updateSession(applyHostPageContext(baseSession, context));
+      updateSession(nextSession);
+      recordActivity(createActivityEvent({ baseSession, context, nextSession }));
     };
 
     try {
@@ -175,11 +216,13 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
   const handleStart = () => {
     nextContextRequestId();
     updateSession(startSession(intent));
+    recordActivity(activityEventForIntentStart(intent));
   };
 
   const handleServiceKind = (kind: ServiceKind) => {
     const nextSession = chooseServiceKind(session, kind);
 
+    recordActivity(activityEventForServiceKind(kind));
     updateFromContext(
       nextSession,
       () => pageContextRuntime.syncGuideStep(nextSession.activeStepIndex, nextSession.serviceKind)
@@ -192,6 +235,9 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
     if (nextSession.phase === "confirm" || nextSession.steps.length === 0) {
       nextContextRequestId();
       updateSession(nextSession);
+      if (nextSession.phase === "confirm") {
+        recordActivity(activityEventForCriticalConfirmation(currentStep));
+      }
       return;
     }
 
@@ -204,6 +250,7 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
   const handleConfirm = () => {
     const nextSession = confirmCriticalAction(session);
 
+    recordActivity(activityEventForConfirmation(currentStep));
     updateFromContext(
       nextSession,
       () => pageContextRuntime.syncGuideStep(nextSession.activeStepIndex, nextSession.serviceKind)
@@ -211,8 +258,13 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
   };
 
   const handleRecovery = () => {
-    updateFromContext(session, () =>
-      pageContextRuntime.recoverToStep(session.activeStepIndex, session.serviceKind)
+    updateFromContext(
+      session,
+      () => pageContextRuntime.recoverToStep(session.activeStepIndex, session.serviceKind),
+      ({ baseSession, nextSession }) =>
+        baseSession.phase === "recovery" && nextSession.phase === "guide"
+          ? activityEventForRecovery(nextSession)
+          : activityEventForPageCheck(nextSession)
     );
   };
 
@@ -230,6 +282,7 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
     setIntent(sampleIntent);
     updateHostContext(() => pageContextRuntime.recoverToStep(0));
     updateSession(resetSession());
+    setActivityTimeline(resetActivityTimeline(activityEventForReset()));
   };
 
   return (
@@ -299,6 +352,7 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
                       />
                     </>
                   )}
+                  <ActivityTimelinePanel timeline={activityTimeline} />
                 </div>
                 <ActionBar
                   session={session}
@@ -857,6 +911,74 @@ const PageStatePanel = ({ session, hostPageContext, pulseKey }: PageStatePanelPr
       />
     </dl>
   </SectionCard>
+);
+
+type ActivityTimelinePanelProps = {
+  timeline: ActivityTimeline;
+};
+
+const ActivityTimelinePanel = ({ timeline }: ActivityTimelinePanelProps) => {
+  const visibleEvents = timeline.events.slice(-7).reverse();
+
+  return (
+    <SectionCard aria-label="Activity history" className="mb-6">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <SectionLabel>Activity</SectionLabel>
+          <h2 className="m-0 text-xl font-semibold tracking-[-0.025em]">
+            Session history
+          </h2>
+        </div>
+        <Badge variant="outline">{timeline.events.length} events</Badge>
+      </div>
+      {visibleEvents.length ? (
+        <ol className="grid gap-2.5" aria-label="Recent activity events">
+          {visibleEvents.map((event) => (
+            <ActivityTimelineItem key={event.id} event={event} />
+          ))}
+        </ol>
+      ) : (
+        <div className="rounded-lg border border-white/10 bg-white/[0.055] px-3.5 py-3 text-sm leading-6 text-white/60">
+          No activity yet. Start a guide to see Michi's checks and decisions.
+        </div>
+      )}
+    </SectionCard>
+  );
+};
+
+type ActivityTimelineItemProps = {
+  event: ActivityEvent;
+};
+
+const activityToneClassName: Record<ActivityEvent["tone"], string> = {
+  info: "border-white/12 bg-white/[0.055] text-white/70",
+  success: "border-success/35 bg-success/15 text-primary-foreground",
+  warning: "border-warning/35 bg-warning/16 text-primary-foreground",
+  error: "border-warning/50 bg-warning/20 text-primary-foreground"
+};
+
+const ActivityTimelineItem = ({ event }: ActivityTimelineItemProps) => (
+  <li
+    className={cn(
+      "grid grid-cols-[32px_minmax(0,1fr)] gap-3 rounded-lg border p-3",
+      activityToneClassName[event.tone]
+    )}
+  >
+    <span className="grid size-8 place-items-center rounded-full border border-current/20 text-xs font-semibold tabular-nums text-current/85">
+      {event.sequence}
+    </span>
+    <div className="min-w-0">
+      <div className="mb-1 flex flex-wrap items-center gap-2">
+        <strong className="text-sm font-semibold text-primary-foreground">{event.title}</strong>
+        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-current/50">
+          {event.tone}
+        </span>
+      </div>
+      <p className="m-0 break-words text-pretty text-xs leading-5 text-current/75 [overflow-wrap:anywhere]">
+        {event.detail}
+      </p>
+    </div>
+  </li>
 );
 
 type ActionBarProps = {
