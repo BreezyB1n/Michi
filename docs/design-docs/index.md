@@ -13,5 +13,6 @@ Design docs explain why Michi behaves the way it does. Product behavior should b
 - `extension-reducer-reset-bridge-decision.md`
 - `cloudflare-pages-guide-path-decision.md`
 - `extension-route-state-guard-decision.md`
+- `extension-provider-timeout-decision.md`
 - `extension-runtime-fixture-boundary-decision.md`
 - `branch-freshness-checklist-decision.md`

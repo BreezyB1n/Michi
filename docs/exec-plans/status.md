@@ -19,6 +19,7 @@ Michi has a verified local React workbench and a Cloudflare-only unpacked extens
 | Permission guard | `completed/extension-permission-guard.md` | Static guard keeps manifest and extension runtime Cloudflare-only/read-only. |
 | Computed dynamic import guard | `completed/extension-computed-dynamic-import-guard.md` | Extension source graph rejects unscannable computed dynamic imports. |
 | Runtime error surface | `completed/extension-runtime-error-surface.md` | Provider/runtime failures map to explicit recovery state and service-worker error coverage. |
+| Extension provider timeout | `completed/extension-provider-timeout.md` | Extension page-context requests now resolve to controlled recovery context when runtime messaging stalls instead of hanging `Check page`. |
 | Highlight reposition | `completed/extension-highlight-reposition.md` | Target highlight stays aligned after window and nested-container scroll plus resize. |
 | Workers guide flow shared state | `completed/workers-guide-flow-shared.md` | Injected-shell Workers guide flow decisions now live in shared domain helpers with focused unit coverage. |
 | Shared guide session reducer | `completed/shared-guide-session-reducer.md` | React workbench guide-session transitions now run through a pure reducer behind the existing `GuideCore` facade. |
