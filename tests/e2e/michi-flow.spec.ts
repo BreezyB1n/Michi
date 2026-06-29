@@ -1,6 +1,27 @@
 import { expect, test } from "@playwright/test";
 
 const sampleIntent = "I want to build a small service that other people can access.";
+const providerVisibleCopyPattern =
+  /\b(?:Cloudflare|Workers|Worker|DNS|Pages|MVP|demo)\b|cloudflare\.|workers\.dev|pages\.dev|dash\.cloudflare|current app|simulat/i;
+
+const expectProductOnlyPageCopy = async (page: import("@playwright/test").Page) => {
+  const copy = await page.evaluate(() => {
+    const accessibleCopy = Array.from(
+      document.body.querySelectorAll("[aria-label], [title], [alt], [placeholder]")
+    )
+      .flatMap((element) =>
+        ["aria-label", "title", "alt", "placeholder"].map((attribute) =>
+          element.getAttribute(attribute)
+        )
+      )
+      .filter(Boolean)
+      .join(" ");
+
+    return `${document.body.innerText} ${accessibleCopy}`;
+  });
+
+  expect(copy).not.toMatch(providerVisibleCopyPattern);
+};
 
 test("runs the Workers guide path with recovery and critical confirmations", async ({
   page
@@ -29,8 +50,9 @@ test("runs the Workers guide path with recovery and critical confirmations", asy
     expect(panelBox?.height).toBeLessThanOrEqual((viewport?.height ?? 0) * 0.72);
   }
 
-  await page.getByRole("button", { name: "Simulate page drift" }).click();
+  await page.getByRole("button", { name: "Show page drift" }).click();
   await expect(page.getByRole("heading", { name: "Page layout changed" })).toBeVisible();
+  await expectProductOnlyPageCopy(page);
   await page.getByRole("button", { name: "Recover and re-check" }).click();
   await expect(page.getByText("Page context synced", { exact: true })).toBeVisible();
 
@@ -49,7 +71,7 @@ test("runs the Workers guide path with recovery and critical confirmations", asy
   await expect(page.getByRole("heading", { name: "Service URL verified" })).toBeVisible();
   await expect(page.getByText("Custom domain", { exact: true })).toBeVisible();
   await expect(page.getByText("Routing follow-up", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Michi side panel")).not.toContainText(/Cloudflare|Workers|Pages|DNS/);
+  await expectProductOnlyPageCopy(page);
 });
 
 test("runs the Pages guide path with critical deploy confirmation", async ({ page }) => {
@@ -64,8 +86,9 @@ test("runs the Pages guide path with critical deploy confirmation", async ({ pag
   await expect(page.getByRole("heading", { name: "Find the build area" })).toBeVisible();
   await expect(page.getByText("Create and publish a site")).toBeVisible();
 
-  await page.getByRole("button", { name: "Simulate page drift" }).click();
+  await page.getByRole("button", { name: "Show page drift" }).click();
   await expect(page.getByRole("heading", { name: "Page layout changed" })).toBeVisible();
+  await expectProductOnlyPageCopy(page);
   await page.getByRole("button", { name: "Recover and re-check" }).click();
   await expect(page.getByText("Page context synced", { exact: true })).toBeVisible();
 
@@ -85,5 +108,5 @@ test("runs the Pages guide path with critical deploy confirmation", async ({ pag
   await expect(page.getByText("site URL returned HTTP 200")).toBeVisible();
   await expect(page.getByText("Custom domain", { exact: true })).toBeVisible();
   await expect(page.getByText("Routing follow-up", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Michi side panel")).not.toContainText(/Cloudflare|Workers|Pages|DNS/);
+  await expectProductOnlyPageCopy(page);
 });

@@ -28,7 +28,7 @@ This plan is active and should be split into small branches after the PRD issue 
 - [x] Slice 2: Move the current provider reader behind the adapter boundary.
 - [x] Slice 3: Normalize unsupported and failure context through product language.
 - [x] Slice 4: Separate demo fixtures from runtime adapter tests.
-- [ ] Slice 5: Add product-only runtime copy regression coverage.
+- [x] Slice 5: Add product-only runtime copy regression coverage.
 - [ ] Slice 6: Confirm permission and publishing boundary.
 
 ## Evidence Ledger
@@ -68,6 +68,16 @@ This plan is active and should be split into small branches after the PRD issue 
 | `git diff --check` | Passed | No whitespace errors after Slice 4 test changes. |
 | `bash /Users/bytedance/.agents/skills/check/scripts/run-tests.sh` | Passed | Runs `npm test`; 19 files / 152 tests passed after Slice 4. |
 | Draft PR | Opened | `https://github.com/BreezyB1n/Michi/pull/26`, stacked on `codex/michi-product-neutral-failure-context`. |
+| `npm test -- tests/productPresentation.test.ts tests/App.test.tsx` | Failed, then passed | RED failed on `current app route detected`; GREEN passed after rewriting provider fallback copy to product language. |
+| Read-only subagent review | Found issues, then fixed | Review found accessibility-visible `current app`, shell `demo`, and `simulated` staging copy gaps. Fixed by expanding product-only checks to text plus common accessibility labels and by replacing visible staging copy. |
+| `npm test -- tests/productPresentation.test.ts tests/App.test.tsx tests/injectedShell.test.ts` | Passed | 3 files / 50 tests passed for product presentation, full React visible shell copy, recovery copy, and injected shell copy. |
+| `npm test` | Passed | 19 files / 155 tests passed after Slice 5 review fixes. |
+| `npm run build` | Passed | TypeScript and Vite production build passed after Slice 5. |
+| `npx playwright test tests/e2e/extension-runtime.spec.ts --project=chromium` | Failed, then passed | RED after copy change failed on stale `Creates a new service resource` expectation; passed after updating the extension smoke to `Prepares a new service resource`. |
+| `npm run test:e2e` | Passed | Extension build passed; Playwright reported 5 passed, 1 skipped. E2E now checks whole-page visible and accessibility-label copy for provider, demo/staging terms, and `current app`. |
+| `git diff --check` | Passed | No whitespace errors after Slice 5. |
+| `bash /Users/bytedance/.agents/skills/check/scripts/run-tests.sh` | Passed | Runs `npm test`; 19 files / 155 tests passed after Slice 5. |
+| Browser product-copy proof | Passed | Playwright drove the local app to backend completion on desktop and mobile, verified no provider/demo/staging terms in visible text or common accessibility labels, and captured screenshots under ignored `test-results/product-copy-proof/`. |
 
 ## Review Notes
 
@@ -75,5 +85,6 @@ This plan is active and should be split into small branches after the PRD issue 
 - Slice 2 migrates the content-script/runtime messaging path behind the adapter boundary. The injected Shadow DOM shell still reads the current provider directly and should be handled in a later shell-runtime consolidation slice.
 - Slice 3 converts extension runtime failure context to Michi-owned unsupported context (`michi.unsupported`) and sanitizes provider-branded failure reasons before they become page-context signals.
 - Slice 4 is test-boundary work only: adapter tests now consume the shared fixture helper for route, target, signal, missing-target, unsupported, and completion-evidence coverage, while a source guard keeps fixture helpers out of product runtime modules.
+- Slice 5 makes visible shell copy product-only: provider names, provider route IDs, generated provider URLs, demo/staging words, and `current app` fallback wording are regression-checked out of the React shell and injected shell, including common accessibility labels.
 - Initial e2e run failed because Playwright reused a stale dev server on port 5173 that predated the current `@` alias config. Restarting the server and rerunning `npm run test:e2e` passed.
 - GitHub issue publication is intentionally held until the user confirms issue granularity and the `ready-for-agent` label strategy.
