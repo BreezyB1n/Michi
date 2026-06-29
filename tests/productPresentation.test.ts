@@ -5,10 +5,31 @@ import {
 } from "../src/domain/productPresentation";
 
 describe("product presentation copy", () => {
+  const providerVisibleCopyPattern =
+    /\b(?:Cloudflare|Workers|Worker|DNS|Pages|MVP|demo)\b|cloudflare\.|workers\.dev|pages\.dev|dash\.cloudflare|current app|simulat/i;
+
   it("maps known internal route ids into product labels", () => {
     expect(sanitizeProviderText("cloudflare.workers.overview detected with 1 target.")).toBe(
       "Service runtime overview detected with 1 target."
     );
+  });
+
+  it("rewrites provider-owned route evidence into Michi product language", () => {
+    const copy = sanitizeProviderText("Cloudflare route detected");
+
+    expect(copy).toBe("Product route detected");
+    expect(copy).not.toMatch(providerVisibleCopyPattern);
+  });
+
+  it("rewrites fixture/runtime staging words out of visible copy", () => {
+    const copy = sanitizeProviderText(
+      "The expected entry is not visible in the simulated page state. Michi simulates this action in the MVP."
+    );
+
+    expect(copy).toBe(
+      "The expected entry is not visible in the page state. Michi previews this action in the current guide."
+    );
+    expect(copy).not.toMatch(providerVisibleCopyPattern);
   });
 
   it("hides unknown provider route ids from visible copy", () => {

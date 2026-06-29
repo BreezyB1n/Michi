@@ -7,6 +7,25 @@ import type { MichiPageContextRuntime } from "../src/domain/pageContextRuntime";
 import type { HostPageContext } from "../src/domain/types";
 
 const sampleIntent = "I want to build a small service that other people can access.";
+const providerVisibleCopyPattern =
+  /\b(?:Cloudflare|Workers|Worker|DNS|Pages|MVP|demo)\b|cloudflare\.|workers\.dev|pages\.dev|dash\.cloudflare|current app|simulat/i;
+
+const expectProductOnlyVisibleCopy = () => {
+  const accessibleCopy = Array.from(
+    document.body.querySelectorAll("[aria-label], [title], [alt], [placeholder]")
+  )
+    .flatMap((element) =>
+      ["aria-label", "title", "alt", "placeholder"].map((attribute) =>
+        element.getAttribute(attribute)
+      )
+    )
+    .filter(Boolean)
+    .join(" ");
+
+  expect(`${document.body.textContent ?? ""} ${accessibleCopy}`).not.toMatch(
+    providerVisibleCopyPattern
+  );
+};
 
 const startBackendGuide = async () => {
   const user = userEvent.setup();
@@ -167,6 +186,23 @@ describe("Michi app", () => {
     expect(within(sidePanel).queryByText(/cloudflare|workers|pages|dns/i)).not.toBeInTheDocument();
   });
 
+  it("keeps the visible Michi shell in product language through provider-backed backend flow", async () => {
+    const user = await startBackendGuide();
+
+    expectProductOnlyVisibleCopy();
+
+    await user.click(screen.getByRole("button", { name: /advance guide/i }));
+    await user.click(screen.getByRole("button", { name: /advance guide/i }));
+    await user.click(screen.getByRole("button", { name: /confirm action/i }));
+    await user.click(screen.getByRole("button", { name: /advance guide/i }));
+    await user.click(screen.getByRole("button", { name: /advance guide/i }));
+    await user.click(screen.getByRole("button", { name: /confirm action/i }));
+    await user.click(screen.getByRole("button", { name: /advance guide/i }));
+
+    expect(screen.getByRole("heading", { name: /Service URL verified/i })).toBeInTheDocument();
+    expectProductOnlyVisibleCopy();
+  });
+
   it("routes static website work through the Pages guide path", async () => {
     await startStaticGuide();
 
@@ -175,7 +211,7 @@ describe("Michi app", () => {
     expect(screen.getByRole("heading", { name: /Find the build area/i })).toBeInTheDocument();
     expect(screen.getByText(/Sites can be opened/i)).toBeInTheDocument();
     expect(screen.getByText(/Create and publish a site/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Acknowledge Sites and keep this demo on Services/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Acknowledge Sites and keep this guide on Services/i)).not.toBeInTheDocument();
   });
 
   it("requires explicit confirmation for a critical write action", async () => {
@@ -185,23 +221,24 @@ describe("Michi app", () => {
     await user.click(screen.getByRole("button", { name: /advance guide/i }));
 
     expect(screen.getByRole("heading", { name: /Confirm Create service/i })).toBeInTheDocument();
-    expect(screen.getByText(/Creates a new service resource/i)).toBeInTheDocument();
+    expect(screen.getByText(/Prepares a new service resource/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /confirm action/i }));
 
     expect(screen.getByRole("heading", { name: /Review the starter response/i })).toBeInTheDocument();
   });
 
-  it("explains and recovers from simulated page drift", async () => {
+  it("explains and recovers from page drift", async () => {
     const user = await startBackendGuide();
 
-    await user.click(screen.getByRole("button", { name: /simulate page drift/i }));
+    await user.click(screen.getByRole("button", { name: /show page drift/i }));
 
     expect(screen.getByRole("heading", { name: /Page layout changed/i })).toBeInTheDocument();
     expect(screen.getByText(/Recovery step/i)).toBeInTheDocument();
     expect(screen.getByText(/current step cannot be anchored/i)).toBeInTheDocument();
     expect(screen.getByText(/page search for Build area/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/michi side panel/i)).not.toHaveTextContent(/cloudflare/i);
+    expectProductOnlyVisibleCopy();
 
     await user.click(screen.getByRole("button", { name: /recover and re-check/i }));
 

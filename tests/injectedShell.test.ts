@@ -7,6 +7,28 @@ import {
 } from "../src/extension/injectedShell";
 import type { HostPageContext, PageTarget } from "../src/domain/types";
 
+const providerVisibleCopyPattern =
+  /\b(?:Cloudflare|Workers|Worker|DNS|Pages|MVP|demo)\b|cloudflare\.|workers\.dev|pages\.dev|dash\.cloudflare|current app|simulat/i;
+
+const expectProductOnlyShadowCopy = (shadow: ShadowRoot | null | undefined) => {
+  if (!shadow) {
+    throw new Error("Expected shadow root.");
+  }
+
+  const accessibleCopy = Array.from(
+    shadow.querySelectorAll("[aria-label], [title], [alt], [placeholder]")
+  )
+    .flatMap((element) =>
+      ["aria-label", "title", "alt", "placeholder"].map((attribute) =>
+        element.getAttribute(attribute)
+      )
+    )
+    .filter(Boolean)
+    .join(" ");
+
+  expect(`${shadow.textContent ?? ""} ${accessibleCopy}`).not.toMatch(providerVisibleCopyPattern);
+};
+
 const renderCloudflareFixture = () => {
   document.body.innerHTML = `
     <nav><a href="/workers-and-pages">Workers & Pages</a></nav>
@@ -207,7 +229,7 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).toContain("Step 1 / 5");
     expect(shadow?.textContent).toContain("Find the build area");
     expect(shadow?.textContent).toContain("Open the build area from the current page navigation.");
-    expect(shadow?.textContent).not.toMatch(/Cloudflare|Workers|Pages|DNS/);
+    expectProductOnlyShadowCopy(shadow);
   });
 
   it("routes static website clarification to the site publishing guide", () => {
@@ -226,7 +248,7 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).toContain("Step 1 / 5");
     expect(shadow?.textContent).toContain("Find the build area");
     expect(shadow?.textContent).toContain("Open the build area from the current page navigation.");
-    expect(shadow?.textContent).not.toMatch(/Cloudflare|Workers|Pages|DNS/);
+    expectProductOnlyShadowCopy(shadow);
   });
 
   it("checks and advances through Pages deploy confirmation", () => {
@@ -378,12 +400,13 @@ describe("Injected Michi extension shell", () => {
     click(shadow?.querySelector("[data-action='check']") ?? null);
     expect(shadow?.textContent).toContain("Service runtime overview");
     expect(shadow?.textContent).toContain("Create service button");
-    expect(shadow?.textContent).toContain("current app route detected");
+    expect(shadow?.textContent).toContain("Product route detected");
     expect(shadow?.textContent).toContain("Service runtime");
     expect(shadow?.textContent).toContain("Step 2 / 5");
     expect(shadow?.textContent).toContain("Create a service");
     expect(shadow?.textContent).toContain("Choose the create action and keep the generated starter service.");
     expect(shadow?.textContent).toContain("A service draft exists and the editor or setup view is visible.");
+    expectProductOnlyShadowCopy(shadow);
 
     click(shadow?.querySelector("[data-action='minimize']") ?? null);
     expect(shadow?.querySelector("[data-panel]")).toBeNull();
@@ -408,7 +431,7 @@ describe("Injected Michi extension shell", () => {
     click(shadow?.querySelector("[data-action='confirm-action']") ?? null);
     expect(shadow?.textContent).toContain("Step 3 / 5");
     expect(shadow?.textContent).toContain("Review the starter response");
-    expect(shadow?.textContent).toContain("Read the starter handler and keep the default response for the demo.");
+    expect(shadow?.textContent).toContain("Read the starter handler and keep the default response for this guide.");
 
     click(shadow?.querySelector("[data-action='previous-step']") ?? null);
     expect(shadow?.textContent).toContain("Step 2 / 5");
@@ -431,8 +454,9 @@ describe("Injected Michi extension shell", () => {
     click(shadow?.querySelector("[data-action='next-step']") ?? null);
     expect(shadow?.textContent).toContain("Critical write action");
     expect(shadow?.textContent).toContain("Confirm Create service");
-    expect(shadow?.textContent).toContain("Creates a new service resource");
+    expect(shadow?.textContent).toContain("Prepares a new service resource");
     expect(shadow?.textContent).not.toContain("Step 3 / 5");
+    expectProductOnlyShadowCopy(shadow);
 
     click(shadow?.querySelector("[data-action='confirm-action']") ?? null);
     expect(shadow?.textContent).toContain("Step 3 / 5");
@@ -458,9 +482,10 @@ describe("Injected Michi extension shell", () => {
     click(shadow?.querySelector("[data-action='check']") ?? null);
 
     expect(shadow?.textContent).toContain("Confirm Create service");
-    expect(shadow?.textContent).toContain("Creates a new service resource");
+    expect(shadow?.textContent).toContain("Prepares a new service resource");
     expect(shadow?.textContent).not.toContain("Step 3 / 5");
     expect(shadow?.textContent).not.toContain("Review the starter response");
+    expectProductOnlyShadowCopy(shadow);
   });
 
   it("shows target-missing recovery over stale confirmation copy", () => {
@@ -482,7 +507,8 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).toContain("Target missing");
     expect(shadow?.textContent).toContain("Create service button");
     expect(shadow?.textContent).not.toContain("Confirm Create service");
-    expect(shadow?.textContent).not.toContain("Creates a new service resource");
+    expect(shadow?.textContent).not.toContain("Prepares a new service resource");
+    expectProductOnlyShadowCopy(shadow);
   });
 
   it("completes the service guide with custom-domain follow-up after service URL evidence", () => {
@@ -508,6 +534,7 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).toContain("Follow-up route");
     expect(shadow?.textContent).toContain("Custom domain");
     expect(shadow?.textContent).toContain("Routing follow-up");
+    expectProductOnlyShadowCopy(shadow);
   });
 
   it("resets a completed guide to intent entry and clears page evidence", () => {

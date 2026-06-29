@@ -118,7 +118,7 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await page.getByRole("button", { name: "Next step" }).click();
     await expect(page.getByText("Critical write action")).toBeVisible();
     await expect(page.getByText("Confirm Create service")).toBeVisible();
-    await expect(page.getByText(/Creates a new service resource/)).toBeVisible();
+    await expect(page.getByText(/Prepares a new service resource/)).toBeVisible();
     await page.getByRole("button", { name: "Confirm action" }).click();
     await expect(page.getByText("Step 3 / 5")).toBeVisible();
     await expect(page.getByText("Review the starter response")).toBeVisible();
