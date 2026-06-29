@@ -50,7 +50,7 @@ This plan assumes the visible UI already passes most product-copy checks and onl
 - [x] Slice 1: Record PRD, issue breakdown, decision doc, and active execution plan.
 - [x] Slice 2: Add failing product-only copy and status/documentation guards.
 - [x] Slice 3: Apply minimal copy/status changes to satisfy the boundary.
-- [ ] Slice 4: Run browser proof, independent review, final verification, commit, push, and PR.
+- [x] Slice 4: Run browser proof, independent review, final verification, commit, push, and PR.
 
 ## Evidence Ledger
 
@@ -68,6 +68,8 @@ This plan assumes the visible UI already passes most product-copy checks and onl
 | `npm run test:e2e` | Failed, then passed | First full run failed on startup/timeouts after the product-copy assertions were fixed; `npx playwright test tests/e2e/michi-flow.spec.ts --workers=1` passed all 4 desktop/mobile flow tests, then the full `npm run test:e2e` rerun passed with 5 passed and 1 skipped. |
 | `npm run test:e2e` | Passed | Extension build passed; Playwright reported 5 passed and 1 skipped after review fixes. |
 | `bash /Users/bytedance/.agents/skills/check/scripts/run-tests.sh` | Passed | Runs `npm test`; 21 files / 162 tests passed. |
+| `npm run check:branch -- --strict-clean` | Passed | Branch `codex/michi-product-ui-boundary` is clean, ahead 15, behind 0, ready. |
+| Draft PR | Opened | `https://github.com/BreezyB1n/Michi/pull/30`, stacked on `codex/michi-runtime-context-boundary-closeout`. |
 
 ## Review Notes
 
@@ -75,3 +77,4 @@ This plan assumes the visible UI already passes most product-copy checks and onl
 - This slice is intentionally stacked on the runtime-context boundary work and does not widen the extension runtime.
 - The first full E2E failure after the sanitizer fix did not reproduce. The serial flow suite and subsequent full E2E run both passed, so the recorded caveat is a transient Playwright/dev-server startup issue rather than a product-copy regression.
 - `npm run check:branch -- --strict-clean` was intentionally deferred until after commit because strict-clean fails on a dirty working tree by design.
+- Draft PR #30 contains this product-only UI boundary slice.
