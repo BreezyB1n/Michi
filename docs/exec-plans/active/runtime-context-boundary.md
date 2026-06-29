@@ -29,7 +29,7 @@ This plan is active and should be split into small branches after the PRD issue 
 - [x] Slice 3: Normalize unsupported and failure context through product language.
 - [x] Slice 4: Separate demo fixtures from runtime adapter tests.
 - [x] Slice 5: Add product-only runtime copy regression coverage.
-- [ ] Slice 6: Confirm permission and publishing boundary.
+- [x] Slice 6: Confirm permission and publishing boundary.
 
 ## Evidence Ledger
 
@@ -80,6 +80,15 @@ This plan is active and should be split into small branches after the PRD issue 
 | Browser product-copy proof | Passed | Playwright drove the local app to backend completion on desktop and mobile, verified no provider/demo/staging terms in visible text or common accessibility labels, and captured screenshots under ignored `test-results/product-copy-proof/`. |
 | `npm run check:branch -- --strict-clean` | Passed | Branch `codex/michi-product-only-runtime-copy` is clean, ahead 10, behind 0, ready. |
 | Draft PR | Opened | `https://github.com/BreezyB1n/Michi/pull/27`, stacked on `codex/michi-adapter-fixture-test-boundary`. |
+| `npm test -- tests/extensionPublishingBoundary.test.ts` | Failed, then passed | RED failed because the permission/publishing decision doc did not exist; GREEN passed after adding the decision doc and publication guard tests. |
+| `npm test -- tests/extensionPublishingBoundary.test.ts tests/extensionPermissionGuard.test.ts tests/extensionBuild.test.ts` | Passed | 3 files / 8 tests passed for publication boundary, manifest permission guard, and extension build scaffold. |
+| `npm test` | Passed | 20 files / 158 tests passed after Slice 6. |
+| `npm run build` | Passed | TypeScript and Vite production build passed after Slice 6. |
+| `npm run test:e2e` | Passed | Extension build passed; Playwright reported 5 passed, 1 skipped. No browser UI changed in Slice 6; existing React and unpacked-extension proof remains green. |
+| `git diff --check` | Passed | No whitespace errors after Slice 6. |
+| `gh label list --limit 100 --json name,description,color` | Confirmed hold | Repo labels include `enhancement` but no `ready-for-agent`; GitHub issue publication remains held until the user confirms label strategy. |
+| `npm run check:branch -- --strict-clean` | Passed | Branch `codex/michi-permission-publishing-boundary` is clean, ahead 12, behind 0, ready. |
+| Draft PR | Opened | `https://github.com/BreezyB1n/Michi/pull/28`, stacked on `codex/michi-product-only-runtime-copy`. |
 
 ## Review Notes
 
@@ -88,5 +97,7 @@ This plan is active and should be split into small branches after the PRD issue 
 - Slice 3 converts extension runtime failure context to Michi-owned unsupported context (`michi.unsupported`) and sanitizes provider-branded failure reasons before they become page-context signals.
 - Slice 4 is test-boundary work only: adapter tests now consume the shared fixture helper for route, target, signal, missing-target, unsupported, and completion-evidence coverage, while a source guard keeps fixture helpers out of product runtime modules.
 - Slice 5 makes visible shell copy product-only: provider names, provider route IDs, generated provider URLs, demo/staging words, and `current app` fallback wording are regression-checked out of the React shell and injected shell, including common accessibility labels.
+- Slice 6 records that the current extension build is a local validation runtime, not a store publishing artifact, and adds a guard against store/listing fields or release scripts appearing without an explicit boundary change.
+- Slice 6 also indexes the new decision doc in `docs/design-docs/index.md` for discoverability.
 - Initial e2e run failed because Playwright reused a stale dev server on port 5173 that predated the current `@` alias config. Restarting the server and rerunning `npm run test:e2e` passed.
 - GitHub issue publication is intentionally held until the user confirms issue granularity and the `ready-for-agent` label strategy.
