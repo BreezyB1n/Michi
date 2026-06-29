@@ -3,6 +3,7 @@ import {
   type MichiRuntimeMessage
 } from "../extension/runtimeMessages";
 import { extensionContextUnavailableSignalId } from "./pageContextSignals";
+import { sanitizeProviderText } from "./productPresentation";
 import type { HostPageContext, PageContextProvider } from "./types";
 
 type RuntimeLastError = {
@@ -35,16 +36,16 @@ export const unsupportedPageContext = (
 ): HostPageContext => ({
   url: "about:blank",
   title: "Unsupported page context",
-  product: "cloudflare",
+  product: "michi",
   locationLabel: "Unsupported page context",
-  routeId: "cloudflare.unsupported",
+  routeId: "michi.unsupported",
   detectedAt: new Date().toISOString(),
   targets: [],
   signals: [
     {
       id: extensionContextUnavailableSignalId,
       label: "Extension context unavailable",
-      value: reason,
+      value: sanitizeProviderText(reason),
       severity
     }
   ]
@@ -59,7 +60,7 @@ export const createExtensionPageContextProvider = (
 ): PageContextProvider => ({
   getCurrentContext: async () => {
     if (!runtime) {
-      return unsupportedPageContext("Chrome extension runtime is not available.", "error");
+      return unsupportedPageContext("Extension runtime is not available.", "error");
     }
 
     return new Promise<HostPageContext>((resolve) => {

@@ -26,7 +26,7 @@ This plan is active and should be split into small branches after the PRD issue 
 
 - [x] Slice 1: Define provider-neutral page context adapter contract.
 - [x] Slice 2: Move the current provider reader behind the adapter boundary.
-- [ ] Slice 3: Normalize unsupported and failure context through product language.
+- [x] Slice 3: Normalize unsupported and failure context through product language.
 - [ ] Slice 4: Separate demo fixtures from runtime adapter tests.
 - [ ] Slice 5: Add product-only runtime copy regression coverage.
 - [ ] Slice 6: Confirm permission and publishing boundary.
@@ -51,10 +51,18 @@ This plan is active and should be split into small branches after the PRD issue 
 | `bash /Users/bytedance/.agents/skills/check/scripts/run-tests.sh` | Passed | Runs `npm test`; 18 files / 145 tests passed after Slice 2. |
 | `npm run check:branch -- --strict-clean` | Passed | Branch `codex/michi-provider-reader-adapter-boundary` is clean, ahead 4, behind 0, ready. |
 | Draft PR | Opened | `https://github.com/BreezyB1n/Michi/pull/24`, stacked on `codex/michi-page-context-adapter-contract`. |
+| `npm test -- tests/extensionPageContextProvider.test.ts tests/productPresentation.test.ts tests/guideSessionReducer.test.ts` | Passed | RED first failed because runtime failure context still used `product: cloudflare`, `routeId: cloudflare.unsupported`, and raw provider-branded failure text; GREEN passed after normalizing to Michi-owned runtime context. |
+| `npm test -- tests/App.test.tsx tests/guideCore.test.ts tests/guideSessionReducer.test.ts tests/extensionPageContextProvider.test.ts tests/productPresentation.test.ts tests/pageContextAdapter.test.ts` | Passed | 6 files / 54 tests passed for React failure rendering, guide recovery, extension provider, product presentation, and adapter regressions. |
+| `npm test` | Passed | 18 files / 147 tests passed after Slice 3. |
+| `npm run build` | Passed | TypeScript and Vite production build passed after Slice 3. |
+| `npm run test:e2e` | Passed | Extension build passed; Playwright reported 5 passed, 1 skipped. |
+| `git diff --check` | Passed | No whitespace errors after Slice 3 code changes. |
+| `bash /Users/bytedance/.agents/skills/check/scripts/run-tests.sh` | Passed | Runs `npm test`; 18 files / 147 tests passed after Slice 3. |
 
 ## Review Notes
 
 - Slice 1 intentionally adds only the provider-neutral adapter contract and provider wrapper.
 - Slice 2 migrates the content-script/runtime messaging path behind the adapter boundary. The injected Shadow DOM shell still reads the current provider directly and should be handled in a later shell-runtime consolidation slice.
+- Slice 3 converts extension runtime failure context to Michi-owned unsupported context (`michi.unsupported`) and sanitizes provider-branded failure reasons before they become page-context signals.
 - Initial e2e run failed because Playwright reused a stale dev server on port 5173 that predated the current `@` alias config. Restarting the server and rerunning `npm run test:e2e` passed.
 - GitHub issue publication is intentionally held until the user confirms issue granularity and the `ready-for-agent` label strategy.
