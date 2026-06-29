@@ -33,10 +33,11 @@ Michi has a verified local React workbench and unpacked extension runtime for a 
 | Branch freshness checklist | `completed/branch-freshness-checklist.md` | Local `check:branch` reports ahead/behind/superseded/main/dirty branch states and adds a strict-clean pre-PR gate. |
 | Sitegeist-style side panel shell | `completed/sitegeist-style-side-panel-shell.md` | React workbench and injected shell now use a product-only Michi side-panel form with ampcode-inspired visual direction, provider-neutral visible copy, and desktop/mobile overflow proof. |
 | Runtime context boundary | `completed/runtime-context-boundary.md` | Provider-specific page readers now sit behind an adapter boundary; unsupported/failure context is product-neutral; test fixtures stay in test support; visible runtime copy is product-only; permission and publishing boundaries are documented and guarded. |
+| Product-only UI boundary | `completed/product-only-ui-boundary.md` | React workbench, injected shell, runtime failure states, current status docs, and browser smoke now reject provider-facing UI language. |
 
 ## Active Work
 
-- `active/product-only-ui-boundary.md`: harden the product-only UI boundary so current visible shell copy and planning/status docs describe Michi, not a provider-specific product.
+- No active execution plan is checked in. Product-only UI boundary implementation is complete and represented by draft PR #30.
 
 ## Housekeeping
 
@@ -44,7 +45,7 @@ Michi has a verified local React workbench and unpacked extension runtime for a 
 
 ## Recommended Next Direction
 
-Finish the product-only UI boundary slice, then review and merge the stacked runtime-context-boundary PR chain before adding new providers, broader permissions, or store-publishing work.
+Review and merge the stacked runtime-context-boundary and product-only UI boundary PR chain before adding new providers, broader permissions, or store-publishing work.
 
 ## Verification Baseline
 
