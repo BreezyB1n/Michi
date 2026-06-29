@@ -8,7 +8,7 @@ import type { HostPageContext } from "../src/domain/types";
 
 const sampleIntent = "I want to build a small service that other people can access.";
 const providerVisibleCopyPattern =
-  /\b(?:Cloudflare|Workers|Worker|DNS|Pages|MVP|demo)\b|cloudflare\.|workers\.dev|pages\.dev|dash\.cloudflare|current app|simulat/i;
+  /\b(?:Cloudflare|Workers|Worker|DNS|Pages|MVP|demo|page context|context status)\b|cloudflare\.|workers\.dev|pages\.dev|dash\.cloudflare|current app|simulat/i;
 
 const expectProductOnlyVisibleCopy = () => {
   const accessibleCopy = Array.from(
@@ -182,7 +182,7 @@ describe("Michi app", () => {
     expect(screen.getByText(/Completion check/i)).toBeInTheDocument();
     expect(screen.getByText(/Workspace \/ Home/i)).toBeInTheDocument();
     expect(screen.getByText(/Build area navigation item/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Page context synced/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Page check synced/i).length).toBeGreaterThan(0);
     expect(within(sidePanel).queryByText(/cloudflare|workers|pages|dns/i)).not.toBeInTheDocument();
   });
 
@@ -243,10 +243,10 @@ describe("Michi app", () => {
     await user.click(screen.getByRole("button", { name: /recover and re-check/i }));
 
     expect(screen.getByRole("heading", { name: /Find the build area/i })).toBeInTheDocument();
-    expect(screen.getAllByText(/Page context synced/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Page check synced/i).length).toBeGreaterThan(0);
   });
 
-  it("shows a recoverable extension runtime error when page context cannot be read", async () => {
+  it("shows a recoverable extension runtime error when the page check cannot run", async () => {
     const user = userEvent.setup();
     render(<App pageContextRuntime={extensionFailureRuntime()} />);
 
@@ -257,8 +257,9 @@ describe("Michi app", () => {
     expect(await screen.findByRole("heading", { name: /Extension runtime unavailable/i })).toBeInTheDocument();
     expect(screen.getByText(/No receiving end/i)).toBeInTheDocument();
     expect(screen.getByText(/open or refresh a supported browser tab/i)).toBeInTheDocument();
-    expect(screen.getByText(/Context status/i)).toBeInTheDocument();
+    expect(screen.getByText(/Check status/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Extension runtime error/i).length).toBeGreaterThanOrEqual(1);
+    expectProductOnlyVisibleCopy();
   });
 
   it("converts rejected provider checks into the extension runtime recovery state", async () => {

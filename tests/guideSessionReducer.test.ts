@@ -174,7 +174,7 @@ describe("Guide session reducer", () => {
 
     expect(failed.phase).toBe("recovery");
     expect(failed.pageState.blockingState?.id).toBe("extension-runtime-unavailable");
-    expect(failed.pageState.location).toBe("Unsupported page context");
+    expect(failed.pageState.location).toBe("Unsupported page check");
     expect(failed.pageState.evidence).toContain("No receiving end");
   });
 

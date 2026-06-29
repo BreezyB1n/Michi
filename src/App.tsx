@@ -832,13 +832,13 @@ const PageStatePanel = ({ session, hostPageContext, pulseKey }: PageStatePanelPr
         value={productPageStateCopy(session.pageState).targetElement}
       />
       <StateRow
-        label="Context status"
+        label="Check status"
         value={
           session.pageState.blockingState?.id === "extension-runtime-unavailable"
             ? "Extension runtime error"
             : hostPageContext.blockingState
-              ? "Blocked by page context"
-              : "Page context synced"
+              ? "Check needs recovery"
+              : "Page check synced"
         }
       />
       <StateRow

@@ -82,7 +82,7 @@ const contextWithPageDrift = (context: HostPageContext): HostPageContext => ({
       label: "Page drift",
       value:
         context.signals[0]?.value ??
-        "Page drift detected: the expected target is not present in the current page context.",
+        "Page drift detected: the expected target is not present in the current page check.",
       severity: "warning"
     }
   ]

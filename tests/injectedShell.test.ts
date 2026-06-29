@@ -8,7 +8,7 @@ import {
 import type { HostPageContext, PageTarget } from "../src/domain/types";
 
 const providerVisibleCopyPattern =
-  /\b(?:Cloudflare|Workers|Worker|DNS|Pages|MVP|demo)\b|cloudflare\.|workers\.dev|pages\.dev|dash\.cloudflare|current app|simulat/i;
+  /\b(?:Cloudflare|Workers|Worker|DNS|Pages|MVP|demo|page context|context status)\b|cloudflare\.|workers\.dev|pages\.dev|dash\.cloudflare|current app|simulat/i;
 
 const expectProductOnlyShadowCopy = (shadow: ShadowRoot | null | undefined) => {
   if (!shadow) {
