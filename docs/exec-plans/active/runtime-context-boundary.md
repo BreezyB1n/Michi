@@ -24,7 +24,7 @@ This plan is active and should be split into small branches after the PRD issue 
 
 ## Execution Slices
 
-- [ ] Slice 1: Define provider-neutral page context adapter contract.
+- [x] Slice 1: Define provider-neutral page context adapter contract.
 - [ ] Slice 2: Move the current provider reader behind the adapter boundary.
 - [ ] Slice 3: Normalize unsupported and failure context through product language.
 - [ ] Slice 4: Separate demo fixtures from runtime adapter tests.
@@ -35,14 +35,17 @@ This plan is active and should be split into small branches after the PRD issue 
 
 | Check | Result | Notes |
 | --- | --- | --- |
-| `npm test` | Not run yet | Required for implementation slices. |
-| `npm run build` | Not run yet | Required for implementation slices. |
-| `npm run test:e2e` | Not run yet | Required for implementation slices. |
-| Browser desktop/mobile proof | Not run yet | Required once visible/runtime behavior changes. |
-| `git diff --check` | Not run yet | Required before commit. |
-| `bash /Users/bytedance/.agents/skills/check/scripts/run-tests.sh` | Not run yet | Required before commit. |
+| `npm test -- tests/pageContextAdapter.test.ts` | Passed | RED first failed because `src/domain/pageContextAdapter.ts` did not exist; GREEN passed after adding the adapter contract and wrapper. |
+| `npm test` | Passed | 16 files / 143 tests passed. |
+| `npm run build` | Passed | TypeScript and Vite production build passed. |
+| `npm run test:e2e` | Passed | 5 passed, 1 skipped after restarting a stale Vite dev server that was missing the current alias config. |
+| Browser desktop/mobile proof | Passed | Covered by Playwright `michi-flow` desktop/mobile paths; no visible behavior changed in this slice. |
+| `git diff --check` | Passed | No whitespace errors. |
+| `bash /Users/bytedance/.agents/skills/check/scripts/run-tests.sh` | Passed | Runs `npm test`; 16 files / 143 tests passed. |
 
 ## Review Notes
 
-- This branch currently contains PRD and issue-breakdown work only.
+- Slice 1 intentionally adds only the provider-neutral adapter contract and provider wrapper.
+- Existing runtime callers are not migrated in this slice; moving the current provider reader behind the adapter boundary is Slice 2.
+- Initial e2e run failed because Playwright reused a stale dev server on port 5173 that predated the current `@` alias config. Restarting the server and rerunning `npm run test:e2e` passed.
 - GitHub issue publication is intentionally held until the user confirms issue granularity and the `ready-for-agent` label strategy.
