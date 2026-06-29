@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -19,11 +19,15 @@ describe("product-only UI boundary", () => {
     expect(statusCopy).not.toMatch(providerUiFramingPattern);
   });
 
-  it("keeps the active product-only plan from framing provider details as UI", () => {
-    const activePlanCopy = visibleMarkdown(
-      join(repoRoot, "docs/exec-plans/active/product-only-ui-boundary.md")
-    );
+  it("keeps current-facing execution plans from framing provider details as UI", () => {
+    const activePlanDir = join(repoRoot, "docs/exec-plans/active");
+    const currentPlanPaths = readdirSync(activePlanDir)
+      .filter((fileName) => fileName.endsWith(".md"))
+      .map((fileName) => join(activePlanDir, fileName));
+    currentPlanPaths.push(join(repoRoot, "docs/exec-plans/completed/product-only-ui-boundary.md"));
 
-    expect(activePlanCopy).not.toMatch(providerUiFramingPattern);
+    const currentPlanCopy = currentPlanPaths.map((path) => visibleMarkdown(path)).join("\n");
+
+    expect(currentPlanCopy).not.toMatch(providerUiFramingPattern);
   });
 });
