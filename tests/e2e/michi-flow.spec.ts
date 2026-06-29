@@ -41,6 +41,8 @@ test("runs the Workers guide path with recovery and critical confirmations", asy
   await expect(page.getByLabel("Michi side panel")).toHaveCount(0);
   await page.getByRole("button", { name: "Guide" }).click();
   await expect(page.getByRole("heading", { name: "Michi" })).toBeVisible();
+  await expect(page.getByLabel("Command handoff").getByText("Ready for an intent")).toBeVisible();
+  await expect(page.getByLabel("Command handoff").getByRole("button", { name: "Start from intent" })).toBeVisible();
   await page.getByLabel("User intent").fill(sampleIntent);
   await page.getByRole("button", { name: "Start guide" }).click();
   await expect(page.getByLabel("Activity history").getByText("Intent captured")).toBeVisible();
@@ -52,6 +54,7 @@ test("runs the Workers guide path with recovery and critical confirmations", asy
   await expect(page.getByRole("heading", { name: "Find the build area" })).toBeVisible();
   await expect(page.getByLabel("Activity history").getByText("Service path selected")).toBeVisible();
   await expect(page.getByLabel("Activity history").getByText("Page check synced").first()).toBeVisible();
+  await expect(page.getByLabel("Command handoff").getByText("Next step is ready")).toBeVisible();
 
   const panelBox = await page.getByLabel("Michi side panel").boundingBox();
   const hostBox = await page.getByLabel("Current page preview").boundingBox();
@@ -68,6 +71,8 @@ test("runs the Workers guide path with recovery and critical confirmations", asy
 
   await page.getByRole("button", { name: "Show page drift" }).click();
   await expect(page.getByRole("heading", { name: "Page layout changed" })).toBeVisible();
+  await expect(page.getByLabel("Command handoff").getByText("Recovery is required")).toBeVisible();
+  await expect(page.getByLabel("Command handoff").getByRole("button", { name: "Recover now" })).toBeVisible();
   await expect(page.getByLabel("Activity history").getByText("Check needs recovery")).toBeVisible();
   await expectProductOnlyPageCopy(page);
   await page.getByRole("button", { name: "Recover and re-check" }).click();
@@ -81,6 +86,8 @@ test("runs the Workers guide path with recovery and critical confirmations", asy
   await page.getByRole("button", { name: "Advance guide" }).click();
   await page.getByRole("button", { name: "Advance guide" }).click();
   await expect(page.getByRole("heading", { name: "Confirm Create service" })).toBeVisible();
+  await expect(page.getByLabel("Command handoff").getByText("User confirmation needed")).toBeVisible();
+  await expect(page.getByLabel("Command handoff").getByRole("button", { name: "Confirm now" })).toBeVisible();
   await expect(page.getByLabel("Activity history").getByText("Confirmation needed")).toBeVisible();
   await page.getByRole("button", { name: "Confirm action" }).click();
   await expect(page.getByLabel("Activity history").getByText("Action confirmed").first()).toBeVisible();
@@ -93,6 +100,7 @@ test("runs the Workers guide path with recovery and critical confirmations", asy
   await page.getByRole("button", { name: "Advance guide" }).click();
 
   await expect(page.getByRole("heading", { name: "Service URL verified" })).toBeVisible();
+  await expect(page.getByLabel("Command handoff").getByText("Primary path is complete")).toBeVisible();
   await expect(page.getByLabel("Activity history").getByText("Completion evidence passed")).toBeVisible();
   await expect(page.getByText("Custom domain", { exact: true })).toBeVisible();
   await expect(page.getByText("Routing follow-up", { exact: true })).toBeVisible();

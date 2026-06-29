@@ -63,6 +63,12 @@ import {
   type ActivityTimeline
 } from "./domain/activityTimeline";
 import {
+  commandHandoffForSession,
+  type CommandAction,
+  type CommandActionId,
+  type CommandHandoff
+} from "./domain/commandHandoff";
+import {
   productBlockingStateCopy,
   productCapabilityCopy,
   productCompletionTitle,
@@ -117,6 +123,7 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
   const [pulseKey, setPulseKey] = useState(0);
 
   const currentStep = session.steps[session.activeStepIndex];
+  const commandHandoff = useMemo(() => commandHandoffForSession(session), [session]);
   const progress = useMemo(() => {
     if (!session.steps.length) {
       return "0 / 0";
@@ -285,6 +292,36 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
     setActivityTimeline(resetActivityTimeline(activityEventForReset()));
   };
 
+  const handleCommand = (actionId: CommandActionId) => {
+    switch (actionId) {
+      case "start-guide":
+        handleStart();
+        return;
+      case "choose-backend-api":
+        handleServiceKind("backend-api");
+        return;
+      case "choose-static-site":
+        handleServiceKind("static-site");
+        return;
+      case "check-page":
+        handleCheck();
+        return;
+      case "advance-guide":
+      case "complete-guide":
+        handleAdvance();
+        return;
+      case "confirm-action":
+        handleConfirm();
+        return;
+      case "recover-and-recheck":
+        handleRecovery();
+        return;
+      case "reset-guide":
+        handleReset();
+        return;
+    }
+  };
+
   return (
     <IconContext.Provider value={{ size: 18, weight: "duotone" }}>
       <main className="min-h-[100dvh] bg-background text-foreground">
@@ -335,7 +372,10 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
                   key={`${session.phase}-${session.activeStepIndex}-${session.serviceKind ?? "none"}`}
                 >
                   {session.phase === "clarify" ? (
-                    <ClarificationPanel intent={session.intent} onChoose={handleServiceKind} />
+                    <>
+                      <ClarificationPanel intent={session.intent} onChoose={handleServiceKind} />
+                      <CommandHandoffPanel handoff={commandHandoff} onCommand={handleCommand} />
+                    </>
                   ) : (
                     <>
                       <GuidePanel
@@ -345,6 +385,7 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
                         onIntentChange={setIntent}
                         onStart={handleStart}
                       />
+                      <CommandHandoffPanel handoff={commandHandoff} onCommand={handleCommand} />
                       <PageStatePanel
                         session={session}
                         hostPageContext={hostPageContext}
@@ -859,6 +900,76 @@ const StepBlock = ({ title, body }: StepBlockProps) => (
     <h3 className="mb-1 font-mono text-[11px] font-semibold text-white/45">{title}</h3>
     <p className="m-0 text-pretty text-sm leading-6 text-primary-foreground">{body}</p>
   </div>
+);
+
+type CommandHandoffPanelProps = {
+  handoff: CommandHandoff;
+  onCommand: (actionId: CommandActionId) => void;
+};
+
+const commandToneClassName: Record<CommandHandoff["tone"], string> = {
+  neutral: "border-white/10 bg-white/[0.055]",
+  primary: "border-accent/34 bg-accent/12",
+  success: "border-success/32 bg-success/12",
+  warning: "border-warning/38 bg-warning/14"
+};
+
+const CommandHandoffPanel = ({ handoff, onCommand }: CommandHandoffPanelProps) => (
+  <SectionCard
+    aria-label="Command handoff"
+    className={cn("border p-0", commandToneClassName[handoff.tone])}
+  >
+    <div className="grid gap-4 p-5 max-[520px]:p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <SectionLabel>Command handoff</SectionLabel>
+          <h2 className="m-0 text-balance text-xl font-semibold tracking-[-0.025em]">
+            {handoff.title}
+          </h2>
+        </div>
+        <Badge variant={handoff.tone === "warning" ? "warning" : handoff.tone === "success" ? "success" : "accent"}>
+          Recommended
+        </Badge>
+      </div>
+      <p className="m-0 break-words text-pretty text-sm leading-6 text-white/64 [overflow-wrap:anywhere]">
+        {handoff.detail}
+      </p>
+      <div className="grid gap-2" aria-label="Recommended commands">
+        <CommandButton action={handoff.primaryAction} onCommand={onCommand} primary />
+        {handoff.secondaryActions.length ? (
+          <div className="grid grid-cols-2 gap-2 max-[520px]:grid-cols-1">
+            {handoff.secondaryActions.map((action) => (
+              <CommandButton key={action.id} action={action} onCommand={onCommand} />
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  </SectionCard>
+);
+
+type CommandButtonProps = {
+  action: CommandAction;
+  onCommand: (actionId: CommandActionId) => void;
+  primary?: boolean;
+};
+
+const CommandButton = ({ action, onCommand, primary = false }: CommandButtonProps) => (
+  <Button
+    type="button"
+    variant={primary ? "primary" : "secondary"}
+    onClick={() => onCommand(action.id)}
+    className={cn(
+      "min-w-0 justify-between whitespace-normal text-left leading-5",
+      primary && action.tone === "warning" && "border-warning/35 bg-warning/22 hover:bg-warning/26",
+      primary && action.tone === "success" && "border-success/35 bg-success/18 hover:bg-success/24",
+      !primary && "border-white/12 bg-white/[0.06] text-primary-foreground hover:bg-white/[0.1]"
+    )}
+    aria-label={action.label}
+  >
+    <span className="min-w-0 break-words [overflow-wrap:anywhere]">{action.label}</span>
+    <ArrowRight aria-hidden="true" className="shrink-0" />
+  </Button>
 );
 
 type PageStatePanelProps = {

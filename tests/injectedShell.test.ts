@@ -236,6 +236,60 @@ describe("Injected Michi extension shell", () => {
     expectProductOnlyShadowCopy(shadow);
   });
 
+  it("renders command handoff and routes commands through existing shell actions", () => {
+    renderCloudflareFixture();
+
+    const root = mountMichiInjectedShell(document);
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='guide']") ?? null);
+    expect(shadow?.textContent).toContain("Command handoff");
+    expect(shadow?.textContent).toContain("Ready for an intent");
+    expect(shadow?.textContent).toContain("Start from intent");
+
+    click(shadow?.querySelector("[data-command-action='start-guide']") ?? null);
+    expect(shadow?.textContent).toContain("Choose a guide path");
+
+    click(shadow?.querySelector("[data-command-action='choose-static-site']") ?? null);
+    expect(shadow?.textContent).toContain("Site publishing");
+    expect(shadow?.textContent).toContain("Next step is ready");
+
+    click(shadow?.querySelector("[data-command-action='advance-guide']") ?? null);
+    expect(shadow?.textContent).toContain("Step 2 / 5");
+    expect(shadow?.textContent).toContain("Create a site");
+    expectProductOnlyShadowCopy(shadow);
+  });
+
+  it("does not expose unsafe command handoff progress during confirmation or recovery", () => {
+    renderCloudflareFixture();
+
+    const root = mountMichiInjectedShell(document, {
+      href: "https://dash.cloudflare.com/example-account/workers-and-pages",
+      title: "Workers & Pages"
+    });
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    click(shadow?.querySelector("[data-command-action='advance-guide']") ?? null);
+
+    expect(shadow?.textContent).toContain("User confirmation needed");
+    expect(shadow?.textContent).toContain("Confirm now");
+    expect(shadow?.querySelector("[data-command-action='advance-guide']")).toBeNull();
+    expect(shadow?.querySelector("[data-command-action='complete-guide']")).toBeNull();
+
+    renderWorkersOverviewMissingTargetFixture();
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+
+    expect(shadow?.textContent).toContain("Recovery is required");
+    expect(shadow?.textContent).toContain("Recover now");
+    expect(shadow?.querySelector(".command-handoff")?.textContent).toContain(
+      "Wait for the page to finish loading"
+    );
+    expect(shadow?.querySelector("[data-command-action='advance-guide']")).toBeNull();
+    expect(shadow?.querySelector("[data-command-action='complete-guide']")).toBeNull();
+    expectProductOnlyShadowCopy(shadow);
+  });
+
   it("routes static website clarification to the site publishing guide", () => {
     renderCloudflareFixture();
 
@@ -698,6 +752,8 @@ describe("Injected Michi extension shell", () => {
     const completeButton = shadow?.querySelector("[data-action='complete-guide']");
     expect(completeButton).toBeInstanceOf(HTMLButtonElement);
     expect((completeButton as HTMLButtonElement | null)?.disabled).toBe(true);
+    expect(shadow?.querySelector("[data-command-action='complete-guide']")).toBeNull();
+    expect(shadow?.textContent).not.toContain("Finish guide");
 
     click(completeButton ?? null);
     expect(shadow?.textContent).not.toContain("Primary path complete");

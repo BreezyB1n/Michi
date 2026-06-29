@@ -243,6 +243,58 @@ describe("Michi app", () => {
     expect(within(activity).queryByText(/Intent captured/i)).not.toBeInTheDocument();
   });
 
+  it("renders a command handoff that invokes existing guide actions", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: /^guide$/i }));
+
+    let handoff = screen.getByLabelText(/command handoff/i);
+    expect(within(handoff).getByText(/Ready for an intent/i)).toBeInTheDocument();
+
+    await user.click(within(handoff).getByRole("button", { name: /start from intent/i }));
+
+    handoff = screen.getByLabelText(/command handoff/i);
+    expect(await within(handoff).findByText(/Choose a guide path/i)).toBeInTheDocument();
+
+    await user.click(within(handoff).getByRole("button", { name: /site path/i }));
+
+    handoff = screen.getByLabelText(/command handoff/i);
+    expect((await screen.findAllByText(/Site publishing/i)).length).toBeGreaterThan(0);
+    expect(await within(handoff).findByText(/Next step is ready/i)).toBeInTheDocument();
+
+    await user.click(within(handoff).getByRole("button", { name: /continue/i }));
+
+    expect(await screen.findByRole("heading", { name: /Create a site/i })).toBeInTheDocument();
+  });
+
+  it("keeps command handoff safe in confirmation and recovery states", async () => {
+    const user = await startBackendGuide();
+
+    let handoff = screen.getByLabelText(/command handoff/i);
+    await user.click(within(handoff).getByRole("button", { name: /continue/i }));
+
+    handoff = screen.getByLabelText(/command handoff/i);
+    expect(within(handoff).getByText(/Confirmation will be required/i)).toBeInTheDocument();
+
+    await user.click(within(handoff).getByRole("button", { name: /review confirmation/i }));
+
+    handoff = screen.getByLabelText(/command handoff/i);
+    expect(await within(handoff).findByText(/User confirmation needed/i)).toBeInTheDocument();
+    expect(within(handoff).getByRole("button", { name: /confirm now/i })).toBeInTheDocument();
+    expect(within(handoff).queryByRole("button", { name: /advance guide/i })).not.toBeInTheDocument();
+    expect(within(handoff).queryByRole("button", { name: /complete guide/i })).not.toBeInTheDocument();
+
+    await user.click(within(handoff).getByRole("button", { name: /confirm now/i }));
+    await user.click(screen.getByRole("button", { name: /show page drift/i }));
+
+    handoff = screen.getByLabelText(/command handoff/i);
+    expect(await within(handoff).findByText(/Recovery is required/i)).toBeInTheDocument();
+    expect(within(handoff).getByRole("button", { name: /recover now/i })).toBeInTheDocument();
+    expect(within(handoff).queryByRole("button", { name: /advance guide/i })).not.toBeInTheDocument();
+    expect(within(handoff).queryByRole("button", { name: /complete guide/i })).not.toBeInTheDocument();
+  });
+
   it("allows long activity details to wrap inside the panel", async () => {
     const user = userEvent.setup();
     const longIntent = `Publish ${"a".repeat(160)} https://example.com/${"b".repeat(160)}`;

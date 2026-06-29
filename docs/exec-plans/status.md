@@ -2,7 +2,7 @@
 
 ## Current State
 
-Michi has a verified local React workbench and unpacked extension runtime for a compact page guide shell. The current extension surface is injected, collapsed by default, and supports deterministic service/site guide behavior, page checks, target highlights, recovery states, critical-action confirmation, completion follow-up, permission guards, runtime-error handling, route-state guards, and scroll/resize highlight refresh. Runtime readers remain internal adapters; visible UI stays in Michi product language.
+Michi has a verified local React workbench and unpacked extension runtime for a compact page guide shell. The current extension surface is injected, collapsed by default, and supports deterministic service/site guide behavior, page checks, target highlights, recovery states, critical-action confirmation, completion follow-up, permission guards, runtime-error handling, route-state guards, scroll/resize highlight refresh, activity history, and compact command handoff. Runtime readers remain internal adapters; visible UI stays in Michi product language.
 
 ## Completed Milestones
 
@@ -35,10 +35,11 @@ Michi has a verified local React workbench and unpacked extension runtime for a 
 | Runtime context boundary | `completed/runtime-context-boundary.md` | Provider-specific page readers now sit behind an adapter boundary; unsupported/failure context is product-neutral; test fixtures stay in test support; visible runtime copy is product-only; permission and publishing boundaries are documented and guarded. |
 | Product-only UI boundary | `completed/product-only-ui-boundary.md` | React workbench, injected shell, runtime failure states, current status docs, and browser smoke now reject provider-facing UI language. |
 | Product surface activity history | `completed/product-surface.md` | React workbench and injected shell now show deterministic Michi-owned activity history for intent start, path choice, page checks, recovery, confirmation, completion, and reset. |
+| Command handoff | `completed/command-handoff.md` | React workbench and injected shell now show deterministic next-command recommendations without bypassing confirmation or recovery safety. |
 
 ## Active Work
 
-- No active execution plan is checked in. Product surface activity history is complete in the current branch.
+- No active execution plan is checked in. Command handoff is complete in the current branch.
 
 ## Housekeeping
 
@@ -46,7 +47,7 @@ Michi has a verified local React workbench and unpacked extension runtime for a 
 
 ## Recommended Next Direction
 
-Open a new spec for the next Michi-owned UI slice. A good candidate is a compact command palette or task handoff surface that works inside the existing side panel without adding new adapters, broader permissions, storage, account writes, or public listing work.
+Evaluate whether the next slice should improve keyboard accessibility or add stronger unsupported-page guidance. Keep future work inside the compact side panel unless a new spec says otherwise.
 
 ## Verification Baseline
 
