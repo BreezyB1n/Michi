@@ -86,48 +86,48 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByRole("button", { name: "Video" })).toHaveCount(0);
 
     await page.getByRole("button", { name: "Guide" }).click();
-    await expect(page.getByLabel("Michi guide panel")).toBeVisible();
+    await expect(page.getByLabel("Michi side panel")).toBeVisible();
     await expect(page.getByText("User intent")).toBeVisible();
     await expect(page.getByRole("button", { name: "Start guide" })).toBeVisible();
     await page.getByRole("button", { name: "Start guide" }).click();
     await expect(page.getByText("What kind of service are you building?")).toBeVisible();
     await page.getByRole("button", { name: "Backend logic or API" }).click();
     await expect(page.getByText("Step 1 / 5")).toBeVisible();
-    await expect(page.getByText("Find the Workers entry")).toBeVisible();
+    await expect(page.getByText("Find the build area")).toBeVisible();
 
     await page.getByRole("button", { name: "Check page" }).click();
-    await expect(page.getByText("cloudflare.workers.overview")).toBeVisible();
-    await expect(page.getByText("Create Worker button")).toBeVisible();
-    await expect(page.getByText("Cloudflare Workers")).toBeVisible();
+    await expect(page.getByText("Service runtime overview")).toBeVisible();
+    await expect(page.getByText("Create service button")).toBeVisible();
+    await expect(page.getByText("Service runtime", { exact: true })).toBeVisible();
     await expect(page.getByText("Step 2 / 5")).toBeVisible();
-    await expect(page.getByText("Create a Worker")).toBeVisible();
-    await expect(page.getByText("Choose Create Worker and keep the generated starter service.")).toBeVisible();
-    await expect(page.getByText("A Worker draft exists and the editor or setup view is visible.")).toBeVisible();
-    await expect(page.getByLabel("Highlighted target: Create Worker button")).toBeVisible();
+    await expect(page.getByText("Create a service")).toBeVisible();
+    await expect(page.getByText("Choose the create action and keep the generated starter service.")).toBeVisible();
+    await expect(page.getByText("A service draft exists and the editor or setup view is visible.")).toBeVisible();
+    await expect(page.getByLabel("Highlighted target: Create service button")).toBeVisible();
     const highlightBeforeScroll = await page
-      .getByLabel("Highlighted target: Create Worker button")
+      .getByLabel("Highlighted target: Create service button")
       .boundingBox();
     expect(highlightBeforeScroll?.y).toBeGreaterThan(300);
     await page.evaluate(() => window.scrollTo(0, 120));
     await expect
       .poll(async () => {
-        const box = await page.getByLabel("Highlighted target: Create Worker button").boundingBox();
+        const box = await page.getByLabel("Highlighted target: Create service button").boundingBox();
         return box?.y ?? Number.POSITIVE_INFINITY;
       }, { message: "Expected highlight to stay visible after window scroll." })
       .toBeLessThan((highlightBeforeScroll?.y ?? 0) - 80);
     await page.getByRole("button", { name: "Next step" }).click();
     await expect(page.getByText("Critical write action")).toBeVisible();
-    await expect(page.getByText("Confirm Create Worker")).toBeVisible();
-    await expect(page.getByText(/Creates a new Cloudflare Worker resource/)).toBeVisible();
+    await expect(page.getByText("Confirm Create service")).toBeVisible();
+    await expect(page.getByText(/Creates a new service resource/)).toBeVisible();
     await page.getByRole("button", { name: "Confirm action" }).click();
     await expect(page.getByText("Step 3 / 5")).toBeVisible();
     await expect(page.getByText("Review the starter response")).toBeVisible();
     await page.getByRole("button", { name: "Previous" }).click();
     await expect(page.getByText("Step 2 / 5")).toBeVisible();
     await page.keyboard.press("Escape");
-    await expect(page.getByLabel("Michi guide panel")).toHaveCount(0);
+    await expect(page.getByLabel("Michi side panel")).toHaveCount(0);
     await page.getByRole("button", { name: "Guide" }).click();
-    await expect(page.getByText("cloudflare.workers.overview")).toBeVisible();
+    await expect(page.getByText("Service runtime overview")).toBeVisible();
 
     const response = await serviceWorker.evaluate(async () => {
       const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -161,44 +161,44 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByLabel("Michi rail")).toBeVisible();
     await page.getByRole("button", { name: "Guide" }).click();
     await page.getByRole("button", { name: "Check page" }).click();
-    await expect(page.getByText("cloudflare.workers.starter-editor")).toBeVisible();
+    await expect(page.getByText("Service editor", { exact: true })).toBeVisible();
     await expect(page.getByText("Step 3 / 5")).toBeVisible();
     await expect(page.getByText("Review the starter response")).toBeVisible();
-    await expect(page.getByText("Starter request handler")).toBeVisible();
-    await expect(page.getByLabel("Highlighted target: Starter request handler")).toBeVisible();
+    await expect(page.getByText("Starter response handler")).toBeVisible();
+    await expect(page.getByLabel("Highlighted target: Starter response handler")).toBeVisible();
 
     await page.goto("https://dash.cloudflare.com/example-account/workers/deploy-review");
     await expect(page.getByLabel("Michi rail")).toBeVisible();
     await page.getByRole("button", { name: "Guide" }).click();
     await page.getByRole("button", { name: "Check page" }).click();
-    await expect(page.getByText("cloudflare.workers.deploy-review")).toBeVisible();
+    await expect(page.getByText("Deployment review", { exact: true })).toBeVisible();
     await expect(page.getByText("Step 4 / 5")).toBeVisible();
-    await expect(page.getByText("Deploy the Worker")).toBeVisible();
-    await expect(page.getByText("Deploy button")).toBeVisible();
-    await expect(page.getByLabel("Highlighted target: Deploy button")).toBeVisible();
+    await expect(page.getByText("Deploy the service")).toBeVisible();
+    await expect(page.getByText("Deploy service button")).toBeVisible();
+    await expect(page.getByLabel("Highlighted target: Deploy service button")).toBeVisible();
     await page.getByRole("button", { name: "Next step" }).click();
     await expect(page.getByText("Critical write action")).toBeVisible();
-    await expect(page.getByText("Confirm Deploy Worker")).toBeVisible();
-    await expect(page.getByText(/Publishes the Worker to a reachable URL/)).toBeVisible();
+    await expect(page.getByText("Confirm Deploy service")).toBeVisible();
+    await expect(page.getByText(/Publishes the service to a reachable URL/)).toBeVisible();
 
     await page.goto("https://dash.cloudflare.com/example-account/workers/deploy-result");
     await expect(page.getByLabel("Michi rail")).toBeVisible();
     await page.getByRole("button", { name: "Guide" }).click();
     await page.getByRole("button", { name: "Check page" }).click();
     await expect(page.getByText("Step 5 / 5")).toBeVisible();
-    await expect(page.getByText("Verify the Worker URL")).toBeVisible();
-    await expect(page.getByText("Worker URL detected")).toBeVisible();
-    await expect(page.getByLabel("Highlighted target: Worker URL")).toBeVisible();
+    await expect(page.getByText("Verify the service URL")).toBeVisible();
+    await expect(page.getByText("service URL detected")).toBeVisible();
+    await expect(page.getByLabel("Highlighted target: Service URL")).toBeVisible();
     await page.getByRole("button", { name: "Complete guide" }).click();
     await expect(page.getByText("Primary path complete")).toBeVisible();
-    await expect(page.getByText("Worker URL verified")).toBeVisible();
-    await expect(page.getByText("Cloudflare DNS")).toBeVisible();
+    await expect(page.getByText("Service URL verified")).toBeVisible();
+    await expect(page.getByText("Custom domain")).toBeVisible();
     await expect(page.locator("[aria-label='Michi rail']").getByRole("button", { name: "Reset guide" })).toHaveCount(0);
     await page.getByRole("button", { name: "Reset guide" }).click();
     await expect(page.getByText("User intent")).toBeVisible();
     await expect(page.getByRole("button", { name: "Start guide" })).toBeVisible();
     await expect(page.getByText("Primary path complete")).toHaveCount(0);
-    await expect(page.getByText("Cloudflare DNS")).toHaveCount(0);
+    await expect(page.getByText("Custom domain")).toHaveCount(0);
     await expect(page.getByLabel(/Highlighted target/)).toHaveCount(0);
 
     await page.goto("https://dash.cloudflare.com/example-account/pages");
@@ -207,15 +207,15 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByText("User intent")).toBeVisible();
     await page.getByRole("button", { name: "Start guide" }).click();
     await page.getByRole("button", { name: "Static website" }).click();
-    await expect(page.getByText("Cloudflare Pages")).toBeVisible();
+    await expect(page.getByText("Site publishing")).toBeVisible();
     await expect(page.getByText("Step 1 / 5")).toBeVisible();
-    await expect(page.getByText("Find the Pages entry")).toBeVisible();
+    await expect(page.getByText("Find the build area")).toBeVisible();
     await page.getByRole("button", { name: "Check page" }).click();
-    await expect(page.getByText("cloudflare.pages.overview")).toBeVisible();
+    await expect(page.getByText("Site publishing overview")).toBeVisible();
     await expect(page.getByText("Step 2 / 5")).toBeVisible();
-    await expect(page.getByText("Create a Pages project")).toBeVisible();
-    await expect(page.getByText("Create Pages project button")).toBeVisible();
-    await expect(page.getByLabel("Highlighted target: Create Pages project button")).toBeVisible();
+    await expect(page.getByText("Create a site")).toBeVisible();
+    await expect(page.getByText("Create site button")).toBeVisible();
+    await expect(page.getByLabel("Highlighted target: Create site button")).toBeVisible();
 
     await page.evaluate(() => {
       window.history.pushState({}, "", "/example-account/workers-and-pages");
@@ -229,9 +229,9 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     });
     await page.getByRole("button", { name: "Check page" }).click();
     await expect(page.getByText("Route mismatch")).toBeVisible();
-    await expect(page.getByText(/active guide is Cloudflare Pages/)).toBeVisible();
-    await expect(page.getByText(/current page belongs to Cloudflare Workers/)).toBeVisible();
-    await expect(page.getByLabel("Highlighted target: Create Worker button")).toHaveCount(0);
+    await expect(page.getByText(/active guide is Site publishing/)).toBeVisible();
+    await expect(page.getByText(/current page belongs to Service runtime/)).toBeVisible();
+    await expect(page.getByLabel("Highlighted target: Create service button")).toHaveCount(0);
 
     await page.evaluate(() => {
       window.history.pushState({}, "", "/example-account/pages/deploy-review");
@@ -246,46 +246,46 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     });
     await page.getByRole("button", { name: "Check page" }).click();
     await expect(page.getByText("Route mismatch")).toHaveCount(0);
-    await expect(page.getByText("cloudflare.pages.deploy-review")).toBeVisible();
+    await expect(page.getByText("Site deployment review")).toBeVisible();
     await expect(page.getByText("Step 4 / 5")).toBeVisible();
-    await expect(page.getByText("Deploy the Pages project", { exact: true })).toBeVisible();
-    await expect(page.getByText("Deploy Pages button")).toBeVisible();
-    await expect(page.getByLabel("Highlighted target: Deploy Pages button")).toBeVisible();
+    await expect(page.getByText("Deploy the site", { exact: true })).toBeVisible();
+    await expect(page.getByText("Deploy site button")).toBeVisible();
+    await expect(page.getByLabel("Highlighted target: Deploy site button")).toBeVisible();
     await page.getByRole("button", { name: "Next step" }).click();
     await expect(page.getByText("Critical write action")).toBeVisible();
-    await expect(page.getByText("Confirm Deploy Pages project")).toBeVisible();
-    await expect(page.getByText(/Publishes the Pages project to a reachable URL/)).toBeVisible();
+    await expect(page.getByText("Confirm Deploy site")).toBeVisible();
+    await expect(page.getByText(/Publishes the site project to a reachable URL/)).toBeVisible();
 
     await page.goto("https://dash.cloudflare.com/example-account/pages/deploy-result");
     await expect(page.getByLabel("Michi rail")).toBeVisible();
     await page.getByRole("button", { name: "Guide" }).click();
     await page.getByRole("button", { name: "Check page" }).click();
     await expect(page.getByText("Step 5 / 5")).toBeVisible();
-    await expect(page.getByText("Verify the Pages URL")).toBeVisible();
-    await expect(page.getByText("Pages URL detected")).toBeVisible();
-    await expect(page.getByLabel("Highlighted target: Pages URL")).toBeVisible();
+    await expect(page.getByText("Verify the site URL")).toBeVisible();
+    await expect(page.getByText("site URL detected")).toBeVisible();
+    await expect(page.getByLabel("Highlighted target: Site URL")).toBeVisible();
     await page.getByRole("button", { name: "Complete guide" }).click();
     await expect(page.getByText("Primary path complete")).toBeVisible();
-    await expect(page.getByText("Pages URL verified")).toBeVisible();
-    await expect(page.getByText("Cloudflare DNS")).toBeVisible();
+    await expect(page.getByText("Site URL verified")).toBeVisible();
+    await expect(page.getByText("Custom domain")).toBeVisible();
 
     await page.goto("https://dash.cloudflare.com/example-account/workers-and-pages/nested-scroll");
     await expect(page.getByLabel("Michi rail")).toBeVisible();
     await page.getByRole("button", { name: "Guide" }).click();
     await page.getByRole("button", { name: "Check page" }).click();
-    await expect(page.getByLabel("Highlighted target: Create Worker button")).toBeVisible();
+    await expect(page.getByLabel("Highlighted target: Create service button")).toBeVisible();
     const highlightBeforeNestedScroll = await page
-      .getByLabel("Highlighted target: Create Worker button")
+      .getByLabel("Highlighted target: Create service button")
       .boundingBox();
     expect(highlightBeforeNestedScroll?.y).toBeGreaterThan(300);
     await page.locator("[data-scroll-container]").evaluate((element) => {
       element.scrollTop = 120;
       element.dispatchEvent(new Event("scroll"));
     });
-    await expect(page.getByLabel("Highlighted target: Create Worker button")).toBeVisible();
+    await expect(page.getByLabel("Highlighted target: Create service button")).toBeVisible();
     await expect
       .poll(async () => {
-        const box = await page.getByLabel("Highlighted target: Create Worker button").boundingBox();
+        const box = await page.getByLabel("Highlighted target: Create service button").boundingBox();
         return box?.y ?? Number.POSITIVE_INFINITY;
       }, { message: "Expected highlight to stay visible after nested scroll." })
       .toBeLessThan((highlightBeforeNestedScroll?.y ?? 0) - 80);
@@ -295,17 +295,17 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await page.getByRole("button", { name: "Guide" }).click();
     await page.getByRole("button", { name: "Check page" }).click();
     await expect(page.getByText("Target missing")).toBeVisible();
-    await expect(page.getByText(/Create Worker button/)).toBeVisible();
-    await expect(page.getByLabel("Highlighted target: Create Worker button")).toHaveCount(0);
+    await expect(page.getByText(/Create service button/)).toBeVisible();
+    await expect(page.getByLabel("Highlighted target: Create service button")).toHaveCount(0);
 
     await page.goto("https://dash.cloudflare.com/example-account/analytics");
     await expect(page.getByLabel("Michi rail")).toBeVisible();
     await page.getByRole("button", { name: "Guide" }).click();
     await page.getByRole("button", { name: "Check page" }).click();
-    const unsupportedPanel = page.getByLabel("Michi guide panel");
-    await expect(page.getByText("Unsupported page")).toBeVisible();
-    await expect(unsupportedPanel.getByText(/supported Cloudflare dashboard pages/)).toBeVisible();
-    await expect(unsupportedPanel.getByText(/Workers & Pages/)).toBeVisible();
+    const unsupportedPanel = page.getByLabel("Michi side panel");
+    await expect(unsupportedPanel.getByLabel("Unsupported page")).toBeVisible();
+    await expect(unsupportedPanel.getByText(/supported product pages/)).toBeVisible();
+    await expect(unsupportedPanel.getByText(/build area/)).toBeVisible();
     await expect(page.getByText("Step 1 / 5")).toHaveCount(0);
     await expect(page.getByLabel(/Highlighted target/)).toHaveCount(0);
 

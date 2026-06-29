@@ -16,3 +16,4 @@ Design docs explain why Michi behaves the way it does. Product behavior should b
 - `extension-provider-timeout-decision.md`
 - `extension-runtime-fixture-boundary-decision.md`
 - `branch-freshness-checklist-decision.md`
+- `sitegeist-style-side-panel-shell-decision.md`

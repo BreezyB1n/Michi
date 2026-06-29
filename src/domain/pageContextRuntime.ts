@@ -40,7 +40,7 @@ export const createExtensionPageContextRuntime = (): MichiPageContextRuntime => 
     ...provider,
     mode: "extension",
     getInitialContext: () =>
-      unsupportedPageContext("Run Check to read the current Cloudflare page from the extension."),
+      unsupportedPageContext("Run Check to read the current page from the extension."),
     syncGuideStep: readCurrentContext,
     simulatePageDrift: (index = 0, kind = "backend-api") => pageDriftContextForStep(index, kind),
     recoverToStep: readCurrentContext

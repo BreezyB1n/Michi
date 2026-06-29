@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import App from "../src/App";
@@ -12,7 +12,7 @@ const startBackendGuide = async () => {
   const user = userEvent.setup();
   render(<App />);
 
-  await user.click(screen.getByRole("button", { name: /text guide/i }));
+  await user.click(screen.getByRole("button", { name: /^guide$/i }));
   await user.clear(screen.getByLabelText(/user intent/i));
   await user.type(screen.getByLabelText(/user intent/i), sampleIntent);
   await user.click(screen.getByRole("button", { name: /start guide/i }));
@@ -25,7 +25,7 @@ const startStaticGuide = async () => {
   const user = userEvent.setup();
   render(<App />);
 
-  await user.click(screen.getByRole("button", { name: /text guide/i }));
+  await user.click(screen.getByRole("button", { name: /^guide$/i }));
   await user.clear(screen.getByLabelText(/user intent/i));
   await user.type(screen.getByLabelText(/user intent/i), "Publish a static website.");
   await user.click(screen.getByRole("button", { name: /start guide/i }));
@@ -40,7 +40,7 @@ const extensionFailureRuntime = (): MichiPageContextRuntime => {
   return {
     mode: "extension",
     getInitialContext: () =>
-      unsupportedPageContext("Run Check to read the current Cloudflare page from the extension."),
+      unsupportedPageContext("Run Check to read the current page from the extension."),
     getCurrentContext: async () => failedContext,
     syncGuideStep: async () => failedContext,
     simulatePageDrift: async () => failedContext,
@@ -52,7 +52,7 @@ const extensionFailureRuntime = (): MichiPageContextRuntime => {
 const extensionRejectingRuntime = (): MichiPageContextRuntime => ({
   mode: "extension",
   getInitialContext: () =>
-    unsupportedPageContext("Run Check to read the current Cloudflare page from the extension."),
+    unsupportedPageContext("Run Check to read the current page from the extension."),
   getCurrentContext: async () => {
     throw new Error("Extension request rejected");
   },
@@ -71,7 +71,7 @@ const extensionRejectingRuntime = (): MichiPageContextRuntime => ({
 const extensionThrowingRuntime = (): MichiPageContextRuntime => ({
   mode: "extension",
   getInitialContext: () =>
-    unsupportedPageContext("Run Check to read the current Cloudflare page from the extension."),
+    unsupportedPageContext("Run Check to read the current page from the extension."),
   getCurrentContext: () => {
     throw new Error("Synchronous extension failure");
   },
@@ -96,7 +96,7 @@ const delayedExtensionRuntime = () => {
   const runtime: MichiPageContextRuntime = {
     mode: "extension",
     getInitialContext: () =>
-      unsupportedPageContext("Run Check to read the current Cloudflare page from the extension."),
+      unsupportedPageContext("Run Check to read the current page from the extension."),
     getCurrentContext: async () =>
       unsupportedPageContext("Manual check context is not used in this test."),
     syncGuideStep: async () => pendingStepContext,
@@ -118,15 +118,15 @@ describe("Michi app", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    expect(screen.getByRole("button", { name: /text guide/i })).toBeInTheDocument();
-    expect(screen.queryByLabelText(/michi plugin panel/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^guide$/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/michi side panel/i)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /text guide/i }));
+    await user.click(screen.getByRole("button", { name: /^guide$/i }));
 
     expect(screen.getByRole("heading", { name: /michi/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/user intent/i)).toHaveValue(sampleIntent);
-    expect(screen.getByRole("button", { name: /text guide/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /run check/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^guide$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /check page/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /minimize panel/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /image mode/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /video mode/i })).not.toBeInTheDocument();
@@ -141,39 +141,41 @@ describe("Michi app", () => {
   it("collapses and expands the guide panel without resetting session state", async () => {
     const user = await startBackendGuide();
 
-    expect(screen.getByRole("heading", { name: /Find the Workers entry/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Find the build area/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /minimize panel/i }));
-    expect(screen.queryByLabelText(/michi plugin panel/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/michi side panel/i)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /text guide/i }));
-    expect(screen.getByRole("heading", { name: /Find the Workers entry/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^guide$/i }));
+    expect(screen.getByRole("heading", { name: /Find the build area/i })).toBeInTheDocument();
   });
 
   it("shows the Guide Workspace with capability, step purpose, completion check, and page state", async () => {
     await startBackendGuide();
 
-    expect(screen.getByLabelText(/simulated host website/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/michi plugin panel/i)).toBeInTheDocument();
-    expect(screen.getByText(/Cloudflare Workers/i)).toBeInTheDocument();
-    expect(screen.getByText(/Compute/i)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /Find the Workers entry/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/current page preview/i)).toBeInTheDocument();
+    const sidePanel = screen.getByLabelText(/michi side panel/i);
+    expect(sidePanel).toBeInTheDocument();
+    expect(within(sidePanel).getByText(/Service runtime/i)).toBeInTheDocument();
+    expect(within(sidePanel).getByText(/Deployable endpoint/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Find the build area/i })).toBeInTheDocument();
     expect(screen.getByText(/Step purpose/i)).toBeInTheDocument();
     expect(screen.getByText(/Completion check/i)).toBeInTheDocument();
-    expect(screen.getByText(/Cloudflare dashboard \/ Home/i)).toBeInTheDocument();
-    expect(screen.getByText(/Workers & Pages sidebar item/i)).toBeInTheDocument();
-    expect(screen.getByText(/Provider synced/i)).toBeInTheDocument();
+    expect(screen.getByText(/Workspace \/ Home/i)).toBeInTheDocument();
+    expect(screen.getByText(/Build area navigation item/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Page context synced/i).length).toBeGreaterThan(0);
+    expect(within(sidePanel).queryByText(/cloudflare|workers|pages|dns/i)).not.toBeInTheDocument();
   });
 
   it("routes static website work through the Pages guide path", async () => {
     await startStaticGuide();
 
-    expect(screen.getByText(/Cloudflare Pages/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Hosting/i).length).toBeGreaterThan(0);
-    expect(screen.getByRole("heading", { name: /Find the Pages entry/i })).toBeInTheDocument();
-    expect(screen.getByText(/Pages can be opened/i)).toBeInTheDocument();
-    expect(screen.getByText(/Create and deploy a Pages site/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Acknowledge Pages and keep this demo on Workers/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Site publishing/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Static web path/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: /Find the build area/i })).toBeInTheDocument();
+    expect(screen.getByText(/Sites can be opened/i)).toBeInTheDocument();
+    expect(screen.getByText(/Create and publish a site/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Acknowledge Sites and keep this demo on Services/i)).not.toBeInTheDocument();
   });
 
   it("requires explicit confirmation for a critical write action", async () => {
@@ -182,8 +184,8 @@ describe("Michi app", () => {
     await user.click(screen.getByRole("button", { name: /advance guide/i }));
     await user.click(screen.getByRole("button", { name: /advance guide/i }));
 
-    expect(screen.getByRole("heading", { name: /Confirm Create Worker/i })).toBeInTheDocument();
-    expect(screen.getByText(/Creates a new Cloudflare Worker resource/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Confirm Create service/i })).toBeInTheDocument();
+    expect(screen.getByText(/Creates a new service resource/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /confirm action/i }));
 
@@ -198,26 +200,27 @@ describe("Michi app", () => {
     expect(screen.getByRole("heading", { name: /Page layout changed/i })).toBeInTheDocument();
     expect(screen.getByText(/Recovery step/i)).toBeInTheDocument();
     expect(screen.getByText(/current step cannot be anchored/i)).toBeInTheDocument();
-    expect(screen.getByText(/dashboard search for Workers & Pages/i)).toBeInTheDocument();
+    expect(screen.getByText(/page search for Build area/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/michi side panel/i)).not.toHaveTextContent(/cloudflare/i);
 
     await user.click(screen.getByRole("button", { name: /recover and re-check/i }));
 
-    expect(screen.getByRole("heading", { name: /Find the Workers entry/i })).toBeInTheDocument();
-    expect(screen.getByText(/Provider synced/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Find the build area/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/Page context synced/i).length).toBeGreaterThan(0);
   });
 
   it("shows a recoverable extension runtime error when page context cannot be read", async () => {
     const user = userEvent.setup();
     render(<App pageContextRuntime={extensionFailureRuntime()} />);
 
-    await user.click(screen.getByRole("button", { name: /text guide/i }));
+    await user.click(screen.getByRole("button", { name: /^guide$/i }));
     await user.click(screen.getByRole("button", { name: /start guide/i }));
     await user.click(screen.getByRole("button", { name: /backend logic or api/i }));
 
     expect(await screen.findByRole("heading", { name: /Extension runtime unavailable/i })).toBeInTheDocument();
     expect(screen.getByText(/No receiving end/i)).toBeInTheDocument();
-    expect(screen.getByText(/open or refresh a supported Cloudflare dashboard tab/i)).toBeInTheDocument();
-    expect(screen.getByText(/Provider status/i)).toBeInTheDocument();
+    expect(screen.getByText(/open or refresh a supported browser tab/i)).toBeInTheDocument();
+    expect(screen.getByText(/Context status/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Extension runtime error/i).length).toBeGreaterThanOrEqual(1);
   });
 
@@ -225,7 +228,7 @@ describe("Michi app", () => {
     const user = userEvent.setup();
     render(<App pageContextRuntime={extensionRejectingRuntime()} />);
 
-    await user.click(screen.getByRole("button", { name: /text guide/i }));
+    await user.click(screen.getByRole("button", { name: /^guide$/i }));
     await user.click(screen.getByRole("button", { name: /start guide/i }));
     await user.click(screen.getByRole("button", { name: /backend logic or api/i }));
 
@@ -237,7 +240,7 @@ describe("Michi app", () => {
     const user = userEvent.setup();
     render(<App pageContextRuntime={extensionThrowingRuntime()} />);
 
-    await user.click(screen.getByRole("button", { name: /text guide/i }));
+    await user.click(screen.getByRole("button", { name: /^guide$/i }));
     await user.click(screen.getByRole("button", { name: /start guide/i }));
     await user.click(screen.getByRole("button", { name: /backend logic or api/i }));
 
@@ -250,7 +253,7 @@ describe("Michi app", () => {
     const { runtime, resolveStepContext } = delayedExtensionRuntime();
     render(<App pageContextRuntime={runtime} />);
 
-    await user.click(screen.getByRole("button", { name: /text guide/i }));
+    await user.click(screen.getByRole("button", { name: /^guide$/i }));
     await user.click(screen.getByRole("button", { name: /start guide/i }));
     await user.click(screen.getByRole("button", { name: /backend logic or api/i }));
     await user.click(screen.getByRole("button", { name: /reset/i }));
@@ -264,7 +267,7 @@ describe("Michi app", () => {
     expect(screen.getByLabelText(/user intent/i)).toHaveValue(sampleIntent);
   });
 
-  it("reaches completion with DNS as the follow-up route", async () => {
+  it("reaches completion with custom domain as the follow-up route", async () => {
     const user = await startBackendGuide();
 
     await user.click(screen.getByRole("button", { name: /advance guide/i }));
@@ -275,13 +278,14 @@ describe("Michi app", () => {
     await user.click(screen.getByRole("button", { name: /confirm action/i }));
     await user.click(screen.getByRole("button", { name: /advance guide/i }));
 
-    expect(screen.getByRole("heading", { name: /Worker URL verified/i })).toBeInTheDocument();
-    expect(screen.getByText(/Worker URL returned HTTP 200/i)).toBeInTheDocument();
-    expect(screen.getByText(/Cloudflare DNS/i)).toBeInTheDocument();
-    expect(screen.getByText(/Domain routing/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Service URL verified/i })).toBeInTheDocument();
+    expect(screen.getByText(/service URL returned HTTP 200/i)).toBeInTheDocument();
+    const sidePanel = screen.getByLabelText(/michi side panel/i);
+    expect(within(sidePanel).getByText(/^Custom domain$/i)).toBeInTheDocument();
+    expect(within(sidePanel).getByText(/^Routing follow-up$/i)).toBeInTheDocument();
   });
 
-  it("reaches Pages completion with DNS as the follow-up route", async () => {
+  it("reaches static-site completion with custom domain as the follow-up route", async () => {
     const user = await startStaticGuide();
 
     await user.click(screen.getByRole("button", { name: /advance guide/i }));
@@ -289,15 +293,16 @@ describe("Michi app", () => {
     await user.click(screen.getByRole("button", { name: /advance guide/i }));
     await user.click(screen.getByRole("button", { name: /advance guide/i }));
 
-    expect(screen.getByRole("heading", { name: /Confirm Deploy Pages project/i })).toBeInTheDocument();
-    expect(screen.getByText(/Publishes the Pages project/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Confirm Deploy site/i })).toBeInTheDocument();
+    expect(screen.getByText(/Publishes the site project/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /confirm action/i }));
     await user.click(screen.getByRole("button", { name: /advance guide/i }));
 
-    expect(screen.getByRole("heading", { name: /Pages URL verified/i })).toBeInTheDocument();
-    expect(screen.getByText(/Pages URL returned HTTP 200/i)).toBeInTheDocument();
-    expect(screen.getByText(/Cloudflare DNS/i)).toBeInTheDocument();
-    expect(screen.getByText(/Domain routing/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Site URL verified/i })).toBeInTheDocument();
+    expect(screen.getByText(/site URL returned HTTP 200/i)).toBeInTheDocument();
+    const sidePanel = screen.getByLabelText(/michi side panel/i);
+    expect(within(sidePanel).getByText(/^Custom domain$/i)).toBeInTheDocument();
+    expect(within(sidePanel).getByText(/^Routing follow-up$/i)).toBeInTheDocument();
   });
 });

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Michi",
   "version": "0.3.0",
-  "description": "Development runtime for Michi page anchoring on Cloudflare dashboard pages.",
+  "description": "Development runtime for Michi page anchoring on supported workspace pages.",
   "action": {
     "default_title": "Michi"
   },

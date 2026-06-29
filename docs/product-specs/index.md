@@ -33,3 +33,4 @@ Product specs are the source of truth for what Michi should build.
 - `extension-route-state-guard.md`
 - `extension-runtime-fixture-boundary.md`
 - `branch-freshness-checklist.md`
+- `sitegeist-style-side-panel-shell.md`
