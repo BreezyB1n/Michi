@@ -64,7 +64,7 @@ export type PageSignal = {
 export type HostPageContext = {
   url: string;
   title: string;
-  product: "cloudflare";
+  product: "cloudflare" | "michi";
   locationLabel: string;
   routeId: string;
   detectedAt: string;

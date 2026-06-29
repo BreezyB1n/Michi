@@ -15,6 +15,10 @@ describe("product presentation copy", () => {
     expect(productRouteLabel("cloudflare.unexpected-page")).toBe("unexpected page");
   });
 
+  it("maps Michi runtime unsupported context into product language", () => {
+    expect(productRouteLabel("michi.unsupported")).toBe("Unsupported runtime context");
+  });
+
   it("hides provider-owned generated URL domains", () => {
     expect(
       sanitizeProviderText("https://michi-starter.example.workers.dev is visible on the page.")

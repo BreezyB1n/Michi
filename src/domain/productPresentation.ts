@@ -67,7 +67,8 @@ const routeLabelsById: Record<string, string> = {
   "cloudflare.pages.static-assets": "Static asset setup",
   "cloudflare.pages.deploy-review": "Site deployment review",
   "cloudflare.pages.deploy-result": "Site deployment result",
-  "cloudflare.unsupported": "Unsupported page"
+  "cloudflare.unsupported": "Unsupported page",
+  "michi.unsupported": "Unsupported runtime context"
 };
 
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

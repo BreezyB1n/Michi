@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createExtensionPageContextProvider } from "../src/domain/extensionPageContextProvider";
 import type { HostPageContext } from "../src/domain/types";
 
+const providerBrandPattern = /\b(?:Cloudflare|Workers|Pages|DNS)\b|cloudflare\./i;
+
 const cloudflareContext: HostPageContext = {
   url: "https://dash.cloudflare.com/example-account/workers-and-pages",
   title: "Workers & Pages",
@@ -63,7 +65,8 @@ describe("Extension page context provider", () => {
 
     const context = await provider.getCurrentContext();
 
-    expect(context.routeId).toBe("cloudflare.unsupported");
+    expect(context.product).toBe("michi");
+    expect(context.routeId).toBe("michi.unsupported");
     expect(context.locationLabel).toBe("Unsupported page context");
     expect(context.signals[0]).toEqual(
       expect.objectContaining({
@@ -78,11 +81,12 @@ describe("Extension page context provider", () => {
 
     const context = await provider.getCurrentContext();
 
-    expect(context.routeId).toBe("cloudflare.unsupported");
+    expect(context.product).toBe("michi");
+    expect(context.routeId).toBe("michi.unsupported");
     expect(context.signals[0]).toEqual(
       expect.objectContaining({
         severity: "error",
-        value: "Chrome extension runtime is not available."
+        value: "Extension runtime is not available."
       })
     );
   });
@@ -99,7 +103,8 @@ describe("Extension page context provider", () => {
 
     const context = await provider.getCurrentContext();
 
-    expect(context.routeId).toBe("cloudflare.unsupported");
+    expect(context.product).toBe("michi");
+    expect(context.routeId).toBe("michi.unsupported");
     expect(context.signals[0]).toEqual(
       expect.objectContaining({
         severity: "error",
@@ -117,7 +122,8 @@ describe("Extension page context provider", () => {
 
     const context = await provider.getCurrentContext();
 
-    expect(context.routeId).toBe("cloudflare.unsupported");
+    expect(context.product).toBe("michi");
+    expect(context.routeId).toBe("michi.unsupported");
     expect(context.signals[0]).toEqual(
       expect.objectContaining({
         severity: "error",
@@ -135,7 +141,8 @@ describe("Extension page context provider", () => {
 
     const context = await provider.getCurrentContext();
 
-    expect(context.routeId).toBe("cloudflare.unsupported");
+    expect(context.product).toBe("michi");
+    expect(context.routeId).toBe("michi.unsupported");
     expect(context.signals[0]).toEqual(
       expect.objectContaining({
         severity: "error",
@@ -162,7 +169,8 @@ describe("Extension page context provider", () => {
     await vi.advanceTimersByTimeAsync(1);
     const context = await contextPromise;
 
-    expect(context.routeId).toBe("cloudflare.unsupported");
+    expect(context.product).toBe("michi");
+    expect(context.routeId).toBe("michi.unsupported");
     expect(context.signals[0]).toEqual(
       expect.objectContaining({
         severity: "error",
@@ -194,7 +202,34 @@ describe("Extension page context provider", () => {
 
     const context = await contextPromise;
 
-    expect(context.routeId).toBe("cloudflare.unsupported");
+    expect(context.product).toBe("michi");
+    expect(context.routeId).toBe("michi.unsupported");
     expect(context.signals[0].value).toBe("Extension page context request timed out after 10ms.");
+  });
+
+  it("normalizes provider-branded failure reasons before returning runtime context", async () => {
+    const provider = createExtensionPageContextProvider({
+      sendMessage: vi.fn((_message, callback) => {
+        callback({
+          type: "MICHI_PAGE_CONTEXT_ERROR",
+          reason:
+            "Could not read Cloudflare dashboard tab. Open Workers & Pages and retry DNS setup."
+        });
+      })
+    });
+
+    const context = await provider.getCurrentContext();
+    const visibleContextCopy = [
+      context.product,
+      context.routeId,
+      context.locationLabel,
+      context.signals[0].label,
+      context.signals[0].value
+    ].join(" ");
+
+    expect(visibleContextCopy).not.toMatch(providerBrandPattern);
+    expect(context.signals[0].value).toContain("supported browser tab");
+    expect(context.signals[0].value).toContain("Build area");
+    expect(context.signals[0].value).toContain("custom domain");
   });
 });
