@@ -47,6 +47,18 @@ import {
 import { unsupportedPageContext } from "./domain/extensionPageContextProvider";
 import { createMichiPageContextRuntime } from "./domain/pageContextRuntime";
 import type { MichiPageContextRuntime } from "./domain/pageContextRuntime";
+import {
+  productBlockingStateCopy,
+  productCapabilityCopy,
+  productCompletionTitle,
+  productGuideStepCopy,
+  productLocationLabel,
+  productPageStateCopy,
+  productRouteLabel,
+  productSignalCopy,
+  productTargetLabel,
+  sanitizeProviderText
+} from "./domain/productPresentation";
 
 const sampleIntent = "I want to build a small service that other people can access.";
 
@@ -228,7 +240,7 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
           aria-label="Michi browser extension demo"
         >
           <header
-            className="grid h-12 grid-cols-[112px_minmax(180px,1fr)_112px] items-center gap-3 border-b border-border bg-shell px-3.5 max-[520px]:grid-cols-[minmax(0,1fr)_56px] max-[520px]:gap-2"
+            className="grid h-12 grid-cols-[112px_minmax(180px,1fr)_112px] items-center gap-3 border-b border-border bg-background px-3.5 max-[520px]:grid-cols-[minmax(0,1fr)_56px] max-[520px]:gap-2"
             aria-label="Browser chrome"
           >
             <div className="flex items-center gap-2 max-[520px]:hidden" aria-hidden="true">
@@ -237,7 +249,7 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
               <span className="size-2.5 rounded-full bg-[oklch(0.7_0.13_150)]" />
             </div>
             <div className="flex h-8 items-center justify-center rounded-full border border-border bg-muted px-4 text-center text-[13px] font-medium text-muted-foreground max-[520px]:justify-start">
-              dash.cloudflare.com
+              active.page / guided task
             </div>
             <div className="flex items-center justify-end gap-2 text-muted-foreground" aria-hidden="true">
               <SidebarSimple />
@@ -247,25 +259,26 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
 
           <div
             className={cn(
-              "grid min-h-[calc(100dvh-3rem)]",
+              "grid h-[calc(100dvh-3rem)] min-h-0 overflow-hidden",
               panelOpen
-                ? "grid-cols-[minmax(0,1fr)_410px_58px] max-[980px]:grid-cols-1 max-[980px]:grid-rows-[minmax(470px,1fr)_auto_52px]"
-                : "grid-cols-[minmax(0,1fr)_58px] max-[980px]:grid-cols-1 max-[980px]:grid-rows-[minmax(470px,1fr)_52px]"
+                ? "grid-cols-[minmax(0,1fr)_410px_58px] max-[980px]:grid-cols-1 max-[980px]:grid-rows-[minmax(0,1fr)_auto_52px]"
+                : "grid-cols-[minmax(0,1fr)_58px] max-[980px]:grid-cols-1 max-[980px]:grid-rows-[minmax(0,1fr)_52px]"
             )}
           >
-            <HostWebsite session={session} hostPageContext={hostPageContext} />
+            <CurrentPagePreview session={session} hostPageContext={hostPageContext} />
             {panelOpen ? (
               <aside
-                className="grid min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] border-l border-border bg-shell text-foreground max-[980px]:max-h-[68dvh] max-[980px]:border-l-0 max-[980px]:border-t"
-                aria-label="Michi plugin panel"
+                className="grid h-full max-h-full min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden border-l border-black/20 bg-primary text-primary-foreground shadow-[0_0_0_1px_rgb(255_255_255_/_0.05)_inset] max-[980px]:max-h-[68dvh] max-[980px]:border-l-0 max-[980px]:border-t"
+                aria-label="Michi side panel"
               >
                 <PluginHeader
                   session={session}
+                  hostPageContext={hostPageContext}
                   progress={progress}
                   onClose={() => setPanelOpen(false)}
                 />
                 <div
-                  className="min-h-0 overflow-auto overscroll-contain bg-shell [scrollbar-width:thin]"
+                  className="min-h-0 overflow-auto overscroll-contain bg-primary [scrollbar-width:thin]"
                   key={`${session.phase}-${session.activeStepIndex}-${session.serviceKind ?? "none"}`}
                 >
                   {session.phase === "clarify" ? (
@@ -316,11 +329,11 @@ const statusLabelForSession = (session: GuideSession, hostPageContext: HostPageC
   }
 
   if (session.pageState.blockingState) {
-    return session.pageState.blockingState.title;
+    return productBlockingStateCopy(session.pageState.blockingState).title;
   }
 
   if (hostPageContext.blockingState) {
-    return hostPageContext.blockingState.title;
+    return productBlockingStateCopy(hostPageContext.blockingState).title;
   }
 
   return session.pageState.completionSatisfied ? "Ready" : "Needs check";
@@ -331,28 +344,28 @@ type HostWebsiteProps = {
   hostPageContext: HostPageContext;
 };
 
-const HostWebsite = ({ session, hostPageContext }: HostWebsiteProps) => (
+const CurrentPagePreview = ({ session, hostPageContext }: HostWebsiteProps) => (
   <section
-    className="grid min-w-0 grid-cols-[216px_minmax(0,1fr)] overflow-hidden bg-shell text-foreground max-[1120px]:grid-cols-[178px_minmax(0,1fr)] max-[980px]:grid-cols-1"
-    aria-label="Simulated host website"
+    className="grid min-h-0 min-w-0 grid-cols-[216px_minmax(0,1fr)] overflow-hidden bg-shell text-foreground max-[1120px]:grid-cols-[178px_minmax(0,1fr)] max-[980px]:grid-cols-1"
+    aria-label="Current page preview"
   >
     <nav
       className="grid content-start gap-1.5 border-r border-border bg-sidebar px-2.5 py-7 max-[980px]:flex max-[980px]:items-center max-[980px]:gap-2 max-[980px]:overflow-x-auto max-[980px]:border-r-0 max-[980px]:border-b max-[980px]:p-3"
-      aria-label="Cloudflare navigation"
+      aria-label="Current app navigation"
     >
       <div className="mb-6 ml-2 grid size-11 place-items-center rounded-xl bg-primary text-sm font-extrabold tracking-tight text-primary-foreground shadow-sm max-[980px]:hidden">
-        CF
+        pg
       </div>
       <HostNavItem icon={<House />} label="Overview" />
-      <HostNavItem icon={<Stack />} label="Workers & Pages" active />
-      <HostNavItem icon={<Globe />} label="DNS" />
-      <HostNavItem icon={<Database />} label="R2" />
-      <HostNavItem icon={<ShieldCheck />} label="Security" />
+      <HostNavItem icon={<Stack />} label="Build area" active />
+      <HostNavItem icon={<Globe />} label="Domains" />
+      <HostNavItem icon={<Database />} label="Data" />
+      <HostNavItem icon={<ShieldCheck />} label="Access" />
     </nav>
 
     <section
-      className="min-w-0 bg-shell p-7 max-[980px]:p-4"
-      aria-label="Cloudflare page content"
+      className="min-w-0 overflow-auto bg-shell p-7 max-[980px]:p-4"
+      aria-label="Current page content"
     >
       <HostWebsiteContent session={session} hostPageContext={hostPageContext} />
     </section>
@@ -366,19 +379,19 @@ const HostWebsiteContent = ({ session, hostPageContext }: HostWebsiteProps) => {
     <>
       <div className="mb-5 flex min-h-10 flex-wrap items-center gap-2.5">
         <Badge variant="outline" className="bg-card text-foreground">
-          Account home
+          Active workspace
         </Badge>
-        <Badge variant="neutral">{isStaticSite ? "Pages" : "Workers"}</Badge>
-        <Badge variant="neutral">{isStaticSite ? "Preview deploy" : "Production"}</Badge>
+        <Badge variant="neutral">{isStaticSite ? "Site path" : "Service path"}</Badge>
+        <Badge variant="neutral">Local proof</Badge>
       </div>
 
       <div className="mb-6 flex items-start justify-between gap-5">
         <div>
           <p className="mb-2 font-mono text-[11px] font-semibold tracking-[0.16em] text-muted-foreground">
-            Cloudflare console
+            Active page preview
           </p>
           <h2 className="m-0 text-balance text-3xl font-semibold tracking-[-0.025em] text-foreground max-[980px]:text-[1.9rem]">
-            Workers & Pages
+            Build area
           </h2>
         </div>
         <Button type="button" variant="secondary">
@@ -390,30 +403,30 @@ const HostWebsiteContent = ({ session, hostPageContext }: HostWebsiteProps) => {
         <Card className="min-h-[470px] border border-border p-6 max-[980px]:min-h-[300px] max-[520px]:p-4">
           <div className="mb-6 flex items-center justify-between gap-3">
             <Badge variant="outline" className="font-mono tracking-[0.16em]">
-              Runtime
+              Guided route
             </Badge>
-            <span className="text-xs font-medium text-muted-foreground">HTTP services</span>
+            <span className="text-xs font-medium text-muted-foreground">Reachable result</span>
           </div>
           <h3 className="mb-4 max-w-[13ch] text-balance text-5xl font-semibold leading-[0.98] tracking-[-0.045em] text-foreground max-[1120px]:text-[2.7rem] max-[980px]:text-[2.2rem]">
-            {isStaticSite ? "Create and deploy a Pages site" : "Create and deploy a Worker"}
+            {isStaticSite ? "Create and publish a site" : "Create and deploy a service"}
           </h3>
           <p className="mb-6 max-w-[54ch] text-pretty text-sm leading-6 text-muted-foreground">
             {isStaticSite
-              ? "Host a static website, publish it to a Pages URL, then decide whether to connect a custom domain."
-              : "Build a lightweight service, publish it to a Worker URL, then decide whether to connect a custom domain."}
+              ? "Publish a static website to a reachable URL, then decide whether to connect a custom domain."
+              : "Build a lightweight endpoint, publish it to a reachable URL, then decide whether to connect a custom domain."}
           </p>
           <div
             className="mb-6 grid grid-cols-3 gap-2.5 max-[980px]:grid-cols-1"
-            aria-label={isStaticSite ? "Pages hosting signals" : "Workers runtime signals"}
+            aria-label={isStaticSite ? "Site publishing signals" : "Service runtime signals"}
           >
-            <MetricTile label="Edge" value={isStaticSite ? "Global CDN" : "Global runtime"} icon={<Cloud />} />
-            <MetricTile label={isStaticSite ? "Site" : "API"} value={isStaticSite ? "Static route" : "Backend route"} icon={<Code />} />
-            <MetricTile label="DNS" value="Follow-up path" icon={<Globe />} />
+            <MetricTile label="Scope" value={isStaticSite ? "Static output" : "Runtime logic"} icon={<Cloud />} />
+            <MetricTile label="Route" value={isStaticSite ? "Website URL" : "Service URL"} icon={<Code />} />
+            <MetricTile label="Share" value="Domain follow-up" icon={<Globe />} />
           </div>
           <div className="flex max-w-xl items-center gap-2.5 rounded-lg border border-accent/35 bg-accent/10 px-3.5 py-3 text-sm font-semibold text-accent-foreground">
             <CheckCircle aria-hidden="true" />
             {session.phase !== "intent" && session.phase !== "clarify"
-              ? "Michi highlighted the next dashboard control"
+              ? "Michi highlighted the next page control"
               : "Waiting for Michi"}
           </div>
         </Card>
@@ -429,7 +442,7 @@ const HostWebsiteContent = ({ session, hostPageContext }: HostWebsiteProps) => {
                 value={
                   session.phase === "intent"
                     ? "No guide running"
-                    : hostPageContext.routeId
+                    : productRouteLabel(hostPageContext.routeId)
                 }
               />
               <StateRow
@@ -440,9 +453,24 @@ const HostWebsiteContent = ({ session, hostPageContext }: HostWebsiteProps) => {
             <div className="mt-4 grid gap-2.5" aria-label="Recent console activity">
               {(session.phase === "intent"
                 ? [
-                    { id: "navigation-visible", label: "Navigation visible", severity: "info" },
-                    { id: "create-action-available", label: "Create action available", severity: "info" },
-                    { id: "guide-overlay-ready", label: "Guide overlay ready", severity: "info" }
+                    {
+                      id: "navigation-visible",
+                      label: "Navigation visible",
+                      value: "Navigation visible",
+                      severity: "info"
+                    },
+                    {
+                      id: "create-action-available",
+                      label: "Create action available",
+                      value: "Create action available",
+                      severity: "info"
+                    },
+                    {
+                      id: "guide-overlay-ready",
+                      label: "Michi rail ready",
+                      value: "Michi rail ready",
+                      severity: "info"
+                    }
                   ]
                 : hostPageContext.signals
               ).map((signal) => (
@@ -450,7 +478,7 @@ const HostWebsiteContent = ({ session, hostPageContext }: HostWebsiteProps) => {
                     key={signal.id}
                     className="rounded-lg border border-accent/20 bg-accent/8 px-3 py-2.5 text-xs font-medium text-muted-foreground"
                   >
-                    {signal.label}: {signal.severity}
+                    {productSignalCopy(signal).label}: {signal.severity}
                   </div>
               ))}
             </div>
@@ -503,25 +531,26 @@ type StateRowProps = {
 };
 
 const StateRow = ({ label, value, className }: StateRowProps) => (
-  <div className={cn("grid gap-1.5 border-b border-border py-3 last:border-b-0", className)}>
-    <dt className="font-mono text-[11px] font-semibold text-muted-foreground">{label}</dt>
-    <dd className="m-0 text-sm leading-6 text-foreground">{value}</dd>
+  <div className={cn("grid gap-1.5 border-b border-current/10 py-3 last:border-b-0", className)}>
+    <dt className="font-mono text-[11px] font-semibold text-current opacity-50">{label}</dt>
+    <dd className="m-0 text-sm leading-6 text-current">{value}</dd>
   </div>
 );
 
 type PluginHeaderProps = {
   session: GuideSession;
+  hostPageContext: HostPageContext;
   progress: string;
   onClose: () => void;
 };
 
-const PluginHeader = ({ session, progress, onClose }: PluginHeaderProps) => (
-  <header className="grid grid-cols-[minmax(0,1fr)_40px] gap-2.5 border-b border-border bg-shell px-5 py-5 max-[520px]:px-4 max-[520px]:py-4">
+const PluginHeader = ({ session, hostPageContext, progress, onClose }: PluginHeaderProps) => (
+  <header className="grid grid-cols-[minmax(0,1fr)_40px] gap-2.5 border-b border-white/10 bg-primary px-5 py-5 max-[520px]:px-4 max-[520px]:py-4">
     <div>
-      <p className="mb-1.5 font-mono text-[11px] font-semibold tracking-[0.14em] text-muted-foreground">
-        Guide Agent
+      <p className="mb-1.5 font-mono text-[11px] font-semibold tracking-[0.14em] text-white/50">
+        Michi agent
       </p>
-      <h1 className="m-0 text-2xl font-semibold leading-none tracking-[-0.035em] text-foreground max-[520px]:text-xl">
+      <h1 className="m-0 text-2xl font-semibold leading-none tracking-[-0.035em] text-primary-foreground max-[520px]:text-xl">
         Michi
       </h1>
     </div>
@@ -534,6 +563,7 @@ const PluginHeader = ({ session, progress, onClose }: PluginHeaderProps) => (
       <Badge variant={session.selectedCapability ? "accent" : "neutral"}>
         {session.selectedCapability ? "Mapped" : "No capability"}
       </Badge>
+      <Badge variant="outline">{productRouteLabel(hostPageContext.routeId)}</Badge>
     </div>
   </header>
 );
@@ -545,25 +575,25 @@ type ClarificationPanelProps = {
 
 const ClarificationPanel = ({ intent, onChoose }: ClarificationPanelProps) => (
   <SectionCard aria-label="Service clarification">
-    <div className="grid gap-2 rounded-lg border border-border bg-muted px-3 py-3">
-      <span className="font-mono text-[11px] font-semibold text-muted-foreground">User intent</span>
-      <p className="m-0 text-sm leading-6 text-foreground">{intent}</p>
+    <div className="grid gap-2 rounded-lg border border-white/10 bg-white/[0.06] px-3 py-3">
+      <span className="font-mono text-[11px] font-semibold text-white/45">User intent</span>
+      <p className="m-0 text-sm leading-6 text-primary-foreground">{intent}</p>
     </div>
-    <div className="my-4 h-px bg-border" />
+    <div className="my-4 h-px bg-white/10" />
     <SectionLabel>Path decision</SectionLabel>
     <h2 className="mb-2 text-balance text-xl font-semibold tracking-[-0.025em]">
       What kind of service are you building?
     </h2>
-    <p className="mb-4 text-pretty text-sm leading-6 text-muted-foreground">
+    <p className="mb-4 text-pretty text-sm leading-6 text-white/60">
       Michi only asks questions that change the guide path. This split decides
-      whether to route toward Workers or Pages.
+      whether to route toward a service runtime or a static publishing path.
     </p>
     <div className="grid gap-2.5">
       <ChoiceButton onClick={() => onChoose("backend-api")} title="Backend logic or API">
-        Route to Workers / Compute
+        Route to a deployable service path
       </ChoiceButton>
       <ChoiceButton onClick={() => onChoose("static-site")} title="Static website">
-        Route to Pages / Hosting
+        Route to a site publishing path
       </ChoiceButton>
     </div>
   </SectionCard>
@@ -579,10 +609,10 @@ const ChoiceButton = ({ title, children, onClick }: ChoiceButtonProps) => (
   <button
     type="button"
     onClick={onClick}
-    className="min-h-20 rounded-lg border border-border bg-card p-3.5 text-left shadow-sm transition-[background-color,border-color,transform] duration-150 hover:border-accent/35 hover:bg-accent/8 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    className="min-h-20 rounded-lg border border-white/10 bg-white/[0.06] p-3.5 text-left shadow-sm transition-[background-color,border-color,transform] duration-150 hover:border-accent/45 hover:bg-accent/16 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
   >
-    <span className="mb-1 block text-sm font-semibold text-foreground">{title}</span>
-    <small className="text-sm leading-5 text-muted-foreground">{children}</small>
+    <span className="mb-1 block text-sm font-semibold text-primary-foreground">{title}</span>
+    <small className="text-sm leading-5 text-white/58">{children}</small>
   </button>
 );
 
@@ -601,6 +631,9 @@ const GuidePanel = ({
   onIntentChange,
   onStart
 }: GuidePanelProps) => {
+  const displayStep = productGuideStepCopy(currentStep);
+  const displayCapability = productCapabilityCopy(session.selectedCapability, session.serviceKind);
+
   if (session.phase === "intent") {
     return (
       <SectionCard>
@@ -610,29 +643,27 @@ const GuidePanel = ({
   }
 
   if (session.phase === "complete") {
-    const isStaticSite = session.serviceKind === "static-site";
+    const followUpCapability = productCapabilityCopy(session.followUpCapability);
 
     return (
       <SectionCard>
         <SectionLabel>Primary path complete</SectionLabel>
         <h2 className="mb-2 text-xl font-semibold tracking-[-0.025em]">
-          {isStaticSite ? "Pages URL verified" : "Worker URL verified"}
+          {productCompletionTitle(session.serviceKind)}
         </h2>
-        <p className="mb-4 text-sm leading-6 text-muted-foreground">
-          {isStaticSite
-            ? "The simulated Pages URL is reachable, so the primary guide path has reached the user's goal."
-            : "The simulated Worker URL is reachable, so the primary guide path has reached the user's goal."}
+        <p className="mb-4 text-sm leading-6 text-white/60">
+          The simulated URL is reachable, so the primary guide path has reached the user's goal.
         </p>
         {session.followUpCapability ? (
-          <div className="rounded-lg border border-border bg-muted p-3.5">
-            <span className="mb-1 block font-mono text-[11px] font-semibold text-accent-foreground">
-              {session.followUpCapability.concept}
+          <div className="rounded-lg border border-white/10 bg-white/[0.06] p-3.5">
+            <span className="mb-1 block font-mono text-[11px] font-semibold text-accent">
+              {followUpCapability.concept}
             </span>
             <strong className="mb-2 block text-sm font-semibold">
-              {session.followUpCapability.name}
+              {followUpCapability.name}
             </strong>
-            <p className="m-0 text-sm leading-6 text-muted-foreground">
-              {session.followUpCapability.explanation}
+            <p className="m-0 text-sm leading-6 text-white/60">
+              {followUpCapability.explanation}
             </p>
           </div>
         ) : null}
@@ -640,15 +671,15 @@ const GuidePanel = ({
     );
   }
 
-  if (session.phase === "confirm" && currentStep?.criticalAction) {
+  if (session.phase === "confirm" && displayStep?.criticalAction) {
     return (
       <SectionCard>
         <SectionLabel>Critical write action</SectionLabel>
         <h2 className="mb-2 text-xl font-semibold tracking-[-0.025em]">
-          Confirm {currentStep.criticalAction.label}
+          Confirm {displayStep.criticalAction.label}
         </h2>
-        <p className="mb-4 text-sm leading-6 text-muted-foreground">
-          {currentStep.criticalAction.impact}
+        <p className="mb-4 text-sm leading-6 text-white/60">
+          {displayStep.criticalAction.impact}
         </p>
         <Callout icon={<ShieldCheck />} tone="accent">
           Important account-changing actions need explicit confirmation.
@@ -658,17 +689,19 @@ const GuidePanel = ({
   }
 
   if (session.phase === "recovery" && session.pageState.blockingState) {
+    const blockingState = productBlockingStateCopy(session.pageState.blockingState);
+
     return (
       <SectionCard>
         <SectionLabel>Recovery step</SectionLabel>
         <h2 className="mb-2 text-xl font-semibold tracking-[-0.025em]">
-          {session.pageState.blockingState.title}
+          {blockingState.title}
         </h2>
-        <p className="mb-4 text-sm leading-6 text-muted-foreground">
-          {session.pageState.blockingState.reason}
+        <p className="mb-4 text-sm leading-6 text-white/60">
+          {blockingState.reason}
         </p>
         <Callout icon={<WarningCircle />} tone="warning">
-          {session.pageState.blockingState.recoveryAction}
+          {blockingState.recoveryAction}
         </Callout>
       </SectionCard>
     );
@@ -678,11 +711,11 @@ const GuidePanel = ({
     <SectionCard>
       <div className="mb-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-accent-foreground">
         <Circle aria-hidden="true" size={14} weight="fill" />
-        <span>{session.selectedCapability?.name ?? "Capability pending"}</span>
-        <span className="text-foreground">{session.selectedCapability?.concept ?? "Unmapped"}</span>
+        <span>{displayCapability.name}</span>
+        <span className="text-primary-foreground">{displayCapability.concept}</span>
       </div>
-      <p className="mb-5 text-sm leading-6 text-muted-foreground">
-        {session.selectedCapability?.explanation}
+      <p className="mb-5 text-sm leading-6 text-white/60">
+        {displayCapability.explanation}
       </p>
       <div className="mb-3 flex items-start justify-between gap-3">
         <SectionLabel>Guide step</SectionLabel>
@@ -691,11 +724,11 @@ const GuidePanel = ({
         </span>
       </div>
       <h2 className="mb-4 text-balance text-xl font-semibold tracking-[-0.025em]">
-        {currentStep?.title ?? "No active step"}
+        {displayStep?.title ?? "No active step"}
       </h2>
-      <StepBlock title="Action" body={currentStep?.action} />
-      <StepBlock title="Step purpose" body={currentStep?.purpose} />
-      <StepBlock title="Completion check" body={currentStep?.completionCheck} />
+      <StepBlock title="Action" body={displayStep?.action} />
+      <StepBlock title="Step purpose" body={displayStep?.purpose} />
+      <StepBlock title="Completion check" body={displayStep?.completionCheck} />
     </SectionCard>
   );
 };
@@ -704,13 +737,16 @@ type SectionCardProps = React.HTMLAttributes<HTMLDivElement>;
 
 const SectionCard = ({ className, ...props }: SectionCardProps) => (
   <Card
-    className={cn("m-5 border border-border p-5 max-[520px]:m-3 max-[520px]:p-4", className)}
+    className={cn(
+      "m-5 border border-white/10 bg-white/[0.055] p-5 text-primary-foreground shadow-none max-[520px]:m-3 max-[520px]:p-4",
+      className
+    )}
     {...props}
   />
 );
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <p className="mb-2 font-mono text-[11px] font-semibold tracking-[0.14em] text-muted-foreground">
+  <p className="mb-2 font-mono text-[11px] font-semibold tracking-[0.14em] text-white/45">
     {children}
   </p>
 );
@@ -725,8 +761,8 @@ const Callout = ({ icon, children, tone }: CalloutProps) => (
   <div
     className={cn(
       "flex items-start gap-2.5 rounded-lg border p-3 text-sm font-medium leading-6",
-      tone === "accent" && "border-accent/25 bg-accent/10 text-accent-foreground",
-      tone === "warning" && "border-warning/30 bg-warning/14 text-warning-foreground"
+      tone === "accent" && "border-accent/35 bg-accent/18 text-primary-foreground",
+      tone === "warning" && "border-warning/35 bg-warning/18 text-primary-foreground"
     )}
   >
     <span className="mt-0.5 shrink-0">{icon}</span>
@@ -742,7 +778,7 @@ type IntentPanelProps = {
 
 const IntentPanel = ({ intent, onIntentChange, onStart }: IntentPanelProps) => (
   <div className="grid gap-3" aria-label="Intent entry">
-    <label htmlFor="intent" className="font-mono text-[11px] font-semibold text-muted-foreground">
+    <label htmlFor="intent" className="font-mono text-[11px] font-semibold text-white/50">
       User intent
     </label>
     <Textarea
@@ -750,6 +786,7 @@ const IntentPanel = ({ intent, onIntentChange, onStart }: IntentPanelProps) => (
       value={intent}
       onChange={(event) => onIntentChange(event.target.value)}
       rows={5}
+      className="border-white/10 bg-white/[0.06] text-primary-foreground shadow-none placeholder:text-white/40"
     />
     <Button type="button" variant="primary" onClick={onStart} className="justify-self-start">
       Start guide
@@ -764,9 +801,9 @@ type StepBlockProps = {
 };
 
 const StepBlock = ({ title, body }: StepBlockProps) => (
-  <div className="border-t border-border py-3 first:border-t-0 first:pt-0">
-    <h3 className="mb-1 font-mono text-[11px] font-semibold text-muted-foreground">{title}</h3>
-    <p className="m-0 text-pretty text-sm leading-6 text-foreground">{body}</p>
+  <div className="border-t border-white/10 py-3 first:border-t-0 first:pt-0">
+    <h3 className="mb-1 font-mono text-[11px] font-semibold text-white/45">{title}</h3>
+    <p className="m-0 text-pretty text-sm leading-6 text-primary-foreground">{body}</p>
   </div>
 );
 
@@ -777,7 +814,7 @@ type PageStatePanelProps = {
 };
 
 const PageStatePanel = ({ session, hostPageContext, pulseKey }: PageStatePanelProps) => (
-  <SectionCard className="border-accent/25 shadow-[0_16px_38px_rgb(24_110_180_/_0.08)]">
+  <SectionCard className="border-accent/30 shadow-[0_16px_38px_rgb(24_110_180_/_0.08)]">
     <div className="mb-2 flex items-start justify-between gap-3">
       <div>
         <SectionLabel>Page check</SectionLabel>
@@ -789,16 +826,19 @@ const PageStatePanel = ({ session, hostPageContext, pulseKey }: PageStatePanelPr
     </div>
 
     <dl className="grid">
-      <StateRow label="Location" value={session.pageState.location} />
-      <StateRow label="Highlighted target" value={session.pageState.targetElement} />
+      <StateRow label="Location" value={productPageStateCopy(session.pageState).location} />
       <StateRow
-        label="Provider status"
+        label="Highlighted target"
+        value={productPageStateCopy(session.pageState).targetElement}
+      />
+      <StateRow
+        label="Context status"
         value={
           session.pageState.blockingState?.id === "extension-runtime-unavailable"
             ? "Extension runtime error"
             : hostPageContext.blockingState
               ? "Blocked by page context"
-              : "Synced"
+              : "Page context synced"
         }
       />
       <StateRow
@@ -811,7 +851,7 @@ const PageStatePanel = ({ session, hostPageContext, pulseKey }: PageStatePanelPr
               session.pageState.completionSatisfied && "animate-check-pulse"
             )}
           >
-            {session.pageState.evidence}
+            {productPageStateCopy(session.pageState).evidence}
           </span>
         }
       />
@@ -837,16 +877,26 @@ const ActionBar = ({
   onDrift
 }: ActionBarProps) => (
   <footer
-    className="grid gap-2.5 border-t border-border bg-shell p-3 max-[520px]:grid-cols-2"
+    className="grid gap-2.5 border-t border-white/10 bg-primary p-3 max-[520px]:grid-cols-2"
     aria-label="Guide actions"
   >
-    <Button type="button" variant="secondary" onClick={onReset}>
+    <Button
+      type="button"
+      variant="secondary"
+      onClick={onReset}
+      className="border-white/12 bg-white/[0.06] text-primary-foreground hover:bg-white/[0.1]"
+    >
       <ArrowCounterClockwise aria-hidden="true" />
       Reset
     </Button>
     {session.phase === "guide" ? (
       <>
-        <Button type="button" variant="secondary" onClick={onDrift}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={onDrift}
+          className="border-white/12 bg-white/[0.06] text-primary-foreground hover:bg-white/[0.1]"
+        >
           Simulate page drift
         </Button>
         <Button
@@ -894,11 +944,11 @@ type PluginRailProps = {
 
 const PluginRail = ({ panelOpen, onOpen, onCheck, onMinimize }: PluginRailProps) => (
   <nav
-    className="grid content-start gap-2.5 border-l border-border bg-shell p-2 max-[980px]:grid-cols-3 max-[980px]:border-l-0 max-[980px]:border-t max-[980px]:p-1.5"
+    className="grid content-start gap-2.5 border-l border-border bg-background p-2 max-[980px]:grid-cols-3 max-[980px]:border-l-0 max-[980px]:border-t max-[980px]:p-1.5"
     aria-label="Michi tool rail"
   >
-    <RailButton label="Guide" ariaLabel="Text guide" active={panelOpen} icon={<FileText />} onClick={onOpen} />
-    <RailButton label="Check" ariaLabel="Run check" icon={<Play />} onClick={onCheck} />
+    <RailButton label="Guide" ariaLabel="Guide" active={panelOpen} icon={<FileText />} onClick={onOpen} />
+    <RailButton label="Check" ariaLabel="Check page" icon={<Play />} onClick={onCheck} />
     <RailButton label="Min" ariaLabel="Minimize panel" icon={<Minus />} onClick={onMinimize} />
   </nav>
 );

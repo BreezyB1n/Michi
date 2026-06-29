@@ -12,6 +12,16 @@ import {
 import type { WorkersGuideShellPhase } from "../domain/workersGuideFlow";
 import type { HostPageContext, PageTarget, ServiceKind } from "../domain/types";
 import {
+  productCapabilityCopy,
+  productCompletionTitle,
+  productGuideStepCopy,
+  productLocationLabel,
+  productRouteLabel,
+  productSignalCopy,
+  productTargetLabel,
+  sanitizeProviderText
+} from "../domain/productPresentation";
+import {
   checkedContextFromReducer,
   chooseBackendApiFromReducer,
   chooseStaticSiteFromReducer,
@@ -52,7 +62,7 @@ const shellStyles = `
   :host {
     all: initial;
     color-scheme: light;
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: "Geist Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
 
   .shell {
@@ -65,11 +75,10 @@ const shellStyles = `
     color: #171717;
   }
 
-  .rail,
-  .panel {
-    border: 1px solid rgba(23, 23, 23, 0.12);
-    background: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.14);
+  .rail {
+    border: 1px solid rgba(23, 23, 23, 0.16);
+    background: rgba(239, 236, 205, 0.9);
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.12);
     backdrop-filter: blur(16px);
   }
 
@@ -79,6 +88,14 @@ const shellStyles = `
     width: 92px;
     padding: 6px;
     border-radius: 16px;
+  }
+
+  .panel {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: #171713;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+    backdrop-filter: blur(16px);
+    color: #f1f0df;
   }
 
   button {
@@ -91,11 +108,11 @@ const shellStyles = `
     padding: 0 10px;
     font: 650 12px/1.2 inherit;
     cursor: pointer;
-    color: #171717;
+    color: inherit;
   }
 
   button:hover {
-    background: rgba(245, 158, 11, 0.12);
+    background: rgba(0, 132, 189, 0.16);
   }
 
   textarea {
@@ -104,17 +121,17 @@ const shellStyles = `
     width: 100%;
     min-height: 92px;
     padding: 10px;
-    border: 1px solid rgba(23, 23, 23, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 12px;
-    background: rgba(245, 245, 245, 0.78);
-    color: #171717;
+    background: rgba(255, 255, 255, 0.06);
+    color: #f1f0df;
     font: 550 13px/1.45 inherit;
     resize: vertical;
   }
 
   .panel {
     width: min(320px, calc(100vw - 84px));
-    border-radius: 18px;
+    border-radius: 16px;
     overflow: hidden;
   }
 
@@ -127,7 +144,7 @@ const shellStyles = `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 1px solid rgba(23, 23, 23, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .panel-actions {
@@ -151,7 +168,7 @@ const shellStyles = `
     margin-bottom: 4px;
     font: 700 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
     letter-spacing: 0.12em;
-    color: #737373;
+    color: rgba(241, 240, 223, 0.5);
     text-transform: uppercase;
   }
 
@@ -163,33 +180,33 @@ const shellStyles = `
   dt {
     margin-bottom: 3px;
     font: 700 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
-    color: #737373;
+    color: rgba(241, 240, 223, 0.5);
   }
 
   dd {
     margin: 0;
     font: 550 13px/1.45 inherit;
-    color: #262626;
+    color: rgba(241, 240, 223, 0.86);
     overflow-wrap: anywhere;
   }
 
   .recovery {
     margin-bottom: 12px;
     padding: 12px;
-    border: 1px solid rgba(245, 158, 11, 0.36);
-    border-radius: 14px;
-    background: rgba(255, 251, 235, 0.92);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    border-radius: 12px;
+    background: rgba(245, 158, 11, 0.12);
   }
 
   .recovery-title {
     margin-bottom: 6px;
     font: 750 13px/1.2 inherit;
-    color: #92400e;
+    color: #fcd34d;
   }
 
   .recovery p {
     font: 550 12px/1.45 inherit;
-    color: #713f12;
+    color: rgba(241, 240, 223, 0.78);
   }
 
   .recovery p + p {
@@ -201,14 +218,14 @@ const shellStyles = `
     gap: 10px;
     margin-bottom: 14px;
     padding-bottom: 14px;
-    border-bottom: 1px solid rgba(23, 23, 23, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .capability {
     display: flex;
     align-items: baseline;
     gap: 8px;
-    color: #171717;
+    color: #f1f0df;
   }
 
   .capability strong {
@@ -217,13 +234,13 @@ const shellStyles = `
 
   .capability span {
     font: 700 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
-    color: #737373;
+    color: rgba(241, 240, 223, 0.52);
     text-transform: uppercase;
   }
 
   .step-title {
     font: 750 15px/1.25 inherit;
-    color: #171717;
+    color: #f1f0df;
   }
 
   .step-toolbar {
@@ -234,22 +251,22 @@ const shellStyles = `
 
   .step-toolbar button {
     min-height: 34px;
-    border: 1px solid rgba(23, 23, 23, 0.12);
-    background: rgba(245, 245, 245, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
   }
 
   .step-toolbar button:disabled {
     cursor: not-allowed;
-    color: #a3a3a3;
-    background: rgba(245, 245, 245, 0.45);
+    color: rgba(241, 240, 223, 0.36);
+    background: rgba(255, 255, 255, 0.04);
   }
 
   .target-highlight {
     position: fixed;
     z-index: 2147483646;
-    border: 2px solid #f59e0b;
+    border: 2px solid #0084bd;
     border-radius: 10px;
-    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2), 0 16px 36px rgba(15, 23, 42, 0.16);
+    box-shadow: 0 0 0 4px rgba(0, 132, 189, 0.18), 0 16px 36px rgba(15, 23, 42, 0.16);
     pointer-events: none;
   }
 `;
@@ -269,10 +286,12 @@ const escapeHtml = (value: string) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 
-const capabilityNameForServiceKind = (serviceKind: ServiceKind) =>
-  serviceKind === "static-site"
-    ? capabilities["cloudflare-pages"].name
-    : capabilities["cloudflare-workers"].name;
+const productCapabilityNameForServiceKind = (serviceKind: ServiceKind) =>
+  productCapabilityCopy(
+    serviceKind === "static-site"
+      ? capabilities["cloudflare-pages"]
+      : capabilities["cloudflare-workers"]
+  ).name;
 
 export const recoveryGuidanceForContext = (
   context: HostPageContext,
@@ -281,8 +300,8 @@ export const recoveryGuidanceForContext = (
   if (context.routeId === "cloudflare.unsupported") {
     return {
       title: "Unsupported page",
-      reason: "Michi only reads supported Cloudflare dashboard pages in this milestone.",
-      recoveryAction: "Open the Cloudflare dashboard, navigate to Workers & Pages, then click Check page again."
+      reason: "Michi only reads supported product pages in this milestone.",
+      recoveryAction: "Open a supported workspace page, navigate to the build area, then click Check page again."
     };
   }
 
@@ -290,11 +309,11 @@ export const recoveryGuidanceForContext = (
   if (detectedServiceKind && detectedServiceKind !== serviceKind) {
     return {
       title: "Route mismatch",
-      reason: `The active guide is ${capabilityNameForServiceKind(
+      reason: `The active guide is ${productCapabilityNameForServiceKind(
         serviceKind
-      )}, but the current page belongs to ${capabilityNameForServiceKind(detectedServiceKind)}.`,
+      )}, but the current page belongs to ${productCapabilityNameForServiceKind(detectedServiceKind)}.`,
       recoveryAction:
-        "Return to the selected guide path's expected Cloudflare page, or reset and choose the other path."
+        "Return to the selected guide path's expected page, or reset and choose the other path."
     };
   }
 
@@ -304,13 +323,15 @@ export const recoveryGuidanceForContext = (
     return undefined;
   }
 
-  const expectedTargetLabel = targetLabelForWorkersGuideTarget(expectedTargetId);
+  const expectedTargetLabel = productTargetLabel(
+    targetLabelForWorkersGuideTarget(expectedTargetId)
+  );
 
   return {
     title: "Target missing",
     reason: `Michi expected ${expectedTargetLabel} on this route, but the page check did not find it.`,
     recoveryAction:
-      "Wait for the Cloudflare page to finish loading, return to the expected guide step if needed, then click Check page again."
+      "Wait for the page to finish loading, return to the expected guide step if needed, then click Check page again."
   };
 };
 
@@ -349,13 +370,13 @@ const highlightCopy = (
     return "";
   }
 
-  return `<div class="target-highlight" data-highlight style="${style}" aria-label="Highlighted target: ${escapeHtml(target.label)}"></div>`;
+  return `<div class="target-highlight" data-highlight style="${style}" aria-label="Highlighted target: ${escapeHtml(productTargetLabel(target))}"></div>`;
 };
 
 const completionEvidence = (context: HostPageContext | undefined) =>
   context?.signals.find((signal) => signal.severity === "success")?.value ??
   context?.signals[0]?.value ??
-  "Worker URL evidence is available.";
+  "Service URL evidence is available.";
 
 const intentCopy = (intent: string) => `
   <section class="guide-summary" aria-label="Intent entry">
@@ -389,11 +410,11 @@ const staticSiteCopy = () => `
     <div>
       <p class="eyebrow">Capability</p>
       <p class="capability">
-        <strong>${escapeHtml(capabilities["cloudflare-pages"].name)}</strong>
-        <span>${escapeHtml(capabilities["cloudflare-pages"].concept)}</span>
+        <strong>${escapeHtml(productCapabilityCopy(capabilities["cloudflare-pages"]).name)}</strong>
+        <span>${escapeHtml(productCapabilityCopy(capabilities["cloudflare-pages"]).concept)}</span>
       </p>
     </div>
-    <p>${escapeHtml(capabilities["cloudflare-pages"].explanation)}</p>
+    <p>${escapeHtml(productCapabilityCopy(capabilities["cloudflare-pages"]).explanation)}</p>
   </section>
 `;
 
@@ -404,7 +425,7 @@ const confirmationCopy = (
   const step =
     activeStepIndex === undefined || activeStepIndex < 0
       ? undefined
-      : guideStepsForServiceKind(serviceKind ?? "backend-api")[activeStepIndex];
+      : productGuideStepCopy(guideStepsForServiceKind(serviceKind ?? "backend-api")[activeStepIndex]);
   const criticalAction = step?.criticalAction;
 
   if (!step || !criticalAction) {
@@ -421,29 +442,26 @@ const confirmationCopy = (
   </section>`;
 };
 
-const completionTitleForServiceKind = (serviceKind: ServiceKind | undefined) =>
-  serviceKind === "static-site" ? "Pages URL verified" : "Worker URL verified";
-
 const completionCopy = (
   context: HostPageContext | undefined,
   serviceKind: ServiceKind | undefined
 ) => {
-  const dnsCapability = capabilities["cloudflare-dns"];
+  const followUpCapability = productCapabilityCopy(capabilities["cloudflare-dns"]);
 
   return `<section class="guide-summary" aria-label="Guide completion">
     <div>
       <p class="eyebrow">Primary path complete</p>
-      <p class="step-title">${completionTitleForServiceKind(serviceKind)}</p>
+      <p class="step-title">${productCompletionTitle(serviceKind)}</p>
     </div>
-    <p>${escapeHtml(completionEvidence(context))}</p>
+    <p>${escapeHtml(sanitizeProviderText(completionEvidence(context)))}</p>
     <div>
       <p class="eyebrow">Follow-up route</p>
       <p class="capability">
-        <strong>${escapeHtml(dnsCapability.name)}</strong>
-        <span>${escapeHtml(dnsCapability.concept)}</span>
+        <strong>${escapeHtml(followUpCapability.name)}</strong>
+        <span>${escapeHtml(followUpCapability.concept)}</span>
       </p>
     </div>
-    <p>${escapeHtml(dnsCapability.explanation)}</p>
+    <p>${escapeHtml(followUpCapability.explanation)}</p>
   </section>`;
 };
 
@@ -457,7 +475,7 @@ const guideSummaryCopy = (
 
   const serviceKind = options.serviceKind ?? "backend-api";
   const guideSteps = guideStepsForServiceKind(serviceKind);
-  const step = guideSteps[activeStepIndex];
+  const step = productGuideStepCopy(guideSteps[activeStepIndex]);
 
   if (!step) {
     return "";
@@ -465,8 +483,8 @@ const guideSummaryCopy = (
 
   const capability =
     serviceKind === "static-site"
-      ? capabilities["cloudflare-pages"]
-      : capabilities["cloudflare-workers"];
+      ? productCapabilityCopy(capabilities["cloudflare-pages"])
+      : productCapabilityCopy(capabilities["cloudflare-workers"]);
   const canGoPrevious = activeStepIndex > 0;
   const canGoNext = activeStepIndex < guideSteps.length - 1;
   const isFinalStep = activeStepIndex === finalGuideStepIndexForServiceKind(serviceKind);
@@ -516,6 +534,7 @@ const contextCopy = (
   const target = preferredTargetForContextAndServiceKind(context, resolvedServiceKind);
   const signal = context.signals[0];
   const guidance = recoveryGuidanceForContext(context, resolvedServiceKind);
+  const signalCopy = signal ? productSignalCopy(signal) : undefined;
 
   return `
     ${guideSummaryCopy(activeStepIndex, {
@@ -526,27 +545,27 @@ const contextCopy = (
       guidance
         ? `<div class="recovery" role="status" aria-label="${escapeHtml(guidance.title)}">
             <p class="recovery-title">${escapeHtml(guidance.title)}</p>
-            <p>${escapeHtml(guidance.reason)}</p>
-            <p>${escapeHtml(guidance.recoveryAction)}</p>
+            <p>${escapeHtml(sanitizeProviderText(guidance.reason))}</p>
+            <p>${escapeHtml(sanitizeProviderText(guidance.recoveryAction))}</p>
           </div>`
         : ""
     }
     <dl>
       <div>
         <dt>Route</dt>
-        <dd>${escapeHtml(context.routeId)}</dd>
+        <dd>${escapeHtml(productRouteLabel(context.routeId))}</dd>
       </div>
       <div>
         <dt>Location</dt>
-        <dd>${escapeHtml(context.locationLabel)}</dd>
+        <dd>${escapeHtml(productLocationLabel(context.locationLabel))}</dd>
       </div>
       <div>
         <dt>Target</dt>
-        <dd>${escapeHtml(target ? target.label : "No target detected")}</dd>
+        <dd>${escapeHtml(productTargetLabel(target))}</dd>
       </div>
       <div>
         <dt>Evidence</dt>
-        <dd>${escapeHtml(signal ? signal.label : "No evidence detected")}</dd>
+        <dd>${escapeHtml(signalCopy ? signalCopy.label : "No evidence detected")}</dd>
       </div>
     </dl>
   `;
@@ -655,11 +674,11 @@ export const mountMichiInjectedShell = (
         </div>
         ${
           state.open
-            ? `<section data-panel class="panel" aria-label="Michi guide panel">
+            ? `<section data-panel class="panel" aria-label="Michi side panel">
                 <div class="panel-header">
                   <div>
-                    <p class="eyebrow">Guide Agent</p>
-                    <h2>Michi guide</h2>
+                    <p class="eyebrow">Michi agent</p>
+                    <h2>Michi side panel</h2>
                   </div>
                   <div class="panel-actions" aria-label="Panel actions">
                     <button type="button" data-action="reset-guide" aria-label="Reset guide">Reset</button>

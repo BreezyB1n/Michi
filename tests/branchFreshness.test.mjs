@@ -115,14 +115,23 @@ describe("branch freshness checklist", () => {
 
   it("exits successfully for a ready branch and fails for blocked CLI states", () => {
     const rootDir = mkdtempSync(path.join(tmpdir(), "michi-branch-freshness-"));
+    const gitConfigPath = path.join(rootDir, "gitconfig");
+    writeFileSync(gitConfigPath, "");
+    const gitEnv = {
+      ...process.env,
+      GIT_CONFIG_GLOBAL: gitConfigPath,
+      GIT_CONFIG_NOSYSTEM: "1"
+    };
     const run = (args, cwd = rootDir) =>
       spawnSync("git", args, {
         cwd,
+        env: gitEnv,
         encoding: "utf8"
       });
     const runNode = (args) =>
       spawnSync(process.execPath, [scriptPath, ...args], {
         cwd: rootDir,
+        env: gitEnv,
         encoding: "utf8"
       });
 
