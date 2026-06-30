@@ -650,6 +650,7 @@ const commandActionCopy = (action: CommandAction, primary = false) => `
   <button
     type="button"
     data-command-action="${escapeHtml(action.id)}"
+    ${primary ? "data-primary-panel-focus" : ""}
     data-primary="${primary ? "true" : "false"}"
     data-tone="${escapeHtml(action.tone)}"
     title="${escapeHtml(action.description)}"
@@ -683,7 +684,7 @@ const intentCopy = (intent: string) => `
   <section class="guide-summary" aria-label="Intent entry">
     <div>
       <p class="eyebrow">User intent</p>
-      <textarea data-intent aria-label="User intent" rows="4">${escapeHtml(intent)}</textarea>
+      <textarea data-intent data-primary-panel-focus aria-label="User intent" rows="4">${escapeHtml(intent)}</textarea>
     </div>
     <button type="button" data-action="start-guide" aria-label="Start guide">Start guide</button>
   </section>
@@ -930,6 +931,7 @@ export const mountMichiInjectedShell = (
     activityTimeline: createActivityTimeline()
   };
   const ownerWindow = doc.defaultView ?? window;
+  let pendingFocusSelector: string | undefined;
   const currentLocation = (): ShellLocation =>
     location ?? {
       href: ownerWindow.location.href,
@@ -959,10 +961,26 @@ export const mountMichiInjectedShell = (
   };
 
   const handleKeyDown = (event: KeyboardEvent) => {
-    if (event.key !== "Escape" || !state.open) {
+    if (event.defaultPrevented || event.key !== "Escape" || !state.open) {
       return;
     }
 
+    const eventPath = typeof event.composedPath === "function" ? event.composedPath() : [];
+    const eventTarget = event.target;
+    const eventTargetIsDocument =
+      eventTarget === doc || eventTarget === doc.body || eventTarget === doc.documentElement;
+    const shellHasShadowFocus = shadow.activeElement !== null;
+    const eventStartedInShell =
+      eventPath.includes(host) ||
+      eventPath.includes(shadow) ||
+      (eventTarget instanceof Node && (host.contains(eventTarget) || shadow.contains(eventTarget))) ||
+      (eventTargetIsDocument && shellHasShadowFocus);
+
+    if (!eventStartedInShell) {
+      return;
+    }
+
+    pendingFocusSelector = "[data-action='guide']";
     state.open = false;
     render();
   };
@@ -1009,12 +1027,18 @@ export const mountMichiInjectedShell = (
       </div>
     `;
 
+    const focusPrimaryPanelControl = () => {
+      pendingFocusSelector = "[data-primary-panel-focus]";
+    };
+
     shadow.querySelector("[data-action='guide']")?.addEventListener("click", () => {
+      focusPrimaryPanelControl();
       state.open = true;
       render();
     });
 
     const checkPage = () => {
+      focusPrimaryPanelControl();
       state.open = true;
       state.context = readCloudflarePageContext(doc, currentLocation());
       const nextGuideState = checkedContextFromReducer(state, state.context);
@@ -1024,6 +1048,7 @@ export const mountMichiInjectedShell = (
     };
 
     const minimize = () => {
+      pendingFocusSelector = "[data-action='guide']";
       state.open = false;
       render();
     };
@@ -1034,13 +1059,14 @@ export const mountMichiInjectedShell = (
       state.context = undefined;
       applyGuideState(nextGuideState);
       state.activityTimeline = resetActivityTimeline(activityEventForReset());
+      pendingFocusSelector = "[data-intent]";
       render();
-      shadow.querySelector<HTMLTextAreaElement>("[data-intent]")?.focus();
     };
 
     const previousStep = () => {
       const nextGuideState = previousStepFromReducer(state);
       applyGuideState(nextGuideState);
+      focusPrimaryPanelControl();
       render();
     };
 
@@ -1051,6 +1077,7 @@ export const mountMichiInjectedShell = (
       if (nextGuideState.phase === "confirm") {
         recordActivity(activityEventForCriticalConfirmation(previousStep));
       }
+      focusPrimaryPanelControl();
       render();
     };
 
@@ -1058,6 +1085,7 @@ export const mountMichiInjectedShell = (
       const nextGuideState = startGuideFromReducer(state);
       applyGuideState(nextGuideState);
       recordActivity(activityEventForIntentStart(state.intent));
+      focusPrimaryPanelControl();
       render();
     };
 
@@ -1065,6 +1093,7 @@ export const mountMichiInjectedShell = (
       const nextGuideState = chooseBackendApiFromReducer(state);
       applyGuideState(nextGuideState);
       recordActivity(activityEventForServiceKind("backend-api"));
+      focusPrimaryPanelControl();
       render();
     };
 
@@ -1072,6 +1101,7 @@ export const mountMichiInjectedShell = (
       const nextGuideState = chooseStaticSiteFromReducer(state);
       applyGuideState(nextGuideState);
       recordActivity(activityEventForServiceKind("static-site"));
+      focusPrimaryPanelControl();
       render();
     };
 
@@ -1080,6 +1110,7 @@ export const mountMichiInjectedShell = (
       const nextGuideState = confirmCriticalActionFromReducer(state);
       applyGuideState(nextGuideState);
       recordActivity(activityEventForConfirmation(previousStep));
+      focusPrimaryPanelControl();
       render();
     };
 
@@ -1090,6 +1121,7 @@ export const mountMichiInjectedShell = (
       );
       applyGuideState(nextGuideState);
       recordActivity(activityEventForShellContext(state));
+      focusPrimaryPanelControl();
       render();
     };
 
@@ -1157,14 +1189,22 @@ export const mountMichiInjectedShell = (
         }
       });
     });
+
+    if (pendingFocusSelector) {
+      const focusTarget = shadow.querySelector<HTMLElement>(pendingFocusSelector);
+      pendingFocusSelector = undefined;
+      focusTarget?.focus();
+    }
   };
 
   doc.addEventListener("keydown", handleKeyDown);
+  shadow.addEventListener("keydown", handleKeyDown as EventListener);
   doc.addEventListener("scroll", refreshCheckedContext, { capture: true, passive: true });
   ownerWindow.addEventListener("scroll", refreshCheckedContext, { passive: true });
   ownerWindow.addEventListener("resize", refreshCheckedContext);
   shellCleanupByHost.set(host, () => {
     doc.removeEventListener("keydown", handleKeyDown);
+    shadow.removeEventListener("keydown", handleKeyDown as EventListener);
     doc.removeEventListener("scroll", refreshCheckedContext, { capture: true });
     ownerWindow.removeEventListener("scroll", refreshCheckedContext);
     ownerWindow.removeEventListener("resize", refreshCheckedContext);

@@ -115,6 +115,7 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await page.getByRole("button", { name: "Guide" }).click();
     await expect(page.getByLabel("Michi side panel")).toBeVisible();
     await expect(page.getByText("User intent")).toBeVisible();
+    await expect(page.getByLabel("User intent")).toBeFocused();
     await expect(page.getByLabel("Activity history").getByText("No activity yet")).toBeVisible();
     await expect(page.getByLabel("Command handoff").getByText("Ready for an intent")).toBeVisible();
     await expect(page.getByLabel("Command handoff").getByRole("button", { name: "Start from intent" })).toBeVisible();
@@ -165,6 +166,7 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByText("Step 2 / 5")).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page.getByLabel("Michi side panel")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Guide" })).toBeFocused();
     await page.getByRole("button", { name: "Guide" }).click();
     await expect(page.getByText("Service runtime overview")).toBeVisible();
 

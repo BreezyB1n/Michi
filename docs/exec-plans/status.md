@@ -2,7 +2,7 @@
 
 ## Current State
 
-Michi has a verified local React workbench and unpacked extension runtime for a compact page guide shell. The current extension surface is injected, collapsed by default, and supports deterministic service/site guide behavior, page checks, target highlights, recovery states, critical-action confirmation, completion follow-up, permission guards, runtime-error handling, route-state guards, scroll/resize highlight refresh, activity history, and compact command handoff. Runtime readers remain internal adapters; visible UI stays in Michi product language.
+Michi has a verified local React workbench and unpacked extension runtime for a compact page guide shell. The current extension surface is injected, collapsed by default, and supports deterministic service/site guide behavior, page checks, target highlights, recovery states, critical-action confirmation, completion follow-up, permission guards, runtime-error handling, route-state guards, scroll/resize highlight refresh, activity history, compact command handoff, and predictable keyboard focus lifecycle. Runtime readers remain internal adapters; visible UI stays in Michi product language.
 
 ## Completed Milestones
 
@@ -36,10 +36,11 @@ Michi has a verified local React workbench and unpacked extension runtime for a 
 | Product-only UI boundary | `completed/product-only-ui-boundary.md` | React workbench, injected shell, runtime failure states, current status docs, and browser smoke now reject provider-facing UI language. |
 | Product surface activity history | `completed/product-surface.md` | React workbench and injected shell now show deterministic Michi-owned activity history for intent start, path choice, page checks, recovery, confirmation, completion, and reset. |
 | Command handoff | `completed/command-handoff.md` | React workbench and injected shell now show deterministic next-command recommendations without bypassing confirmation or recovery safety. |
+| Keyboard focus lifecycle | `completed/keyboard-focus-lifecycle.md` | React workbench and injected shell now focus the primary panel control on open, keep focus inside Michi after guide re-renders, return focus to the rail on collapse, and preserve state on Escape. |
 
 ## Active Work
 
-- No active execution plan is checked in. Command handoff is complete in the current branch.
+- No active execution plan. The keyboard focus lifecycle slice is completed and ready for branch freshness verification.
 
 ## Housekeeping
 
@@ -47,7 +48,7 @@ Michi has a verified local React workbench and unpacked extension runtime for a 
 
 ## Recommended Next Direction
 
-Evaluate whether the next slice should improve keyboard accessibility or add stronger unsupported-page guidance. Keep future work inside the compact side panel unless a new spec says otherwise.
+Evaluate whether the next slice should add stronger unsupported-page guidance. Keep future work inside the compact side panel unless a new spec says otherwise.
 
 ## Verification Baseline
 

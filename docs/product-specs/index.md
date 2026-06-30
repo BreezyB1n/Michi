@@ -42,3 +42,5 @@ Product specs are the source of truth for what Michi should build.
 - `product-surface-issues.md`
 - `command-handoff-prd.md`
 - `command-handoff-issues.md`
+- `keyboard-focus-lifecycle-prd.md`
+- `keyboard-focus-lifecycle-issues.md`
