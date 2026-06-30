@@ -579,6 +579,15 @@ const CurrentPagePreview = ({ session, hostPageContext }: HostWebsiteProps) => (
 
 const HostWebsiteContent = ({ session, hostPageContext }: HostWebsiteProps) => {
   const isStaticSite = session.serviceKind === "static-site";
+  const targetLabel = productPageStateCopy(session.pageState).targetElement;
+  const showTargetCallout =
+    session.phase !== "intent" &&
+    session.phase !== "clarify" &&
+    session.phase !== "recovery" &&
+    session.phase !== "complete" &&
+    !session.pageState.blockingState &&
+    !hostPageContext.blockingState &&
+    targetLabel !== "No target detected";
 
   return (
     <>
@@ -634,6 +643,17 @@ const HostWebsiteContent = ({ session, hostPageContext }: HostWebsiteProps) => {
               ? "Michi highlighted the next page control"
               : "Waiting for Michi"}
           </div>
+          {showTargetCallout ? (
+            <div
+              aria-label="Target callout"
+              className="mt-3 max-w-sm rounded-lg border border-accent/35 bg-card px-3.5 py-3 text-sm shadow-sm"
+            >
+              <strong className="mb-1 block font-semibold text-foreground">{targetLabel}</strong>
+              <span className="block text-xs leading-5 text-muted-foreground">
+                Michi is checking this target for the active guide step.
+              </span>
+            </div>
+          ) : null}
         </Card>
 
         <Card className="overflow-hidden border border-border">

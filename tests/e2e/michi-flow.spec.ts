@@ -67,11 +67,18 @@ test("runs the Workers guide path with recovery and critical confirmations", asy
   await expect(page.getByLabel("Activity history").getByText("Service path selected")).toBeVisible();
   await expect(page.getByLabel("Activity history").getByText("Page check synced").first()).toBeVisible();
   await expect(page.getByLabel("Command handoff").getByText("Next step is ready")).toBeVisible();
+  await expect(page.getByLabel("Target callout").getByText("Build area navigation item")).toBeVisible();
+  await expect(page.getByLabel("Target callout").getByText("Michi is checking this target")).toBeVisible();
+  const reactCalloutBox = await page.getByLabel("Target callout").boundingBox();
 
   const panelBox = await page.getByLabel("Michi side panel").boundingBox();
   const hostBox = await page.getByLabel("Current page preview").boundingBox();
   const activityBox = await page.getByLabel("Activity history").boundingBox();
   const viewport = page.viewportSize();
+  expect(reactCalloutBox?.x).toBeGreaterThanOrEqual(hostBox?.x ?? 0);
+  expect((reactCalloutBox?.x ?? 0) + (reactCalloutBox?.width ?? 0)).toBeLessThanOrEqual(
+    (hostBox?.x ?? 0) + (hostBox?.width ?? 0)
+  );
   expect(panelBox?.width).toBeLessThanOrEqual(430);
   expect(activityBox?.width).toBeLessThanOrEqual(panelBox?.width ?? 0);
   if ((viewport?.width ?? 0) > 980) {
@@ -89,6 +96,7 @@ test("runs the Workers guide path with recovery and critical confirmations", asy
 
   await page.getByRole("button", { name: "Show page drift" }).click();
   await expect(page.getByRole("heading", { name: "Expected control missing" })).toBeVisible();
+  await expect(page.getByLabel("Target callout")).toHaveCount(0);
   await expect(page.getByText(/Michi cannot safely anchor this step/)).toBeVisible();
   await expect(page.getByText(/choose Recover now/).first()).toBeVisible();
   await expect(page.getByLabel("Command handoff").getByText("Recovery is required")).toBeVisible();

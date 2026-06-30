@@ -53,6 +53,7 @@ import {
 } from "../domain/commandHandoff";
 import { recoveryGuidanceForState } from "../domain/recoveryGuidance";
 import { readinessChecklistForState } from "../domain/readiness";
+import { targetCalloutForTarget } from "../domain/targetCallout";
 
 export { workersGuideStepForContext as guideStepForContext } from "../domain/workersGuideFlow";
 
@@ -475,6 +476,30 @@ const shellStyles = `
     box-shadow: 0 0 0 4px rgba(0, 132, 189, 0.18), 0 16px 36px rgba(15, 23, 42, 0.16);
     pointer-events: none;
   }
+
+  .target-callout {
+    position: fixed;
+    z-index: 2147483646;
+    box-sizing: border-box;
+    display: grid;
+    gap: 4px;
+    padding: 9px 10px;
+    border: 1px solid rgba(0, 132, 189, 0.36);
+    border-radius: 10px;
+    background: rgba(12, 18, 23, 0.92);
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.24);
+    color: #f1f0df;
+    pointer-events: none;
+  }
+
+  .target-callout strong {
+    font: 750 12px/1.2 inherit;
+  }
+
+  .target-callout span {
+    font: 550 11px/1.35 inherit;
+    color: rgba(241, 240, 223, 0.72);
+  }
 `;
 
 const emptyContextCopy = `
@@ -545,8 +570,13 @@ export const highlightStyleForTarget = (target: PageTarget | undefined) => {
 
 const highlightCopy = (
   context: HostPageContext,
-  serviceKind: ServiceKind | undefined
+  serviceKind: ServiceKind | undefined,
+  viewport: { viewportWidth: number; viewportHeight: number }
 ) => {
+  if (context.blockingState) {
+    return "";
+  }
+
   const detectedServiceKind = serviceKindForRouteId(context.routeId);
   if (serviceKind && detectedServiceKind && serviceKind !== detectedServiceKind) {
     return "";
@@ -562,7 +592,15 @@ const highlightCopy = (
     return "";
   }
 
-  return `<div class="target-highlight" data-highlight style="${style}" aria-label="Highlighted target: ${escapeHtml(productTargetLabel(target))}"></div>`;
+  const callout = targetCalloutForTarget(target, viewport);
+  const calloutCopy = callout
+    ? `<div class="target-callout" data-target-callout style="${escapeHtml(callout.style)}" aria-label="${escapeHtml(callout.ariaLabel)}">
+        <strong>${escapeHtml(callout.title)}</strong>
+        <span>${escapeHtml(callout.detail)}</span>
+      </div>`
+    : "";
+
+  return `<div class="target-highlight" data-highlight style="${style}" aria-label="Highlighted target: ${escapeHtml(productTargetLabel(target))}"></div>${calloutCopy}`;
 };
 
 const completionEvidence = (context: HostPageContext | undefined) =>
@@ -1099,7 +1137,14 @@ export const mountMichiInjectedShell = (
     shadow.innerHTML = `
       <style>${shellStyles}</style>
       <div class="shell" aria-label="Michi injected shell">
-        ${state.context ? highlightCopy(state.context, state.serviceKind) : ""}
+        ${
+          state.context
+            ? highlightCopy(state.context, state.serviceKind, {
+                viewportWidth: ownerWindow.innerWidth,
+                viewportHeight: ownerWindow.innerHeight
+              })
+            : ""
+        }
         <div class="rail" aria-label="Michi rail">
           <button type="button" data-action="guide" aria-label="Guide">Guide</button>
           <button type="button" data-action="check" aria-label="Check page">Check page</button>

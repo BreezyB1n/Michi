@@ -531,6 +531,35 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.querySelector("[data-panel]")).toBeNull();
   });
 
+  it("renders a target callout with the checked highlight", () => {
+    renderCloudflareFixture();
+    const createButton = document.querySelector("button");
+    if (!createButton) {
+      throw new Error("Expected fixture create button.");
+    }
+    setElementRect(createButton, { x: 760, y: 40, width: 96, height: 34 });
+
+    const root = mountMichiInjectedShell(document, {
+      href: "https://dash.cloudflare.com/example-account/workers-and-pages",
+      title: "Workers & Pages"
+    });
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+
+    const callout = shadow?.querySelector("[data-target-callout]");
+    expect(callout).not.toBeNull();
+    expect(callout?.getAttribute("aria-label")).toBe(
+      "Michi target callout: Create service button"
+    );
+    expect(callout?.textContent).toContain("Create service button");
+    expect(callout?.textContent).toContain(
+      "Michi is checking this target for the active guide step."
+    );
+    expect(callout?.getAttribute("style")).toContain("width: 220px");
+    expectProductOnlyShadowCopy(shadow);
+  });
+
   it("navigates guide steps locally after checking the page", () => {
     renderCloudflareFixture();
 
@@ -630,6 +659,7 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).toContain("Expected control missing");
     expect(shadow?.textContent).toContain("Create service button");
     expect(shadow?.textContent).toContain("Michi cannot safely anchor this step");
+    expect(shadow?.querySelector("[data-target-callout]")).toBeNull();
     expect(shadow?.textContent).not.toContain("Confirm Create service");
     expect(shadow?.textContent).not.toContain("Prepares a new service resource");
     expectProductOnlyShadowCopy(shadow);
@@ -945,11 +975,13 @@ describe("Injected Michi extension shell", () => {
 
     click(shadow?.querySelector("[data-action='check']") ?? null);
     expect(shadow?.querySelector("[data-highlight]")?.getAttribute("style")).toContain("top: 38px");
+    expect(shadow?.querySelector("[data-target-callout]")?.getAttribute("style")).toContain("top: 92px");
 
     setElementRect(createButton, { x: 20, y: 96, width: 144, height: 42 });
     window.dispatchEvent(new Event("scroll"));
 
     expect(shadow?.querySelector("[data-highlight]")?.getAttribute("style")).toContain("top: 94px");
+    expect(shadow?.querySelector("[data-target-callout]")?.getAttribute("style")).toContain("top: 148px");
     expect(shadow?.textContent).toContain("Service runtime overview");
     expect(shadow?.textContent).toContain("Step 2 / 5");
   });
@@ -971,11 +1003,13 @@ describe("Injected Michi extension shell", () => {
 
     click(shadow?.querySelector("[data-action='check']") ?? null);
     expect(shadow?.querySelector("[data-highlight]")?.getAttribute("style")).toContain("top: 258px");
+    expect(shadow?.querySelector("[data-target-callout]")?.getAttribute("style")).toContain("top: 312px");
 
     setElementRect(createButton, { x: 32, y: 156, width: 144, height: 42 });
     scroller.dispatchEvent(new Event("scroll"));
 
     expect(shadow?.querySelector("[data-highlight]")?.getAttribute("style")).toContain("top: 154px");
+    expect(shadow?.querySelector("[data-target-callout]")?.getAttribute("style")).toContain("top: 208px");
     expect(shadow?.textContent).toContain("Service runtime overview");
     expect(shadow?.textContent).toContain("Step 2 / 5");
   });
@@ -1003,6 +1037,8 @@ describe("Injected Michi extension shell", () => {
 
     expect(shadow?.querySelector("[data-highlight]")?.getAttribute("style")).toContain("left: 46px");
     expect(shadow?.querySelector("[data-highlight]")?.getAttribute("style")).toContain("top: 82px");
+    expect(shadow?.querySelector("[data-target-callout]")?.getAttribute("style")).toContain("left: 48px");
+    expect(shadow?.querySelector("[data-target-callout]")?.getAttribute("style")).toContain("top: 138px");
     expect(shadow?.textContent).toContain("Confirm Create service");
     expect(shadow?.textContent).not.toContain("Step 3 / 5");
   });
