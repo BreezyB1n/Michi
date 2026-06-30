@@ -42,8 +42,19 @@ test("runs the Workers guide path with recovery and critical confirmations", asy
   await page.getByRole("button", { name: "Guide" }).click();
   await expect(page.getByRole("heading", { name: "Michi" })).toBeVisible();
   await expect(page.getByLabel("User intent")).toBeFocused();
+  await expect(page.getByLabel("First-run readiness")).toBeVisible();
+  await expect(page.getByLabel("First-run readiness").getByText("Panel active")).toBeVisible();
+  await expect(page.getByLabel("First-run readiness").getByText("Page check available")).toBeVisible();
+  await expect(page.getByLabel("First-run readiness").getByText("Guide state ready")).toBeVisible();
   await expect(page.getByLabel("Command handoff").getByText("Ready for an intent")).toBeVisible();
   await expect(page.getByLabel("Command handoff").getByRole("button", { name: "Start from intent" })).toBeVisible();
+  const firstRunPanelBox = await page.getByLabel("Michi side panel").boundingBox();
+  const firstRunViewport = page.viewportSize();
+  expect(firstRunPanelBox?.width).toBeLessThanOrEqual(430);
+  if ((firstRunViewport?.width ?? 0) <= 980) {
+    expect(firstRunPanelBox?.height).toBeLessThanOrEqual((firstRunViewport?.height ?? 0) * 0.72);
+  }
+  await expectNoHorizontalOverflow(page);
   await page.getByLabel("User intent").fill(sampleIntent);
   await page.getByRole("button", { name: "Start guide" }).click();
   await expect(page.getByLabel("Activity history").getByText("Intent captured")).toBeVisible();
@@ -126,6 +137,8 @@ test("runs the Pages guide path with critical deploy confirmation", async ({ pag
   await page.goto("/");
 
   await page.getByRole("button", { name: "Guide" }).click();
+  await expect(page.getByLabel("First-run readiness")).toBeVisible();
+  await expectNoHorizontalOverflow(page);
   await page.getByLabel("User intent").fill("Publish a static website.");
   await page.getByRole("button", { name: "Start guide" }).click();
   await page.getByRole("button", { name: "Static website" }).click();

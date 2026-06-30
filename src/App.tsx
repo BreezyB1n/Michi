@@ -84,6 +84,10 @@ import {
   recoveryGuidanceForState,
   type RecoveryGuidance
 } from "./domain/recoveryGuidance";
+import {
+  readinessChecklistForState,
+  type ReadinessChecklist
+} from "./domain/readiness";
 
 const sampleIntent = "I want to build a small service that other people can access.";
 
@@ -131,6 +135,15 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
   const [panelFocusRequest, setPanelFocusRequest] = useState(0);
 
   const currentStep = session.steps[session.activeStepIndex];
+  const readinessChecklist = useMemo(
+    () =>
+      readinessChecklistForState({
+        panelOpen,
+        phase: session.phase,
+        context: hostPageContext
+      }),
+    [hostPageContext, panelOpen, session.phase]
+  );
   const recoveryGuidance = useMemo(
     () =>
       session.phase === "recovery" && session.pageState.blockingState
@@ -475,6 +488,7 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
                         currentStep={currentStep}
                         hostPageContext={hostPageContext}
                         recoveryGuidance={recoveryGuidance}
+                        readinessChecklist={readinessChecklist}
                         intent={intent}
                         onIntentChange={setIntent}
                         onStart={handleStart}
@@ -812,6 +826,7 @@ type GuidePanelProps = {
   currentStep: GuideSession["steps"][number] | undefined;
   hostPageContext: HostPageContext;
   recoveryGuidance?: RecoveryGuidance;
+  readinessChecklist: ReadinessChecklist;
   intent: string;
   onIntentChange: (intent: string) => void;
   onStart: () => void;
@@ -822,6 +837,7 @@ const GuidePanel = ({
   currentStep,
   hostPageContext,
   recoveryGuidance,
+  readinessChecklist,
   intent,
   onIntentChange,
   onStart
@@ -833,6 +849,7 @@ const GuidePanel = ({
     return (
       <SectionCard>
         <IntentPanel intent={intent} onIntentChange={onIntentChange} onStart={onStart} />
+        <ReadinessPanel checklist={readinessChecklist} />
       </SectionCard>
     );
   }
@@ -1000,6 +1017,35 @@ const IntentPanel = ({ intent, onIntentChange, onStart }: IntentPanelProps) => (
     </Button>
   </div>
 );
+
+const readinessToneClassName: Record<ReadinessChecklist["items"][number]["tone"], string> = {
+  ready: "border-success/32 bg-success/12 text-primary-foreground",
+  pending: "border-accent/32 bg-accent/12 text-primary-foreground",
+  warning: "border-warning/38 bg-warning/14 text-primary-foreground"
+};
+
+const ReadinessPanel = ({ checklist }: { checklist: ReadinessChecklist }) =>
+  checklist.visible ? (
+    <section aria-label={checklist.title} className="mt-5 border-t border-white/10 pt-4">
+      <SectionLabel>{checklist.title}</SectionLabel>
+      <div className="grid gap-2">
+        {checklist.items.map((item) => (
+          <div
+            key={item.id}
+            className={cn("rounded-lg border px-3 py-2.5", readinessToneClassName[item.tone])}
+          >
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <strong className="text-sm font-semibold">{item.label}</strong>
+              <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-current/55">
+                {item.tone}
+              </span>
+            </div>
+            <p className="m-0 text-xs leading-5 text-current/72">{item.detail}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  ) : null;
 
 type StepBlockProps = {
   title: string;

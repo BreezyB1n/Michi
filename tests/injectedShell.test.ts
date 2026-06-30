@@ -212,12 +212,18 @@ describe("Injected Michi extension shell", () => {
   it("starts a local guide session from intent and backend clarification", () => {
     renderCloudflareFixture();
 
-    const root = mountMichiInjectedShell(document);
+    const root = mountMichiInjectedShell(document, {
+      href: "https://dash.cloudflare.com/example-account/workers-and-pages",
+      title: "Workers & Pages"
+    });
     const shadow = root.shadowRoot;
 
     click(shadow?.querySelector("[data-action='guide']") ?? null);
     expect(shadow?.textContent).toContain("User intent");
     expect(shadow?.textContent).toContain("Start guide");
+    expect(shadow?.textContent).toContain("First-run readiness");
+    expect(shadow?.textContent).toContain("Panel active");
+    expect(shadow?.textContent).toContain("Page needs check");
     expect(shadow?.textContent).toContain("Activity history");
     expect(shadow?.textContent).toContain("No activity yet");
 
@@ -233,6 +239,49 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).toContain("Find the build area");
     expect(shadow?.textContent).toContain("Open the build area from the current page navigation.");
     expect(shadow?.textContent).toContain("Service path selected");
+    expectProductOnlyShadowCopy(shadow);
+  });
+
+  it("hides first-run readiness after Check starts a guide", () => {
+    renderCloudflareFixture();
+
+    const root = mountMichiInjectedShell(document, {
+      href: "https://dash.cloudflare.com/example-account/workers-and-pages",
+      title: "Workers & Pages"
+    });
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='guide']") ?? null);
+    expect(shadow?.textContent).toContain("Page needs check");
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    expect(shadow?.textContent).not.toContain("First-run readiness");
+    expect(shadow?.textContent).toContain("Step 2 / 5");
+    expect(shadow?.textContent).toContain("Create a service");
+    expectProductOnlyShadowCopy(shadow);
+  });
+
+  it("shows first-run readiness warning for checked unsupported recovery", () => {
+    renderUnsupportedAreaFixture();
+
+    const root = mountMichiInjectedShell(document, {
+      href: "https://dash.cloudflare.com/example-account/analytics",
+      title: "Analytics"
+    });
+    const shadow = root.shadowRoot;
+
+    click(shadow?.querySelector("[data-action='guide']") ?? null);
+    expect(shadow?.textContent).toContain("Page needs check");
+
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+
+    expect(shadow?.textContent).toContain("First-run readiness");
+    expect(shadow?.textContent).toContain("Page needs recovery");
+    expect(shadow?.textContent).toContain("Recover the current page state");
+    expect(shadow?.textContent).toContain("Unsupported page");
+    expect(shadow?.textContent).toContain("Open a supported workspace page");
+    expect(shadow?.textContent).not.toContain("Step 1 / 5");
+    expect(shadow?.querySelector("[data-action='next-step']")).toBeNull();
     expectProductOnlyShadowCopy(shadow);
   });
 
@@ -1058,6 +1107,7 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.textContent).toContain("Unsupported page");
     expect(shadow?.textContent).toContain("outside the current guide surface");
     expect(shadow?.textContent).toContain("Open a supported workspace page");
+    expect(shadow?.textContent).not.toContain("First-run readiness");
     expect(shadow?.textContent).not.toContain("Primary path complete");
     expect(shadow?.textContent).not.toContain("Custom domain");
   });
