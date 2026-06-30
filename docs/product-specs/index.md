@@ -48,3 +48,5 @@ Product specs are the source of truth for what Michi should build.
 - `unsupported-page-guidance-issues.md`
 - `first-run-readiness-prd.md`
 - `first-run-readiness-issues.md`
+- `highlight-explanation-prd.md`
+- `highlight-explanation-issues.md`

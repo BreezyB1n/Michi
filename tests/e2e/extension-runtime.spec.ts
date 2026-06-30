@@ -136,13 +136,32 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await page.getByRole("button", { name: "Check page" }).click();
     await expect(page.getByLabel("Activity history").getByText("Page check synced").first()).toBeVisible();
     await expect(page.getByText("Service runtime overview")).toBeVisible();
-    await expect(page.getByText("Create service button")).toBeVisible();
+    await expect(page.getByLabel("Michi side panel").getByText("Create service button")).toBeVisible();
     await expect(page.getByText("Service runtime", { exact: true })).toBeVisible();
     await expect(page.getByText("Step 2 / 5")).toBeVisible();
     await expect(page.getByText("Create a service")).toBeVisible();
     await expect(page.getByText("Choose the create action and keep the generated starter service.")).toBeVisible();
     await expect(page.getByText("A service draft exists and the editor or setup view is visible.")).toBeVisible();
     await expect(page.getByLabel("Highlighted target: Create service button")).toBeVisible();
+    const targetCallout = page.getByLabel("Michi target callout: Create service button");
+    await expect(targetCallout).toBeVisible();
+    await expect(targetCallout.getByText("Michi is checking this target")).toBeVisible();
+    const targetCalloutBox = await targetCallout.boundingBox();
+    const viewport = page.viewportSize();
+    expect(targetCalloutBox?.x).toBeGreaterThanOrEqual(0);
+    expect(targetCalloutBox?.y).toBeGreaterThanOrEqual(0);
+    expect((targetCalloutBox?.x ?? 0) + (targetCalloutBox?.width ?? 0)).toBeLessThanOrEqual(
+      viewport?.width ?? 0
+    );
+    expect((targetCalloutBox?.y ?? 0) + (targetCalloutBox?.height ?? 0)).toBeLessThanOrEqual(
+      viewport?.height ?? 0
+    );
+    expect(await targetCallout.evaluate((element) => getComputedStyle(element).position)).toBe(
+      "fixed"
+    );
+    expect(await targetCallout.evaluate((element) => getComputedStyle(element).pointerEvents)).toBe(
+      "none"
+    );
     const highlightBeforeScroll = await page
       .getByLabel("Highlighted target: Create service button")
       .boundingBox();
@@ -208,7 +227,7 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByText("Service editor", { exact: true })).toBeVisible();
     await expect(page.getByText("Step 3 / 5")).toBeVisible();
     await expect(page.getByText("Review the starter response")).toBeVisible();
-    await expect(page.getByText("Starter response handler")).toBeVisible();
+    await expect(page.getByLabel("Michi side panel").getByText("Starter response handler")).toBeVisible();
     await expect(page.getByLabel("Highlighted target: Starter response handler")).toBeVisible();
 
     await page.goto("https://dash.cloudflare.com/example-account/workers/deploy-review");
@@ -218,7 +237,7 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByText("Deployment review", { exact: true })).toBeVisible();
     await expect(page.getByText("Step 4 / 5")).toBeVisible();
     await expect(page.getByText("Deploy the service")).toBeVisible();
-    await expect(page.getByText("Deploy service button")).toBeVisible();
+    await expect(page.getByLabel("Michi side panel").getByText("Deploy service button")).toBeVisible();
     await expect(page.getByLabel("Highlighted target: Deploy service button")).toBeVisible();
     await page.getByRole("button", { name: "Next step" }).click();
     await expect(page.getByText("Critical write action")).toBeVisible();
@@ -264,7 +283,7 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByText("Site publishing overview")).toBeVisible();
     await expect(page.getByText("Step 2 / 5")).toBeVisible();
     await expect(page.getByText("Create a site")).toBeVisible();
-    await expect(page.getByText("Create site button")).toBeVisible();
+    await expect(page.getByLabel("Michi side panel").getByText("Create site button")).toBeVisible();
     await expect(page.getByLabel("Highlighted target: Create site button")).toBeVisible();
 
     await page.evaluate(() => {
@@ -302,7 +321,7 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByText("Site deployment review")).toBeVisible();
     await expect(page.getByText("Step 4 / 5")).toBeVisible();
     await expect(page.getByText("Deploy the site", { exact: true })).toBeVisible();
-    await expect(page.getByText("Deploy site button")).toBeVisible();
+    await expect(page.getByLabel("Michi side panel").getByText("Deploy site button")).toBeVisible();
     await expect(page.getByLabel("Highlighted target: Deploy site button")).toBeVisible();
     await page.getByRole("button", { name: "Next step" }).click();
     await expect(page.getByText("Critical write action")).toBeVisible();

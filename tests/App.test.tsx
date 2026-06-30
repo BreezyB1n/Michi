@@ -273,6 +273,9 @@ describe("Michi app", () => {
     expect(screen.getAllByText(/Workspace \/ Home/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Build area navigation item/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Page check synced/i).length).toBeGreaterThan(0);
+    const callout = screen.getByLabelText(/target callout/i);
+    expect(within(callout).getByText(/Build area navigation item/i)).toBeInTheDocument();
+    expect(within(callout).getByText(/Michi is checking this target/i)).toBeInTheDocument();
     expect(within(sidePanel).queryByText(/cloudflare|workers|pages|dns/i)).not.toBeInTheDocument();
   });
 
@@ -473,6 +476,7 @@ describe("Michi app", () => {
     await user.click(screen.getByRole("button", { name: /show page drift/i }));
 
     expect(screen.getByRole("heading", { name: /Expected control missing/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/target callout/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Michi cannot find Create service button/i)).toBeInTheDocument();
     expect(screen.getByText(/Michi cannot safely anchor this step/i)).toBeInTheDocument();
     expect(

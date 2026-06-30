@@ -25,3 +25,4 @@ Design docs explain why Michi behaves the way it does. Product behavior should b
 - `keyboard-focus-lifecycle-decision.md`
 - `unsupported-page-guidance-decision.md`
 - `first-run-readiness-decision.md`
+- `highlight-explanation-decision.md`

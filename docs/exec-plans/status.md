@@ -39,6 +39,7 @@ Michi has a verified local React workbench and unpacked extension runtime for a 
 | Keyboard focus lifecycle | `completed/keyboard-focus-lifecycle.md` | React workbench and injected shell now focus the primary panel control on open, keep focus inside Michi after guide re-renders, return focus to the rail on collapse, and preserve state on Escape. |
 | Unsupported page guidance | `completed/unsupported-page-guidance.md` | React workbench and injected shell now show productized recovery guidance for unsupported surfaces, route mismatch, missing targets, and runtime-read failures without exposing normal progress during recovery. |
 | First-run readiness | `completed/first-run-readiness.md` | React workbench and injected shell now show a compact first-open checklist with unchecked-placeholder, recovery-warning, product-copy, and desktop/mobile overflow proof. |
+| Highlight explanation | `completed/highlight-explanation.md` | React workbench and injected shell now explain highlighted targets with compact product-language callouts, stale-callout suppression, and browser proof. |
 
 ## Active Work
 
@@ -50,7 +51,7 @@ Michi has a verified local React workbench and unpacked extension runtime for a 
 
 ## Recommended Next Direction
 
-After first-run readiness, evaluate whether the next slice should make the in-page highlight explanation more legible without expanding the panel footprint. Keep future work inside the compact side panel unless a new spec says otherwise.
+After highlight explanation, evaluate whether the next slice should make page-check timing and loading states clearer without expanding the panel footprint. Keep future work inside the compact side panel unless a new spec says otherwise.
 
 ## Verification Baseline
 
