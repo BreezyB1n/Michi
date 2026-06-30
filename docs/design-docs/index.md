@@ -22,3 +22,4 @@ Design docs explain why Michi behaves the way it does. Product behavior should b
 - `product-only-ui-boundary-decision.md`
 - `product-surface-decision.md`
 - `command-handoff-decision.md`
+- `keyboard-focus-lifecycle-decision.md`

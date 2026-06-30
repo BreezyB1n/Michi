@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowCounterClockwise,
   ArrowRight,
@@ -121,6 +121,10 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
     createActivityTimeline()
   );
   const [pulseKey, setPulseKey] = useState(0);
+  const guideRailButtonRef = useRef<HTMLButtonElement>(null);
+  const railRef = useRef<HTMLElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const [panelFocusRequest, setPanelFocusRequest] = useState(0);
 
   const currentStep = session.steps[session.activeStepIndex];
   const commandHandoff = useMemo(() => commandHandoffForSession(session), [session]);
@@ -131,6 +135,51 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
 
     return `${session.activeStepIndex + 1} / ${session.steps.length}`;
   }, [session.activeStepIndex, session.steps.length]);
+
+  const focusGuideRail = () => {
+    guideRailButtonRef.current?.focus();
+  };
+
+  const openPanel = () => {
+    setPanelOpen(true);
+    setPanelFocusRequest((request) => request + 1);
+  };
+
+  const closePanel = () => {
+    setPanelOpen(false);
+    focusGuideRail();
+  };
+
+  useEffect(() => {
+    if (!panelOpen) {
+      return;
+    }
+
+    panelRef.current
+      ?.querySelector<HTMLElement>("[data-primary-panel-focus]")
+      ?.focus();
+  }, [panelOpen, panelFocusRequest, session.phase, session.activeStepIndex, session.serviceKind]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.key !== "Escape" || !panelOpen) {
+        return;
+      }
+
+      const target = event.target;
+      if (
+        !(target instanceof Node) ||
+        (!panelRef.current?.contains(target) && !railRef.current?.contains(target))
+      ) {
+        return;
+      }
+
+      closePanel();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [panelOpen]);
 
   const updateSession = (nextSession: GuideSession) => {
     if (nextSession.pageState.completionSatisfied) {
@@ -290,6 +339,8 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
     updateHostContext(() => pageContextRuntime.recoverToStep(0));
     updateSession(resetSession());
     setActivityTimeline(resetActivityTimeline(activityEventForReset()));
+    setPanelOpen(true);
+    setPanelFocusRequest((request) => request + 1);
   };
 
   const handleCommand = (actionId: CommandActionId) => {
@@ -358,6 +409,7 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
             <CurrentPagePreview session={session} hostPageContext={hostPageContext} />
             {panelOpen ? (
               <aside
+                ref={panelRef}
                 className="grid h-full max-h-full min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden border-l border-black/20 bg-primary text-primary-foreground shadow-[0_0_0_1px_rgb(255_255_255_/_0.05)_inset] max-[980px]:max-h-[68dvh] max-[980px]:border-l-0 max-[980px]:border-t"
                 aria-label="Michi side panel"
               >
@@ -365,7 +417,7 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
                   session={session}
                   hostPageContext={hostPageContext}
                   progress={progress}
-                  onClose={() => setPanelOpen(false)}
+                  onClose={closePanel}
                 />
                 <div
                   className="min-h-0 overflow-auto overscroll-contain bg-primary [scrollbar-width:thin]"
@@ -407,9 +459,11 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
             ) : null}
             <PluginRail
               panelOpen={panelOpen}
-              onOpen={() => setPanelOpen(true)}
+              guideButtonRef={guideRailButtonRef}
+              railRef={railRef}
+              onOpen={openPanel}
               onCheck={handleCheck}
-              onMinimize={() => setPanelOpen(false)}
+              onMinimize={closePanel}
             />
           </div>
         </section>
@@ -877,6 +931,7 @@ const IntentPanel = ({ intent, onIntentChange, onStart }: IntentPanelProps) => (
       User intent
     </label>
     <Textarea
+      data-primary-panel-focus
       id="intent"
       value={intent}
       onChange={(event) => onIntentChange(event.target.value)}
@@ -956,6 +1011,7 @@ type CommandButtonProps = {
 
 const CommandButton = ({ action, onCommand, primary = false }: CommandButtonProps) => (
   <Button
+    data-primary-panel-focus={primary ? true : undefined}
     type="button"
     variant={primary ? "primary" : "secondary"}
     onClick={() => onCommand(action.id)}
@@ -1170,17 +1226,34 @@ const ActionBar = ({
 
 type PluginRailProps = {
   panelOpen: boolean;
+  guideButtonRef: React.Ref<HTMLButtonElement>;
+  railRef: React.Ref<HTMLElement>;
   onOpen: () => void;
   onCheck: () => void;
   onMinimize: () => void;
 };
 
-const PluginRail = ({ panelOpen, onOpen, onCheck, onMinimize }: PluginRailProps) => (
+const PluginRail = ({
+  panelOpen,
+  guideButtonRef,
+  railRef,
+  onOpen,
+  onCheck,
+  onMinimize
+}: PluginRailProps) => (
   <nav
+    ref={railRef}
     className="grid content-start gap-2.5 border-l border-border bg-background p-2 max-[980px]:grid-cols-3 max-[980px]:border-l-0 max-[980px]:border-t max-[980px]:p-1.5"
     aria-label="Michi tool rail"
   >
-    <RailButton label="Guide" ariaLabel="Guide" active={panelOpen} icon={<FileText />} onClick={onOpen} />
+    <RailButton
+      buttonRef={guideButtonRef}
+      label="Guide"
+      ariaLabel="Guide"
+      active={panelOpen}
+      icon={<FileText />}
+      onClick={onOpen}
+    />
     <RailButton label="Check" ariaLabel="Check page" icon={<Play />} onClick={onCheck} />
     <RailButton label="Min" ariaLabel="Minimize panel" icon={<Minus />} onClick={onMinimize} />
   </nav>
@@ -1191,11 +1264,20 @@ type RailButtonProps = {
   ariaLabel: string;
   icon: React.ReactNode;
   active?: boolean;
+  buttonRef?: React.Ref<HTMLButtonElement>;
   onClick: () => void;
 };
 
-const RailButton = ({ label, ariaLabel, icon, active = false, onClick }: RailButtonProps) => (
+const RailButton = ({
+  label,
+  ariaLabel,
+  icon,
+  active = false,
+  buttonRef,
+  onClick
+}: RailButtonProps) => (
   <button
+    ref={buttonRef}
     type="button"
     aria-label={ariaLabel}
     onClick={onClick}

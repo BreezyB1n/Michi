@@ -41,6 +41,7 @@ test("runs the Workers guide path with recovery and critical confirmations", asy
   await expect(page.getByLabel("Michi side panel")).toHaveCount(0);
   await page.getByRole("button", { name: "Guide" }).click();
   await expect(page.getByRole("heading", { name: "Michi" })).toBeVisible();
+  await expect(page.getByLabel("User intent")).toBeFocused();
   await expect(page.getByLabel("Command handoff").getByText("Ready for an intent")).toBeVisible();
   await expect(page.getByLabel("Command handoff").getByRole("button", { name: "Start from intent" })).toBeVisible();
   await page.getByLabel("User intent").fill(sampleIntent);
@@ -68,6 +69,12 @@ test("runs the Workers guide path with recovery and critical confirmations", asy
     expect(panelBox?.height).toBeLessThanOrEqual((viewport?.height ?? 0) * 0.72);
   }
   await expectNoHorizontalOverflow(page);
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByLabel("Michi side panel")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Guide" })).toBeFocused();
+  await page.getByRole("button", { name: "Guide" }).click();
+  await expect(page.getByRole("heading", { name: "Find the build area" })).toBeVisible();
 
   await page.getByRole("button", { name: "Show page drift" }).click();
   await expect(page.getByRole("heading", { name: "Page layout changed" })).toBeVisible();
@@ -107,6 +114,7 @@ test("runs the Workers guide path with recovery and critical confirmations", asy
   await expectProductOnlyPageCopy(page);
 
   await page.getByRole("button", { name: "Reset" }).click();
+  await expect(page.getByLabel("User intent")).toBeFocused();
   await expect(page.getByLabel("Activity history").getByText("Session reset")).toBeVisible();
   await expect(page.getByLabel("Activity history").getByText("Intent captured")).toHaveCount(0);
   await expectNoHorizontalOverflow(page);

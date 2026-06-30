@@ -773,12 +773,83 @@ describe("Injected Michi extension shell", () => {
     click(shadow?.querySelector("[data-action='check']") ?? null);
     expect(shadow?.textContent).toContain("Service runtime overview");
 
+    click(shadow?.querySelector("[data-action='next-step']") ?? null);
+    expect(shadow?.textContent).toContain("Confirm Create service");
+    click(shadow?.querySelector("[data-action='confirm-action']") ?? null);
+    expect(shadow?.textContent).toContain("Step 3 / 5");
+    click(shadow?.querySelector("[data-action='previous-step']") ?? null);
+    expect(shadow?.textContent).toContain("Step 2 / 5");
+    expect(shadow?.activeElement).toBe(shadow?.querySelector("[data-primary-panel-focus]"));
+
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(shadow?.querySelector("[data-panel]")).toBeNull();
+    expect(shadow?.activeElement).toBe(shadow?.querySelector("[data-action='guide']"));
+
+    click(shadow?.querySelector("[data-action='guide']") ?? null);
+    expect(shadow?.textContent).toContain("Service runtime overview");
+
+    shadow?.querySelector("[data-command-action='advance-guide']")?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true, composed: true })
+    );
     expect(shadow?.querySelector("[data-panel]")).toBeNull();
 
     click(shadow?.querySelector("[data-action='guide']") ?? null);
     expect(shadow?.textContent).toContain("Service runtime overview");
     expect(shadow?.textContent).toContain("Create service button");
+  });
+
+  it("restores focus across open, minimize, Escape, and reset", () => {
+    renderCloudflareFixture();
+
+    const root = mountMichiInjectedShell(document, {
+      href: "https://dash.cloudflare.com/example-account/workers-and-pages",
+      title: "Workers & Pages"
+    });
+    const shadow = root.shadowRoot;
+    const guideButton = shadow?.querySelector<HTMLButtonElement>("[data-action='guide']");
+
+    expect(Array.from(shadow?.querySelectorAll(".rail button") ?? []).map((button) => button.textContent)).toEqual([
+      "Guide",
+      "Check page"
+    ]);
+
+    guideButton?.focus();
+    click(guideButton ?? null);
+    expect(shadow?.activeElement).toBe(shadow?.querySelector("[data-intent]"));
+
+    const hostCreateButton = document.querySelector("main button");
+    hostCreateButton?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(shadow?.querySelector("[data-panel]")).toBeInstanceOf(HTMLElement);
+
+    const preventedEscape = new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      cancelable: true,
+      composed: true
+    });
+    preventedEscape.preventDefault();
+    shadow?.querySelector("[data-intent]")?.dispatchEvent(preventedEscape);
+    expect(shadow?.querySelector("[data-panel]")).toBeInstanceOf(HTMLElement);
+
+    const minimizeButton = shadow?.querySelector<HTMLButtonElement>("[data-action='minimize']");
+    minimizeButton?.focus();
+    click(minimizeButton ?? null);
+    expect(shadow?.querySelector("[data-panel]")).toBeNull();
+    expect(shadow?.activeElement).toBe(shadow?.querySelector("[data-action='guide']"));
+
+    click(shadow?.querySelector("[data-action='guide']") ?? null);
+    click(shadow?.querySelector("[data-action='check']") ?? null);
+    expect(shadow?.textContent).toContain("Service runtime overview");
+
+    shadow?.querySelector("[data-command-action='advance-guide']")?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true, composed: true })
+    );
+    expect(shadow?.querySelector("[data-panel]")).toBeNull();
+    expect(shadow?.activeElement).toBe(shadow?.querySelector("[data-action='guide']"));
+
+    click(shadow?.querySelector("[data-action='guide']") ?? null);
+    click(shadow?.querySelector("[data-action='reset-guide']") ?? null);
+    expect(shadow?.activeElement).toBe(shadow?.querySelector("[data-intent]"));
   });
 
   it("creates target highlight styles only when a bounding box exists", () => {

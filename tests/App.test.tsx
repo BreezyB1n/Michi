@@ -169,6 +169,52 @@ describe("Michi app", () => {
     expect(screen.getByRole("heading", { name: /Find the build area/i })).toBeInTheDocument();
   });
 
+  it("manages keyboard focus across panel open, collapse, Escape, and reset", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const guideButton = screen.getByRole("button", { name: /^guide$/i });
+    await user.click(guideButton);
+    expect(screen.getByLabelText(/user intent/i)).toHaveFocus();
+
+    await user.click(screen.getByRole("button", { name: /reset/i }));
+    expect(screen.getByLabelText(/user intent/i)).toHaveFocus();
+
+    const preventedEscape = new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      cancelable: true
+    });
+    preventedEscape.preventDefault();
+    act(() => {
+      screen.getByLabelText(/user intent/i).dispatchEvent(preventedEscape);
+    });
+    expect(screen.getByLabelText(/michi side panel/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /^create$/i }));
+    await user.keyboard("{Escape}");
+    expect(screen.getByLabelText(/michi side panel/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /minimize panel/i }));
+    expect(screen.queryByLabelText(/michi side panel/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^guide$/i })).toHaveFocus();
+
+    await user.click(screen.getByRole("button", { name: /^guide$/i }));
+    await user.click(screen.getByRole("button", { name: /start guide/i }));
+    await user.click(screen.getByRole("button", { name: /backend logic or api/i }));
+    expect(await screen.findByRole("heading", { name: /Find the build area/i })).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+    expect(screen.queryByLabelText(/michi side panel/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^guide$/i })).toHaveFocus();
+
+    await user.click(screen.getByRole("button", { name: /^guide$/i }));
+    expect(screen.getByRole("heading", { name: /Find the build area/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /reset/i }));
+    expect(screen.getByLabelText(/user intent/i)).toHaveFocus();
+  });
+
   it("shows the Guide Workspace with capability, step purpose, completion check, and page state", async () => {
     await startBackendGuide();
 
