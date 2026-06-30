@@ -285,6 +285,15 @@ describe("Injected Michi extension shell", () => {
     expect(shadow?.querySelector(".command-handoff")?.textContent).toContain(
       "Wait for the page to finish loading"
     );
+    expect(shadow?.querySelector("[aria-label='Activity history']")?.textContent).toContain(
+      "Expected control missing: Wait for the page to finish loading or return to the expected step, then choose Recover now."
+    );
+    expect(shadow?.querySelector("[aria-label='Activity history']")?.textContent).not.toContain(
+      "Michi paused this guide and surfaced a recovery step"
+    );
+    expect(shadow?.querySelector("[data-action='previous-step']")).toBeNull();
+    expect(shadow?.querySelector("[data-action='next-step']")).toBeNull();
+    expect(shadow?.querySelector("[data-action='complete-guide']")).toBeNull();
     expect(shadow?.querySelector("[data-command-action='advance-guide']")).toBeNull();
     expect(shadow?.querySelector("[data-command-action='complete-guide']")).toBeNull();
     expectProductOnlyShadowCopy(shadow);
@@ -371,10 +380,11 @@ describe("Injected Michi extension shell", () => {
     location.title = "Workers & Pages";
     click(shadow?.querySelector("[data-action='check']") ?? null);
 
-    expect(shadow?.textContent).toContain("Route mismatch");
+    expect(shadow?.textContent).toContain("Wrong guide area");
     expect(shadow?.textContent).toContain("active guide is Site publishing");
-    expect(shadow?.textContent).toContain("current page belongs to Service runtime");
-    expect(shadow?.textContent).toContain("reset and choose the other path");
+    expect(shadow?.textContent).toContain("checked page looks like Service runtime");
+    expect(shadow?.textContent).toContain("Michi keeps the current guide selected");
+    expect(shadow?.textContent).toContain("Return to the Site publishing path");
     expect(shadow?.querySelector("[data-highlight]")).toBeNull();
     expect(shadow?.textContent).not.toContain("Create a service");
 
@@ -385,7 +395,7 @@ describe("Injected Michi extension shell", () => {
 
     expect(shadow?.textContent).toContain("Step 4 / 5");
     expect(shadow?.textContent).toContain("Deploy the site");
-    expect(shadow?.querySelector(".recovery")?.textContent ?? "").not.toContain("Route mismatch");
+    expect(shadow?.querySelector(".recovery")?.textContent ?? "").not.toContain("Wrong guide area");
   });
 
   it("shows route-mismatch recovery over stale Pages confirmation copy", () => {
@@ -410,8 +420,10 @@ describe("Injected Michi extension shell", () => {
     location.title = "Workers & Pages";
     click(shadow?.querySelector("[data-action='check']") ?? null);
 
-    expect(shadow?.textContent).toContain("Route mismatch");
+    expect(shadow?.textContent).toContain("Wrong guide area");
     expect(shadow?.textContent).toContain("active guide is Site publishing");
+    expect(shadow?.textContent).toContain("checked page looks like Service runtime");
+    expect(shadow?.textContent).toContain("Michi keeps the current guide selected");
     expect(shadow?.textContent).not.toContain("Confirm Deploy site");
     expect(shadow?.textContent).not.toContain("Publishes the site project to a reachable URL");
   });
@@ -566,8 +578,9 @@ describe("Injected Michi extension shell", () => {
     renderWorkersOverviewMissingTargetFixture();
     click(shadow?.querySelector("[data-action='check']") ?? null);
 
-    expect(shadow?.textContent).toContain("Target missing");
+    expect(shadow?.textContent).toContain("Expected control missing");
     expect(shadow?.textContent).toContain("Create service button");
+    expect(shadow?.textContent).toContain("Michi cannot safely anchor this step");
     expect(shadow?.textContent).not.toContain("Confirm Create service");
     expect(shadow?.textContent).not.toContain("Prepares a new service resource");
     expectProductOnlyShadowCopy(shadow);
@@ -721,13 +734,13 @@ describe("Injected Michi extension shell", () => {
     const shadow = root.shadowRoot;
 
     click(shadow?.querySelector("[data-action='check']") ?? null);
-    expect(shadow?.textContent).toContain("Target missing");
+    expect(shadow?.textContent).toContain("Expected control missing");
 
     click(shadow?.querySelector("[data-action='reset-guide']") ?? null);
 
     expect(shadow?.textContent).toContain("User intent");
     expect(shadow?.textContent).toContain("Start guide");
-    expect(shadow?.textContent).not.toContain("Target missing");
+    expect(shadow?.textContent).not.toContain("Expected control missing");
     expect(shadow?.textContent).not.toContain("cloudflare.workers.overview");
   });
 
@@ -948,9 +961,10 @@ describe("Injected Michi extension shell", () => {
   it("describes how to recover when the expected route target is missing", () => {
     const guidance = recoveryGuidanceForContext(hostContext());
 
-    expect(guidance?.title).toBe("Target missing");
+    expect(guidance?.title).toBe("Expected control missing");
     expect(guidance?.reason).toContain("Create service button");
-    expect(guidance?.recoveryAction).toContain("Check page");
+    expect(guidance?.impact).toContain("Michi cannot safely anchor this step");
+    expect(guidance?.recoveryAction).toContain("Recover now");
   });
 
   it("describes unsupported page contexts without rendering normal target copy", () => {
@@ -991,10 +1005,11 @@ describe("Injected Michi extension shell", () => {
       "backend-api"
     );
 
-    expect(guidance?.title).toBe("Route mismatch");
+    expect(guidance?.title).toBe("Wrong guide area");
     expect(guidance?.reason).toContain("active guide is Service runtime");
-    expect(guidance?.reason).toContain("current page belongs to Site publishing");
-    expect(guidance?.recoveryAction).toContain("reset and choose the other path");
+    expect(guidance?.reason).toContain("checked page looks like Site publishing");
+    expect(guidance?.impact).toContain("Michi keeps the current guide selected");
+    expect(guidance?.recoveryAction).toContain("Return to the Service runtime path");
   });
 
   it("shows unsupported recovery after a stale critical confirmation phase", () => {
@@ -1016,8 +1031,8 @@ describe("Injected Michi extension shell", () => {
     click(shadow?.querySelector("[data-action='check']") ?? null);
 
     expect(shadow?.textContent).toContain("Unsupported page");
-    expect(shadow?.textContent).toContain("supported product pages");
-    expect(shadow?.textContent).toContain("build area");
+    expect(shadow?.textContent).toContain("outside the current guide surface");
+    expect(shadow?.textContent).toContain("Open a supported workspace page");
     expect(shadow?.textContent).not.toContain("Confirm Create service");
     expect(shadow?.textContent).not.toContain("Step 1 / 5");
   });
@@ -1041,8 +1056,8 @@ describe("Injected Michi extension shell", () => {
     click(shadow?.querySelector("[data-action='check']") ?? null);
 
     expect(shadow?.textContent).toContain("Unsupported page");
-    expect(shadow?.textContent).toContain("supported product pages");
-    expect(shadow?.textContent).toContain("build area");
+    expect(shadow?.textContent).toContain("outside the current guide surface");
+    expect(shadow?.textContent).toContain("Open a supported workspace page");
     expect(shadow?.textContent).not.toContain("Primary path complete");
     expect(shadow?.textContent).not.toContain("Custom domain");
   });

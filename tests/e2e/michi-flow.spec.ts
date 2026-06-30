@@ -77,12 +77,14 @@ test("runs the Workers guide path with recovery and critical confirmations", asy
   await expect(page.getByRole("heading", { name: "Find the build area" })).toBeVisible();
 
   await page.getByRole("button", { name: "Show page drift" }).click();
-  await expect(page.getByRole("heading", { name: "Page layout changed" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Expected control missing" })).toBeVisible();
+  await expect(page.getByText(/Michi cannot safely anchor this step/)).toBeVisible();
+  await expect(page.getByText(/choose Recover now/).first()).toBeVisible();
   await expect(page.getByLabel("Command handoff").getByText("Recovery is required")).toBeVisible();
   await expect(page.getByLabel("Command handoff").getByRole("button", { name: "Recover now" })).toBeVisible();
   await expect(page.getByLabel("Activity history").getByText("Check needs recovery")).toBeVisible();
   await expectProductOnlyPageCopy(page);
-  await page.getByRole("button", { name: "Recover and re-check" }).click();
+  await page.getByLabel("Guide actions").getByRole("button", { name: "Recover now" }).click();
   await expect(
     page.getByLabel("Michi side panel").getByRole("definition").filter({
       hasText: /^Page check synced$/
@@ -134,10 +136,11 @@ test("runs the Pages guide path with critical deploy confirmation", async ({ pag
   await expect(page.getByLabel("Activity history").getByText("Site path selected")).toBeVisible();
 
   await page.getByRole("button", { name: "Show page drift" }).click();
-  await expect(page.getByRole("heading", { name: "Page layout changed" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Expected control missing" })).toBeVisible();
+  await expect(page.getByText(/Michi cannot safely anchor this step/)).toBeVisible();
   await expect(page.getByLabel("Activity history").getByText("Check needs recovery")).toBeVisible();
   await expectProductOnlyPageCopy(page);
-  await page.getByRole("button", { name: "Recover and re-check" }).click();
+  await page.getByLabel("Guide actions").getByRole("button", { name: "Recover now" }).click();
   await expect(
     page.getByLabel("Michi side panel").getByRole("definition").filter({
       hasText: /^Page check synced$/

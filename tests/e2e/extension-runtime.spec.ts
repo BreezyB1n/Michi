@@ -275,10 +275,11 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
       `;
     });
     await page.getByRole("button", { name: "Check page" }).click();
-    await expect(page.locator(".recovery").getByText("Route mismatch", { exact: true })).toBeVisible();
+    await expect(page.locator(".recovery").getByText("Wrong guide area", { exact: true })).toBeVisible();
     await expect(page.getByLabel("Command handoff").getByText("Recovery is required")).toBeVisible();
     await expect(page.getByText(/active guide is Site publishing/)).toBeVisible();
-    await expect(page.getByText(/current page belongs to Service runtime/)).toBeVisible();
+    await expect(page.getByText(/checked page looks like Service runtime/)).toBeVisible();
+    await expect(page.getByText(/Michi keeps the current guide selected/)).toBeVisible();
     await expect(page.getByLabel("Highlighted target: Create service button")).toHaveCount(0);
     await expectProductOnlyShadowCopy(page);
 
@@ -294,7 +295,7 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
       `;
     });
     await page.getByRole("button", { name: "Check page" }).click();
-    await expect(page.getByText("Route mismatch")).toHaveCount(0);
+    await expect(page.locator(".recovery").getByText("Wrong guide area")).toHaveCount(0);
     await expect(page.getByText("Site deployment review")).toBeVisible();
     await expect(page.getByText("Step 4 / 5")).toBeVisible();
     await expect(page.getByText("Deploy the site", { exact: true })).toBeVisible();
@@ -343,8 +344,9 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByLabel("Michi rail")).toBeVisible();
     await page.getByRole("button", { name: "Guide" }).click();
     await page.getByRole("button", { name: "Check page" }).click();
-    await expect(page.locator(".recovery").getByText("Target missing", { exact: true })).toBeVisible();
+    await expect(page.locator(".recovery").getByText("Expected control missing", { exact: true })).toBeVisible();
     await expect(page.locator(".recovery").getByText(/Create service button/)).toBeVisible();
+    await expect(page.locator(".recovery").getByText(/Michi cannot safely anchor this step/)).toBeVisible();
     await expect(page.getByLabel("Highlighted target: Create service button")).toHaveCount(0);
 
     await page.goto("https://dash.cloudflare.com/example-account/analytics");
@@ -353,8 +355,8 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await page.getByRole("button", { name: "Check page" }).click();
     const unsupportedPanel = page.getByLabel("Michi side panel");
     await expect(unsupportedPanel.getByLabel("Unsupported page")).toBeVisible();
-    await expect(unsupportedPanel.getByText(/supported product pages/)).toBeVisible();
-    await expect(unsupportedPanel.getByLabel("Unsupported page").getByText(/build area/)).toBeVisible();
+    await expect(unsupportedPanel.getByText(/outside the current guide surface/)).toBeVisible();
+    await expect(unsupportedPanel.getByLabel("Unsupported page").getByText(/Open a supported workspace page/)).toBeVisible();
     await expect(page.getByText("Step 1 / 5")).toHaveCount(0);
     await expect(page.getByLabel(/Highlighted target/)).toHaveCount(0);
 

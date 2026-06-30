@@ -4,6 +4,7 @@ import {
   productPageStateCopy,
   sanitizeProviderText
 } from "./productPresentation";
+import type { RecoveryGuidance } from "./recoveryGuidance";
 import type { GuideSession, GuideStep, ServiceKind } from "./types";
 
 export type ActivityTone = "info" | "success" | "warning" | "error";
@@ -32,6 +33,10 @@ export type ActivityEventInput = Omit<ActivityEvent, "id" | "sequence">;
 export type ActivityTimeline = {
   events: ActivityEvent[];
   nextSequence: number;
+};
+
+export type PageCheckActivityOptions = {
+  recoveryGuidance?: Pick<RecoveryGuidance, "title" | "action">;
 };
 
 export const createActivityTimeline = (): ActivityTimeline => ({
@@ -80,16 +85,22 @@ export const activityEventForServiceKind = (kind: ServiceKind): ActivityEventInp
         tone: "info"
       };
 
-export const activityEventForPageCheck = (session: GuideSession): ActivityEventInput => {
+export const activityEventForPageCheck = (
+  session: GuideSession,
+  options: PageCheckActivityOptions = {}
+): ActivityEventInput => {
   const pageState = productPageStateCopy(session.pageState);
 
   if (session.pageState.blockingState) {
     const blockingState = productBlockingStateCopy(session.pageState.blockingState);
+    const recoveryDetail = options.recoveryGuidance
+      ? `${options.recoveryGuidance.title}: ${options.recoveryGuidance.action}`
+      : `${blockingState.title}: ${blockingState.recoveryAction}`;
 
     return {
       kind: "recovery",
       title: "Check needs recovery",
-      detail: `${blockingState.title}: ${blockingState.recoveryAction}`,
+      detail: recoveryDetail,
       tone: session.pageState.blockingState.id === "extension-runtime-unavailable" ? "error" : "warning"
     };
   }

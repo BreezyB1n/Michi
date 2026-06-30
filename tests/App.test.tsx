@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import App from "../src/App";
 import { unsupportedPageContext } from "../src/domain/extensionPageContextProvider";
+import { hostPageContextForStep } from "../src/domain/pageContextProvider";
 import type { MichiPageContextRuntime } from "../src/domain/pageContextRuntime";
 import type { HostPageContext } from "../src/domain/types";
 
@@ -129,6 +130,31 @@ const delayedExtensionRuntime = () => {
   return {
     runtime,
     resolveStepContext
+  };
+};
+
+const reducerDetectedMissingTargetRuntime = (): MichiPageContextRuntime => {
+  const contextForStep = (index = 0): HostPageContext => {
+    const context = hostPageContextForStep(index, "backend-api");
+
+    if (index === 1) {
+      return {
+        ...context,
+        targets: []
+      };
+    }
+
+    return context;
+  };
+
+  return {
+    mode: "mock",
+    getInitialContext: () => contextForStep(0),
+    getCurrentContext: async () => contextForStep(1),
+    syncGuideStep: async (index = 0) => contextForStep(index),
+    simulatePageDrift: async (index = 0) => contextForStep(index),
+    recoverToStep: async (index = 0) => hostPageContextForStep(index, "backend-api"),
+    subscribe: () => () => undefined
   };
 };
 
@@ -269,7 +295,9 @@ describe("Michi app", () => {
     activity = screen.getByLabelText(/activity history/i);
     expect(await within(activity).findByText(/Check needs recovery/i)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /recover and re-check/i }));
+    await user.click(
+      within(screen.getByLabelText(/guide actions/i)).getByRole("button", { name: /recover now/i })
+    );
 
     activity = screen.getByLabelText(/activity history/i);
     expect(await within(activity).findByText(/Recovery completed/i)).toBeInTheDocument();
@@ -405,17 +433,57 @@ describe("Michi app", () => {
 
     await user.click(screen.getByRole("button", { name: /show page drift/i }));
 
-    expect(screen.getByRole("heading", { name: /Page layout changed/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Expected control missing/i })).toBeInTheDocument();
     expect(screen.getByText(/Recovery step/i)).toBeInTheDocument();
-    expect(screen.getByText(/current step cannot be anchored/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/page search for Build area/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Michi cannot safely anchor this step/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/choose Recover now/i).length).toBeGreaterThan(0);
     expect(screen.getByLabelText(/michi side panel/i)).not.toHaveTextContent(/cloudflare/i);
     expectProductOnlyVisibleCopy();
 
-    await user.click(screen.getByRole("button", { name: /recover and re-check/i }));
+    await user.click(
+      within(screen.getByLabelText(/guide actions/i)).getByRole("button", { name: /recover now/i })
+    );
 
     expect(screen.getByRole("heading", { name: /Find the build area/i })).toBeInTheDocument();
     expect(screen.getAllByText(/Page check synced/i).length).toBeGreaterThan(0);
+  });
+
+  it("renders productized missing-target recovery guidance", async () => {
+    const user = await startBackendGuide();
+
+    await user.click(screen.getByRole("button", { name: /advance guide/i }));
+    await user.click(screen.getByRole("button", { name: /show page drift/i }));
+
+    expect(screen.getByRole("heading", { name: /Expected control missing/i })).toBeInTheDocument();
+    expect(screen.getByText(/Michi cannot find Create service button/i)).toBeInTheDocument();
+    expect(screen.getByText(/Michi cannot safely anchor this step/i)).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/return to the expected step, then choose Recover now/i).length
+    ).toBeGreaterThan(0);
+    expect(screen.getByLabelText(/command handoff/i)).toHaveTextContent(/Recovery is required/i);
+    expect(screen.getByLabelText(/command handoff/i)).toHaveTextContent(
+      /Expected control missing: Wait for the page to finish loading or return to the expected step, then choose Recover now/i
+    );
+    expect(screen.getByLabelText(/activity history/i)).toHaveTextContent(
+      /Expected control missing: Wait for the page to finish loading or return to the expected step, then choose Recover now/i
+    );
+    expectProductOnlyVisibleCopy();
+  });
+
+  it("shows recovery status when the reducer detects a missing target", async () => {
+    const user = userEvent.setup();
+    render(<App pageContextRuntime={reducerDetectedMissingTargetRuntime()} />);
+
+    await user.click(screen.getByRole("button", { name: /^guide$/i }));
+    await user.click(screen.getByRole("button", { name: /start guide/i }));
+    await user.click(screen.getByRole("button", { name: /backend logic or api/i }));
+    await user.click(screen.getByRole("button", { name: /advance guide/i }));
+
+    expect(screen.getByRole("heading", { name: /Expected control missing/i })).toBeInTheDocument();
+    const statusRow = screen.getByText("Check status").closest("div");
+    expect(statusRow).not.toBeNull();
+    expect(within(statusRow as HTMLElement).getByText("Check needs recovery")).toBeInTheDocument();
+    expect(within(statusRow as HTMLElement).queryByText("Page check synced")).not.toBeInTheDocument();
   });
 
   it("shows a recoverable extension runtime error when the page check cannot run", async () => {
@@ -426,9 +494,9 @@ describe("Michi app", () => {
     await user.click(screen.getByRole("button", { name: /start guide/i }));
     await user.click(screen.getByRole("button", { name: /backend logic or api/i }));
 
-    expect(await screen.findByRole("heading", { name: /Extension runtime unavailable/i })).toBeInTheDocument();
-    expect(screen.getByText(/No receiving end/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/open or refresh a supported browser tab/i).length).toBeGreaterThan(0);
+    expect(await screen.findByRole("heading", { name: /Page read unavailable/i })).toBeInTheDocument();
+    expect(screen.getByText(/Michi could not read the active page/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Refresh the active page or reload Michi/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Check status/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Extension runtime error/i).length).toBeGreaterThanOrEqual(1);
     expectProductOnlyVisibleCopy();
@@ -442,8 +510,8 @@ describe("Michi app", () => {
     await user.click(screen.getByRole("button", { name: /start guide/i }));
     await user.click(screen.getByRole("button", { name: /backend logic or api/i }));
 
-    expect(await screen.findByRole("heading", { name: /Extension runtime unavailable/i })).toBeInTheDocument();
-    expect(screen.getByText(/Extension request rejected/i)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Page read unavailable/i })).toBeInTheDocument();
+    expect(screen.getByText(/Michi could not read the active page/i)).toBeInTheDocument();
   });
 
   it("converts synchronous provider failures into the extension runtime recovery state", async () => {
@@ -454,8 +522,8 @@ describe("Michi app", () => {
     await user.click(screen.getByRole("button", { name: /start guide/i }));
     await user.click(screen.getByRole("button", { name: /backend logic or api/i }));
 
-    expect(await screen.findByRole("heading", { name: /Extension runtime unavailable/i })).toBeInTheDocument();
-    expect(screen.getByText(/Synchronous extension failure/i)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Page read unavailable/i })).toBeInTheDocument();
+    expect(screen.getByText(/Michi could not read the active page/i)).toBeInTheDocument();
   });
 
   it("ignores stale provider results after reset", async () => {
@@ -473,7 +541,7 @@ describe("Michi app", () => {
       await Promise.resolve();
     });
 
-    expect(screen.queryByRole("heading", { name: /Extension runtime unavailable/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /Page read unavailable/i })).not.toBeInTheDocument();
     expect(screen.getByLabelText(/user intent/i)).toHaveValue(sampleIntent);
   });
 
