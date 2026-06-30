@@ -116,6 +116,9 @@ test("loads the unpacked extension and reads Cloudflare page context", async ({}
     await expect(page.getByLabel("Michi side panel")).toBeVisible();
     await expect(page.getByText("User intent")).toBeVisible();
     await expect(page.getByLabel("User intent")).toBeFocused();
+    await expect(page.getByLabel("First-run readiness")).toBeVisible();
+    await expect(page.getByLabel("First-run readiness").getByText("Panel active")).toBeVisible();
+    await expect(page.getByLabel("First-run readiness").getByText("Page needs check")).toBeVisible();
     await expect(page.getByLabel("Activity history").getByText("No activity yet")).toBeVisible();
     await expect(page.getByLabel("Command handoff").getByText("Ready for an intent")).toBeVisible();
     await expect(page.getByLabel("Command handoff").getByRole("button", { name: "Start from intent" })).toBeVisible();

@@ -52,6 +52,7 @@ import {
   type CommandActionId
 } from "../domain/commandHandoff";
 import { recoveryGuidanceForState } from "../domain/recoveryGuidance";
+import { readinessChecklistForState } from "../domain/readiness";
 
 export { workersGuideStepForContext as guideStepForContext } from "../domain/workersGuideFlow";
 
@@ -70,6 +71,7 @@ type ShellState = {
   intent: string;
   phase: WorkersGuideShellPhase;
   serviceKind?: ServiceKind;
+  guideStarted: boolean;
   activityTimeline: ActivityTimeline;
 };
 
@@ -241,6 +243,60 @@ const shellStyles = `
     margin-bottom: 14px;
     padding-bottom: 14px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .readiness-summary {
+    display: grid;
+    gap: 10px;
+    margin: 14px 0;
+    padding: 11px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.055);
+  }
+
+  .readiness-list {
+    display: grid;
+    gap: 7px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .readiness-item {
+    padding: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.055);
+  }
+
+  .readiness-item[data-tone="ready"] {
+    border-color: rgba(16, 185, 129, 0.32);
+    background: rgba(16, 185, 129, 0.11);
+  }
+
+  .readiness-item[data-tone="pending"] {
+    border-color: rgba(0, 132, 189, 0.3);
+    background: rgba(0, 132, 189, 0.1);
+  }
+
+  .readiness-item[data-tone="warning"] {
+    border-color: rgba(245, 158, 11, 0.4);
+    background: rgba(245, 158, 11, 0.12);
+  }
+
+  .readiness-item strong {
+    display: block;
+    margin-bottom: 3px;
+    font: 750 12px/1.25 inherit;
+    color: #f1f0df;
+  }
+
+  .readiness-item span {
+    display: block;
+    font: 550 11px/1.45 inherit;
+    color: rgba(241, 240, 223, 0.68);
+    overflow-wrap: anywhere;
   }
 
   .activity-summary {
@@ -692,6 +748,38 @@ const intentCopy = (intent: string) => `
   </section>
 `;
 
+const readinessCopy = (state: ShellState) => {
+  const firstRunRecovery =
+    state.phase === "recovery" && state.activeStepIndex === undefined && !state.guideStarted;
+  const checklist = readinessChecklistForState({
+    panelOpen: state.open,
+    phase: state.phase === "static-complete" ? "complete" : state.phase,
+    context: state.context,
+    firstRunRecovery
+  });
+
+  if (!checklist.visible) {
+    return "";
+  }
+
+  return `<section class="readiness-summary" aria-label="${escapeHtml(checklist.title)}">
+    <div>
+      <p class="eyebrow">Readiness</p>
+      <p class="step-title">${escapeHtml(checklist.title)}</p>
+    </div>
+    <ol class="readiness-list">
+      ${checklist.items
+        .map(
+          (item) => `<li class="readiness-item" data-tone="${escapeHtml(item.tone)}">
+            <strong>${escapeHtml(item.label)}</strong>
+            <span>${escapeHtml(item.detail)}</span>
+          </li>`
+        )
+        .join("")}
+    </ol>
+  </section>`;
+};
+
 const clarificationCopy = (intent: string) => `
   <section class="guide-summary" aria-label="Service clarification">
     <div>
@@ -882,11 +970,11 @@ const contextCopy = (
 
 const panelBodyCopy = (state: ShellState) => {
   if (state.phase === "intent" && !state.context) {
-    return intentCopy(state.intent);
+    return `${intentCopy(state.intent)}${readinessCopy(state)}`;
   }
 
   if (state.context?.routeId === "cloudflare.unsupported") {
-    return contextCopy(state.context, undefined, state.serviceKind);
+    return `${readinessCopy(state)}${contextCopy(state.context, undefined, state.serviceKind)}`;
   }
 
   if (state.phase === "clarify") {
@@ -935,6 +1023,7 @@ export const mountMichiInjectedShell = (
     open: false,
     intent: sampleIntent,
     phase: "intent",
+    guideStarted: false,
     activityTimeline: createActivityTimeline()
   };
   const ownerWindow = doc.defaultView ?? window;
@@ -954,6 +1043,11 @@ export const mountMichiInjectedShell = (
     state.activeStepIndex = nextGuideState.activeStepIndex;
     state.intent = nextGuideState.intent;
     state.serviceKind = nextGuideState.serviceKind;
+    if (nextGuideState.phase === "intent") {
+      state.guideStarted = false;
+    } else if (nextGuideState.phase !== "recovery" || nextGuideState.activeStepIndex !== undefined) {
+      state.guideStarted = true;
+    }
   };
   const recordActivity = (events: ActivityEventInput | ActivityEventInput[] | undefined) => {
     if (!events) {

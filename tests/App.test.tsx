@@ -169,7 +169,13 @@ describe("Michi app", () => {
     await user.click(screen.getByRole("button", { name: /^guide$/i }));
 
     expect(screen.getByRole("heading", { name: /michi/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/first-run readiness/i)).toBeInTheDocument();
+    expect(screen.getByText(/Panel active/i)).toBeInTheDocument();
+    expect(screen.getByText(/Page check available/i)).toBeInTheDocument();
+    expect(screen.getByText(/Guide state ready/i)).toBeInTheDocument();
+    expect(screen.getByText(/Page usable/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/user intent/i)).toHaveValue(sampleIntent);
+    expect(screen.getByLabelText(/user intent/i)).toHaveFocus();
     expect(screen.getByRole("button", { name: /^guide$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /check page/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /minimize panel/i })).toBeInTheDocument();
@@ -181,6 +187,18 @@ describe("Michi app", () => {
     expect(screen.getByText(/what kind of service are you building/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /backend logic or api/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /static website/i })).toBeInTheDocument();
+  });
+
+  it("shows first-run readiness as needing a check before extension page context is read", async () => {
+    const user = userEvent.setup();
+    render(<App pageContextRuntime={extensionFailureRuntime()} />);
+
+    await user.click(screen.getByRole("button", { name: /^guide$/i }));
+
+    const readiness = screen.getByLabelText(/first-run readiness/i);
+    expect(within(readiness).getByText(/Page needs check/i)).toBeInTheDocument();
+    expect(within(readiness).getByText(/Run Check page/i)).toBeInTheDocument();
+    expectProductOnlyVisibleCopy();
   });
 
   it("collapses and expands the guide panel without resetting session state", async () => {
