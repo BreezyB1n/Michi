@@ -80,6 +80,10 @@ import {
   productTargetLabel,
   sanitizeProviderText
 } from "./domain/productPresentation";
+import {
+  recoveryGuidanceForState,
+  type RecoveryGuidance
+} from "./domain/recoveryGuidance";
 
 const sampleIntent = "I want to build a small service that other people can access.";
 
@@ -127,7 +131,22 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
   const [panelFocusRequest, setPanelFocusRequest] = useState(0);
 
   const currentStep = session.steps[session.activeStepIndex];
-  const commandHandoff = useMemo(() => commandHandoffForSession(session), [session]);
+  const recoveryGuidance = useMemo(
+    () =>
+      session.phase === "recovery" && session.pageState.blockingState
+        ? recoveryGuidanceForState({
+            blockingState: session.pageState.blockingState,
+            context: hostPageContext,
+            serviceKind: session.serviceKind,
+            step: currentStep
+          })
+        : undefined,
+    [currentStep, hostPageContext, session.pageState.blockingState, session.phase, session.serviceKind]
+  );
+  const commandHandoff = useMemo(
+    () => commandHandoffForSession(session, { recoveryGuidance }),
+    [recoveryGuidance, session]
+  );
   const progress = useMemo(() => {
     if (!session.steps.length) {
       return "0 / 0";
@@ -213,11 +232,32 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
       "error"
     );
 
+  const recoveryGuidanceForCheckedSession = (
+    checkedSession: GuideSession,
+    context: HostPageContext
+  ): RecoveryGuidance | undefined =>
+    checkedSession.phase === "recovery" && checkedSession.pageState.blockingState
+      ? recoveryGuidanceForState({
+          blockingState: checkedSession.pageState.blockingState,
+          context,
+          serviceKind: checkedSession.serviceKind,
+          step: checkedSession.steps[checkedSession.activeStepIndex]
+        })
+      : undefined;
+
+  const activityEventForCheckedSession = (
+    checkedSession: GuideSession,
+    context: HostPageContext
+  ) =>
+    activityEventForPageCheck(checkedSession, {
+      recoveryGuidance: recoveryGuidanceForCheckedSession(checkedSession, context)
+    });
+
   const updateFromContext = (
     baseSession: GuideSession,
     readContext: ContextRequest = () => pageContextRuntime.getCurrentContext(),
-    createActivityEvent: ContextActivityFactory = ({ nextSession }) =>
-      activityEventForPageCheck(nextSession)
+    createActivityEvent: ContextActivityFactory = ({ context, nextSession }) =>
+      activityEventForCheckedSession(nextSession, context)
   ) => {
     const requestId = nextContextRequestId();
     const applyContext = (context: HostPageContext) => {
@@ -317,10 +357,10 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
     updateFromContext(
       session,
       () => pageContextRuntime.recoverToStep(session.activeStepIndex, session.serviceKind),
-      ({ baseSession, nextSession }) =>
+      ({ baseSession, context, nextSession }) =>
         baseSession.phase === "recovery" && nextSession.phase === "guide"
           ? activityEventForRecovery(nextSession)
-          : activityEventForPageCheck(nextSession)
+          : activityEventForCheckedSession(nextSession, context)
     );
   };
 
@@ -433,6 +473,8 @@ const App = ({ pageContextRuntime: providedPageContextRuntime }: AppProps = {}) 
                       <GuidePanel
                         session={session}
                         currentStep={currentStep}
+                        hostPageContext={hostPageContext}
+                        recoveryGuidance={recoveryGuidance}
                         intent={intent}
                         onIntentChange={setIntent}
                         onStart={handleStart}
@@ -768,6 +810,8 @@ const ChoiceButton = ({ title, children, onClick }: ChoiceButtonProps) => (
 type GuidePanelProps = {
   session: GuideSession;
   currentStep: GuideSession["steps"][number] | undefined;
+  hostPageContext: HostPageContext;
+  recoveryGuidance?: RecoveryGuidance;
   intent: string;
   onIntentChange: (intent: string) => void;
   onStart: () => void;
@@ -776,6 +820,8 @@ type GuidePanelProps = {
 const GuidePanel = ({
   session,
   currentStep,
+  hostPageContext,
+  recoveryGuidance,
   intent,
   onIntentChange,
   onStart
@@ -838,19 +884,29 @@ const GuidePanel = ({
   }
 
   if (session.phase === "recovery" && session.pageState.blockingState) {
-    const blockingState = productBlockingStateCopy(session.pageState.blockingState);
+    const guidance =
+      recoveryGuidance ??
+      recoveryGuidanceForState({
+        blockingState: session.pageState.blockingState,
+        context: hostPageContext,
+        serviceKind: session.serviceKind,
+        step: currentStep
+      });
 
     return (
       <SectionCard>
         <SectionLabel>Recovery step</SectionLabel>
         <h2 className="mb-2 text-xl font-semibold tracking-[-0.025em]">
-          {blockingState.title}
+          {guidance.title}
         </h2>
         <p className="mb-4 text-sm leading-6 text-white/60">
-          {blockingState.reason}
+          {guidance.reason}
+        </p>
+        <p className="mb-4 text-sm leading-6 text-white/60">
+          {guidance.impact}
         </p>
         <Callout icon={<WarningCircle />} tone="warning">
-          {blockingState.recoveryAction}
+          {guidance.action}
         </Callout>
       </SectionCard>
     );
@@ -1055,8 +1111,10 @@ const PageStatePanel = ({ session, hostPageContext, pulseKey }: PageStatePanelPr
       <StateRow
         label="Check status"
         value={
-          session.pageState.blockingState?.id === "extension-runtime-unavailable"
-            ? "Extension runtime error"
+          session.pageState.blockingState
+            ? session.pageState.blockingState.id === "extension-runtime-unavailable"
+              ? "Extension runtime error"
+              : "Check needs recovery"
             : hostPageContext.blockingState
               ? "Check needs recovery"
               : "Page check synced"
@@ -1217,7 +1275,7 @@ const ActionBar = ({
         onClick={onRecover}
         className="max-[520px]:col-span-full"
       >
-        Recover and re-check
+        Recover now
         <ArrowRight aria-hidden="true" />
       </Button>
     ) : null}

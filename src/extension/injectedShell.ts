@@ -1,13 +1,13 @@
 import { readCloudflarePageContext } from "./cloudflarePageReader";
-import { capabilities, pageStatesByServiceKind } from "../domain/siteSkillPack";
+import { blockingStates, capabilities, pageStatesByServiceKind } from "../domain/siteSkillPack";
 import {
   canCompleteGuide,
   finalGuideStepIndexForServiceKind,
   guideStepsForServiceKind,
+  guideStepForRouteId,
   preferredTargetForContextAndServiceKind,
   preferredTargetIdForRouteId,
-  serviceKindForRouteId,
-  targetLabelForWorkersGuideTarget
+  serviceKindForRouteId
 } from "../domain/workersGuideFlow";
 import type { WorkersGuideShellPhase } from "../domain/workersGuideFlow";
 import type { HostPageContext, PageTarget, ServiceKind } from "../domain/types";
@@ -51,6 +51,7 @@ import {
   type CommandAction,
   type CommandActionId
 } from "../domain/commandHandoff";
+import { recoveryGuidanceForState } from "../domain/recoveryGuidance";
 
 export { workersGuideStepForContext as guideStepForContext } from "../domain/workersGuideFlow";
 
@@ -75,6 +76,7 @@ type ShellState = {
 type RecoveryGuidance = {
   title: string;
   reason: string;
+  impact: string;
   recoveryAction: string;
 };
 
@@ -434,52 +436,38 @@ const escapeHtml = (value: string) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 
-const productCapabilityNameForServiceKind = (serviceKind: ServiceKind) =>
-  productCapabilityCopy(
-    serviceKind === "static-site"
-      ? capabilities["cloudflare-pages"]
-      : capabilities["cloudflare-workers"]
-  ).name;
-
 export const recoveryGuidanceForContext = (
   context: HostPageContext,
   serviceKind: ServiceKind = serviceKindForRouteId(context.routeId) ?? "backend-api"
 ): RecoveryGuidance | undefined => {
-  if (context.routeId === "cloudflare.unsupported") {
-    return {
-      title: "Unsupported page",
-      reason: "Michi only reads supported product pages in this milestone.",
-      recoveryAction: "Open a supported workspace page, navigate to the build area, then click Check page again."
-    };
-  }
-
   const detectedServiceKind = serviceKindForRouteId(context.routeId);
-  if (detectedServiceKind && detectedServiceKind !== serviceKind) {
-    return {
-      title: "Route mismatch",
-      reason: `The active guide is ${productCapabilityNameForServiceKind(
-        serviceKind
-      )}, but the current page belongs to ${productCapabilityNameForServiceKind(detectedServiceKind)}.`,
-      recoveryAction:
-        "Return to the selected guide path's expected page, or reset and choose the other path."
-    };
-  }
+  const expectedStep = guideStepForRouteId(context.routeId, serviceKind);
+  const expectedTargetId = expectedStep?.targetId ?? preferredTargetIdForRouteId(context.routeId, serviceKind);
+  const needsGuidance =
+    context.blockingState ||
+    context.routeId === "cloudflare.unsupported" ||
+    context.routeId === "michi.unsupported" ||
+    (detectedServiceKind !== undefined && detectedServiceKind !== serviceKind) ||
+    (expectedTargetId !== undefined && !context.targets.some((target) => target.id === expectedTargetId));
 
-  const expectedTargetId = preferredTargetIdForRouteId(context.routeId, serviceKind);
-
-  if (!expectedTargetId || context.targets.some((target) => target.id === expectedTargetId)) {
+  if (!needsGuidance) {
     return undefined;
   }
 
-  const expectedTargetLabel = productTargetLabel(
-    targetLabelForWorkersGuideTarget(expectedTargetId)
-  );
+  const guidance = recoveryGuidanceForState({
+    blockingState:
+      context.blockingState ??
+      (needsGuidance ? blockingStates["page-drift"] : undefined),
+    context,
+    serviceKind,
+    step: expectedStep
+  });
 
   return {
-    title: "Target missing",
-    reason: `Michi expected ${expectedTargetLabel} on this route, but the page check did not find it.`,
-    recoveryAction:
-      "Wait for the page to finish loading, return to the expected guide step if needed, then click Check page again."
+    title: guidance.title,
+    reason: guidance.reason,
+    impact: guidance.impact,
+    recoveryAction: guidance.action
   };
 };
 
@@ -544,7 +532,7 @@ const activityEventForShellContext = (state: ShellState): ActivityEventInput | u
     return {
       kind: "recovery",
       title: "Check needs recovery",
-      detail: "Michi paused this guide and surfaced a recovery step for the current page.",
+      detail: `${guidance.title}: ${guidance.recoveryAction}`,
       tone: "warning"
     };
   }
@@ -661,7 +649,21 @@ const commandActionCopy = (action: CommandAction, primary = false) => `
 `;
 
 const commandHandoffCopy = (state: ShellState) => {
-  const handoff = commandHandoffForSession(shellSessionForCommandHandoff(state));
+  const shellSession = shellSessionForCommandHandoff(state);
+  const resolvedServiceKind =
+    state.serviceKind ?? (state.context ? serviceKindForRouteId(state.context.routeId) : undefined) ?? "backend-api";
+  const guidance =
+    state.context && shellSession.phase === "recovery"
+      ? recoveryGuidanceForContext(state.context, resolvedServiceKind)
+      : undefined;
+  const handoff = commandHandoffForSession(shellSession, {
+    recoveryGuidance: guidance
+      ? {
+          title: guidance.title,
+          action: guidance.recoveryAction
+        }
+      : undefined
+  });
 
   return `<section class="command-handoff" data-tone="${escapeHtml(handoff.tone)}" aria-label="Command handoff">
     <div>
@@ -839,15 +841,20 @@ const contextCopy = (
   const signalCopy = signal ? productSignalCopy(signal) : undefined;
 
   return `
-    ${guideSummaryCopy(activeStepIndex, {
-      canComplete: canCompleteGuide(context, activeStepIndex, resolvedServiceKind),
-      serviceKind: resolvedServiceKind
-    })}
+    ${
+      guidance
+        ? ""
+        : guideSummaryCopy(activeStepIndex, {
+            canComplete: canCompleteGuide(context, activeStepIndex, resolvedServiceKind),
+            serviceKind: resolvedServiceKind
+          })
+    }
     ${
       guidance
         ? `<div class="recovery" role="status" aria-label="${escapeHtml(guidance.title)}">
             <p class="recovery-title">${escapeHtml(guidance.title)}</p>
             <p>${escapeHtml(sanitizeProviderText(guidance.reason))}</p>
+            <p>${escapeHtml(sanitizeProviderText(guidance.impact))}</p>
             <p>${escapeHtml(sanitizeProviderText(guidance.recoveryAction))}</p>
           </div>`
         : ""

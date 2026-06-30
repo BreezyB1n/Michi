@@ -1,4 +1,5 @@
 import { productBlockingStateCopy, productGuideStepCopy } from "./productPresentation";
+import type { RecoveryGuidance } from "./recoveryGuidance";
 import type { GuideSession } from "./types";
 
 export type CommandActionId =
@@ -28,6 +29,10 @@ export type CommandHandoff = {
   primaryAction: CommandAction;
   secondaryActions: CommandAction[];
   allActions: CommandAction[];
+};
+
+export type CommandHandoffOptions = {
+  recoveryGuidance?: Pick<RecoveryGuidance, "title" | "action">;
 };
 
 const action = (
@@ -63,7 +68,10 @@ const createHandoff = (
   allActions: [primaryAction, ...secondaryActions]
 });
 
-export const commandHandoffForSession = (session: GuideSession): CommandHandoff => {
+export const commandHandoffForSession = (
+  session: GuideSession,
+  options: CommandHandoffOptions = {}
+): CommandHandoff => {
   if (session.phase === "intent") {
     return createHandoff(
       "Ready for an intent",
@@ -104,12 +112,15 @@ export const commandHandoffForSession = (session: GuideSession): CommandHandoff 
     const blocking = session.pageState.blockingState
       ? productBlockingStateCopy(session.pageState.blockingState)
       : undefined;
+    const recoveryDetail = options.recoveryGuidance
+      ? `${options.recoveryGuidance.title}: ${options.recoveryGuidance.action}`
+      : blocking
+        ? `${blocking.title}: ${blocking.recoveryAction}`
+        : "Michi needs to recover the guide before normal progress can continue.";
 
     return createHandoff(
       "Recovery is required",
-      blocking
-        ? `${blocking.title}: ${blocking.recoveryAction}`
-        : "Michi needs to recover the guide before normal progress can continue.",
+      recoveryDetail,
       action(
         "recover-and-recheck",
         "Recover now",

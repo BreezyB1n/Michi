@@ -23,3 +23,4 @@ Design docs explain why Michi behaves the way it does. Product behavior should b
 - `product-surface-decision.md`
 - `command-handoff-decision.md`
 - `keyboard-focus-lifecycle-decision.md`
+- `unsupported-page-guidance-decision.md`

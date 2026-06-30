@@ -37,10 +37,11 @@ Michi has a verified local React workbench and unpacked extension runtime for a 
 | Product surface activity history | `completed/product-surface.md` | React workbench and injected shell now show deterministic Michi-owned activity history for intent start, path choice, page checks, recovery, confirmation, completion, and reset. |
 | Command handoff | `completed/command-handoff.md` | React workbench and injected shell now show deterministic next-command recommendations without bypassing confirmation or recovery safety. |
 | Keyboard focus lifecycle | `completed/keyboard-focus-lifecycle.md` | React workbench and injected shell now focus the primary panel control on open, keep focus inside Michi after guide re-renders, return focus to the rail on collapse, and preserve state on Escape. |
+| Unsupported page guidance | `completed/unsupported-page-guidance.md` | React workbench and injected shell now show productized recovery guidance for unsupported surfaces, route mismatch, missing targets, and runtime-read failures without exposing normal progress during recovery. |
 
 ## Active Work
 
-- No active execution plan. The keyboard focus lifecycle slice is completed and ready for branch freshness verification.
+- No active execution plan. The unsupported page guidance slice is completed and branch freshness verification passed.
 
 ## Housekeeping
 
@@ -48,7 +49,7 @@ Michi has a verified local React workbench and unpacked extension runtime for a 
 
 ## Recommended Next Direction
 
-Evaluate whether the next slice should add stronger unsupported-page guidance. Keep future work inside the compact side panel unless a new spec says otherwise.
+After unsupported-page guidance, evaluate whether the next slice should add a first-run extension readiness checklist. Keep future work inside the compact side panel unless a new spec says otherwise.
 
 ## Verification Baseline
 
